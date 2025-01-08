@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>학원 지도</title>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c9bd03a648dc9479e4ea809402b541f1&libraries=clusterer"></script>
+    <style>
+        #map { width: 100%; height: 40%; }
+        #category { margin: 10px 0; }
+        #category button { margin-right: 5px; padding: 5px 10px; cursor: pointer; }
+        #info { margin-top: 10px; }
+        #info ul { list-style: none; padding: 0; }
+        #info li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <a href="{% url 'academy_list' %}">검색</a><br>
+    <div id="category">
+        <button onclick="filterMarkers('종합')">종합</button>
+        <button onclick="filterMarkers('수학')">수학</button>
+        <button onclick="filterMarkers('영어')">영어</button>
+        <button onclick="filterMarkers('과학')">과학</button>
+        <button onclick="filterMarkers('외국어')">외국어</button>
+        <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
+        <button onclick="filterMarkers('예체능')">예체능</button>
+        <button onclick="filterMarkers('기타')">기타</button>
+        <button onclick="filterMarkers('독서실 / 스터디카페')">독서실 / 스터디카페</button>
+    </div>
+    <div id="map"></div>
+    <div id="info">
+        <ul id="academyInfo"></ul>
+    </div>
+
+    <script>
+        var map;
+
+        // HTML5의 geolocation API를 사용해 현재 위치를 가져옵니다
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+                var locPosition = new kakao.maps.LatLng(lat, lng);
+
+                // 지도를 생성합니다
+                map = new kakao.maps.Map(document.getElementById('map'), {
+                    center: locPosition,
+                    level: 2
+                });
+
+                // 현재 위치를 빨간 점으로 표시
+                var currentPositionOverlay = new kakao.maps.CustomOverlay({
+                    position: locPosition,
+                    content: `<div style="width:10px; height:10px; background-color:red; border-radius:50%;"></div>`,
+                    zIndex: 1
+                });
+                currentPositionOverlay.setMap(map);
+
+                // 학원 데이터를 지도에 표시하고 클러스터러를 설정합니다
+                setupMarkerClusterer();
+            });
+        } else {
+            var defaultPosition = new kakao.maps.LatLng(37.566826, 126.9786567);
+            map = new kakao.maps.Map(document.getElementById('map'), {
+                center: defaultPosition,
+                level: 2
+            });
+
+            alert("현재 위치를 가져올 수 없어 기본 위치로 설정됩니다.");
+            setupMarkerClusterer();
+        }
+
+        var markers = [];
+        var clusterer;
+
+        // 학원 데이터를 가져와 클러스터러에 추가
+        function setupMarkerClusterer() {
+            var academyData = [
+                {% for i in academies %}
+                {
+                    id: {{ i.id }},
+                    name: "{{ i.상호명 }}",
+                    lat: {{ i.위도 }},
+                    lng: {{ i.경도 }},
+                    address: "{{ i.도로명주소 }}",
+                    phone: "{{ i.전화번호 }}",
+                    category: "{{ i.학원_종류 }}"
+                },
+                {% endfor %}
+            ];
+
+            // 마커 클러스터러를 생성합니다
+            clusterer = new kakao.maps.MarkerClusterer({
+                map: map,
+                averageCenter: true,
+                minLevel: 4,
+                disableClickZoom: true
+            });
+
+            academyData.forEach(function(data) {
+                var marker = new kakao.maps.Marker({
+                    position: new kakao.maps.LatLng(data.lat, data.lng),
+                    title: data.name
+                });
+
+                marker.category = data.category;
+                marker.info = data;
+
+                kakao.maps.event.addListener(marker, 'click', function() {
+                    showAcademyInfo(data);
+                });
+
+                markers.push(marker);
+            });
+
+            // 클러스터러에 마커를 추가합니다
+            clusterer.addMarkers(markers);
+
+            // 클러스터 클릭 이벤트를 등록합니다
+            kakao.maps.event.addListener(clusterer, 'clusterclick', function(cluster) {
+                var level = map.getLevel() - 1;
+                map.setLevel(level, { anchor: cluster.getCenter() });
+            });
+        }
+
+        // 카테고리 필터
+        function filterMarkers(category) {
+            var filteredMarkers = markers.filter(function(marker) {
+                return marker.category === category || category === '전체';
+            });
+
+            clusterer.clear();
+            clusterer.addMarkers(filteredMarkers);
+        }
+
+        // 학원 정보 표시
+        function showAcademyInfo(data) {
+            var infoList = document.getElementById('academyInfo');
+            infoList.innerHTML = `
+                <li><strong>상호명:</strong> <a href="/academy/${data.id}">${data.name}</a></li>
+                <li><strong>도로명주소:</strong> ${data.address}</li>
+                <li><strong>전화번호:</strong> ${data.phone}</li>
+                <li><strong>학원 종류:</strong> ${data.category}</li>
+            `;
+        }
+    </script>
+</body>
+</html>

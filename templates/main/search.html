@@ -1,0 +1,35 @@
+{% extends "templates/main/base.html" %}
+
+{% block contents %}
+<br>
+
+<form style="width:100%" class="d-flex" method="POST" action="{% url 'search' %}">
+    {% csrf_token %}
+    <input class="form-control me-2" type="search" placeholder="학원명 검색" name="searched" aria-label="Search">
+    <button class="search_button" type="submit"> <span class="material-symbols-outlined">search</span> </button>
+</form>
+
+{% if searched %}
+    <table class="search-results">
+        <tbody>
+            {% for academy in data %}
+                <tr>
+                    <td>
+                        <a class="searched-list" href="{% url 'academy' academy.id %}">
+                            <img src="{{ university.mark }}" alt="{{ academy.상호명 }}" class="university-img">
+                        </a>
+                    </td>
+                    <td>
+                        <a class="searched-list" href="{% url 'academy' academy.id %}">
+                            {{ dat.상호명 }}
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+
+
+{% endblock %}
