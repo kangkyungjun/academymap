@@ -1,0 +1,119 @@
+{% extends "templates/main/base.html" %}
+
+{% block contents %}
+
+{% load humanize %}
+
+<div class="title_small"> {% include 'main/search.html' %} </div>
+
+<a href="{% url 'map' %}">←지도에서보기</a><br>
+
+<form action="{% url 'academy_list' %}" method="get" id="search_form">
+    <div class="selectbox">
+        <label for="시도명">시도명:</label>
+        <select name="시도명" id="시도명">
+            <option value="">-- 선택하세요 --</option>
+            {% for region in 시도명_list %}
+            <option value="{{ region }}" {% if region == 시도명_selected %}selected{% endif %}>{{ region }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="selectbox">
+        <label for="시군구명">시군구명:</label>
+        <select name="시군구명" id="시군구명" {% if not 시도명_selected %}disabled{% endif %}>
+            <option value="">-- 먼저 시도명을 선택하세요 --</option>
+            {% if 시군구명_selected %}
+            <option value="{{ 시군구명_selected }}" selected>{{ 시군구명_selected }}</option>
+            {% endif %}
+        </select>
+    </div>
+
+    <div class="selectbox">
+        <label for="행정동명">행정동명:</label>
+        <select name="행정동명" id="행정동명" {% if not 시군구명_selected %}disabled{% endif %}>
+            <option value="">-- 먼저 시군구명을 선택하세요 --</option>
+            {% if 행정동명_selected %}
+            <option value="{{ 행정동명_selected }}" selected>{{ 행정동명_selected }}</option>
+            {% endif %}
+        </select>
+    </div>
+
+        <div class="selectbox">
+        <label for="학원_종류">학원 종류:</label>
+        <select name="학원_종류" id="학원_종류">
+            <option value="">-- 선택하세요 --</option>
+            {% for kind in 학원_종류_list %}
+            <option value="{{ kind }}" {% if kind == 학원_종류_selected %}selected{% endif %}>{{ kind }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit">검색</button>
+</form>
+
+<br>
+
+<h1>결과 리스트</h1>
+
+<div>
+    {% if academylist %}
+        {% for academy in academylist %}
+            <a href="{% url 'academy' academy.id %}">{{ academy.상호명 }}</a><br>
+        {% endfor %}
+    {% else %}
+        <p>결과가 없습니다.</p>
+    {% endif %}
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+    $("#시도명").change(function () {
+        let 시도명 = $(this).val();
+        if (시도명) {
+            $.ajax({
+                url: "{% url 'get_regions' %}",
+                data: {
+                    level: "시군구명",
+                    parent_value: 시도명
+                },
+                success: function (response) {
+                    let options = '<option value="">-- 선택하세요 --</option>';
+                    response.regions.forEach(function (region) {
+                        options += `<option value="${region}">${region}</option>`;
+                    });
+                    $("#시군구명").html(options).prop("disabled", false);
+                    $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+                }
+            });
+        } else {
+            $("#시군구명").html('<option value="">-- 먼저 시도명을 선택하세요 --</option>').prop("disabled", true);
+            $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+        }
+    });
+
+    $("#시군구명").change(function () {
+        let 시군구명 = $(this).val();
+        if (시군구명) {
+            $.ajax({
+                url: "{% url 'get_regions' %}",
+                data: {
+                    level: "행정동명",
+                    parent_value: 시군구명
+                },
+                success: function (response) {
+                    let options = '<option value="">-- 선택하세요 --</option>';
+                    response.regions.forEach(function (region) {
+                        options += `<option value="${region}">${region}</option>`;
+                    });
+                    $("#행정동명").html(options).prop("disabled", false);
+                }
+            });
+        } else {
+            $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+        }
+    });
+});
+</script>
+
+{% endblock %}

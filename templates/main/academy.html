@@ -1,0 +1,79 @@
+{% extends "templates/main/base.html" %}
+
+{% block contents %}
+
+{% load humanize %}
+
+<div class="title_small"> {% include 'main/search.html' %} </div>
+
+{% if academy %}
+<div class="univ_detail_box1">
+    <div class="univ_detail_logo"><img src="{{ university.mark }}" alt="{{ university.name }}" style="width: 8rem; height: 8rem;"></div>
+    <div class="univ_detail_name">{{ academy.상호명 }}</div>
+</div>
+
+<hr>
+
+<div class="univ_detail_box1">
+    <div class="univ_detail_name">별점 _ 리뷰작성(링크)</div>
+</div>
+
+<hr>
+
+<div>
+    <table class="univ_table">
+        <tr>
+            <td>학원명</td>
+            <td>{{ academy.상호명|linebreaksbr }} _ 전화 연결(링크) </td>
+        </tr>
+        <tr>
+            <td>전문과목</td>
+            <td>{{ academy.상권업종대분류코드 }}</td>
+        </tr>
+        <tr>
+            <td>대표원장</td>
+            <td>{{ academy.상권업종대분류코드 }}</td>
+        </tr>
+        <tr>
+            <td>지번</td>
+            <td>{{ academy.지번주소  }}</td>
+        </tr>
+        <tr>
+            <td>도로명</td>
+            <td>{{ academy.도로명주소  }}</td>
+        </tr>
+        <tr>
+            <td>레벨테스트</td>
+            <td>{{ academy.상권업종대분류코드 }}</td>
+        </tr>
+        <tr>
+            <td>강사현황</td>
+            <td>{{ academy.상권업종대분류코드 }}</td>
+        </tr>
+        <tr>
+            <td>셔틀</td>
+            <td>{{ academy.상권업종대분류코드 }}</td>
+        </tr>
+
+    </table>
+</div>
+
+<div>
+    본 학원은 ... 입니다.
+</div>
+
+<div>
+    전체 학비 평균 대비 000원 낮/높 습니다.
+</div>
+<div>
+    리뷰 내용 _ 작성하기
+</div>
+
+
+{% endif %}
+
+
+
+<script></script>
+
+{% endblock %}
