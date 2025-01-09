@@ -82,10 +82,44 @@ def get_regions(request):
 
     return JsonResponse({'regions': list(regions)})
 
+
 def map(request):
-    academies = Data.objects.all()
-    context = {'academies':academies}
-    return render(request, 'main/map.html', context)
+    return render(request, 'main/map.html')
+
+
+# 동적으로 학원 데이터를 필터링하여 제공하는 API
+def filtered_academies(request):
+    import json
+    from django.db.models import Q
+    body = json.loads(request.body)
+
+    # 지도 영역 좌표
+    sw_lat = body.get('swLat')
+    sw_lng = body.get('swLng')
+    ne_lat = body.get('neLat')
+    ne_lng = body.get('neLng')
+
+    # 카테고리 필터
+    category = body.get('category', '')
+
+    # 학원 데이터 필터링
+    print(f"Filtering academies: SW({sw_lat}, {sw_lng}) NE({ne_lat}, {ne_lng}), category: {category}")
+
+    queryset = Data.objects.filter(
+        위도__gte=sw_lat,
+        위도__lte=ne_lat,
+        경도__gte=sw_lng,
+        경도__lte=ne_lng,
+    )
+
+    if category and category != '전체':
+        queryset = queryset.filter(학원_종류=category)
+
+    print(f"Queryset count: {queryset.count()}")
+
+    # JSON 응답 생성
+    data = list(queryset.values('id', '상호명', '위도', '경도', '도로명주소', '전화번호', '학원_종류'))
+    return JsonResponse(data, safe=False)
 
 
 def data_update(request):
