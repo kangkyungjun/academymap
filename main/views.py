@@ -6,10 +6,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, F, Count
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
+from django.core.paginator import Paginator
 import pandas as pd
 
 from main.models import Data
+
+from .models import Data  # Data 모델 import
 
 from django.core.cache import cache
 from django.utils.timezone import now
@@ -45,7 +49,21 @@ def academy_list(request):
     시도명 = request.GET.get('시도명', '')
     시군구명 = request.GET.get('시군구명', '')
     행정동명 = request.GET.get('행정동명', '')
-    학원_종류 = request.GET.get('학원_종류', '')
+    과목 = request.GET.get('과목', '')
+
+    # 과목 필드 매핑
+    과목_mapping = {
+        '종합': '과목_종합',
+        '수학': '과목_수학',
+        '영어': '과목_영어',
+        '과학': '과목_과학',
+        '외국어': '과목_외국어',
+        '예체능': '과목_예체능',
+        '컴퓨터': '과목_컴퓨터',
+        '논술': '과목_논술',
+        '기타': '과목_기타',
+        '독서실 / 스터디카페': '과목_독서실스터디카페',
+    }
 
     # 필터링 조건
     queryset = Data.objects.all()
@@ -55,17 +73,29 @@ def academy_list(request):
         queryset = queryset.filter(시군구명=시군구명)
     if 행정동명:
         queryset = queryset.filter(행정동명=행정동명)
-    if 학원_종류:
-        queryset = queryset.filter(학원_종류=학원_종류)
+    if 과목 and 과목 in 과목_mapping:
+        filter_field = {과목_mapping[과목]: True}
+        queryset = queryset.filter(**filter_field)
+
+    # Paginator 적용 (페이지당 30개씩)
+    paginator = Paginator(queryset, 30)
+    page = request.GET.get('page')  # 현재 페이지 번호
+
+    try:
+        academylist = paginator.page(page)
+    except PageNotAnInteger:
+        academylist = paginator.page(1)  # 페이지 번호가 없으면 1페이지
+    except EmptyPage:
+        academylist = paginator.page(paginator.num_pages)  # 페이지 범위를 벗어나면 마지막 페이지
 
     context = {
         '시도명_list': 시도명_list,
         '시도명_selected': 시도명,
         '시군구명_selected': 시군구명,
         '행정동명_selected': 행정동명,
-        '학원_종류_selected': 학원_종류,
-        'academylist': queryset,  # 필터링된 결과
-        '학원_종류_list': ['종합','수학','영어','과학','외국어','컴퓨터','예체능','기타','독서실 / 스터디카페'],
+        '과목_selected': 과목,
+        'academylist': academylist,
+        '과목_list': ['종합', '수학', '영어', '과학', '외국어', '예체능', '컴퓨터', '논술', '기타', '독서실/스터디카페'],
     }
     return render(request, 'main/academy_list.html', context)
 
@@ -86,11 +116,9 @@ def get_regions(request):
 def map(request):
     return render(request, 'main/map.html')
 
-
 # 동적으로 학원 데이터를 필터링하여 제공하는 API
 def filtered_academies(request):
     import json
-    from django.db.models import Q
     body = json.loads(request.body)
 
     # 지도 영역 좌표
@@ -99,11 +127,21 @@ def filtered_academies(request):
     ne_lat = body.get('neLat')
     ne_lng = body.get('neLng')
 
-    # 카테고리 필터
+    # 과목 필터
     category = body.get('category', '')
 
-    # 학원 데이터 필터링
-    print(f"Filtering academies: SW({sw_lat}, {sw_lng}) NE({ne_lat}, {ne_lng}), category: {category}")
+    과목_mapping = {
+        '종합': '과목_종합',
+        '수학': '과목_수학',
+        '영어': '과목_영어',
+        '과학': '과목_과학',
+        '외국어': '과목_외국어',
+        '예체능': '과목_예체능',
+        '컴퓨터': '과목_컴퓨터',
+        '논술': '과목_논술',
+        '기타': '과목_기타',
+        '독서실/스터디카페': '과목_독서실스터디카페',
+    }
 
     queryset = Data.objects.filter(
         위도__gte=sw_lat,
@@ -112,69 +150,86 @@ def filtered_academies(request):
         경도__lte=ne_lng,
     )
 
-    if category and category != '전체':
-        queryset = queryset.filter(학원_종류=category)
+    if category and category != '전체' and category in 과목_mapping:
+        filter_field = {과목_mapping[category]: True}
+        queryset = queryset.filter(**filter_field)
 
-    print(f"Queryset count: {queryset.count()}")
-
-    # JSON 응답 생성
-    data = list(queryset.values('id', '상호명', '위도', '경도', '도로명주소', '전화번호', '학원_종류'))
+    data = list(queryset.values('id', '상호명', '위도', '경도', '도로명주소', '전화번호'))
     return JsonResponse(data, safe=False)
 
+
+
+def clean_value(value):
+    if pd.isna(value) or value == '-':
+        return None
+    return value
+
+# Boolean 값 변환 함수
+def convert_to_boolean(value):
+    if str(value).strip().lower() in ['true', '1', 'yes', 'o', 'y', '예']:
+        return True
+    return False
 
 def data_update(request):
     n_data = pd.read_excel('n_data.xlsx')
 
     for i in range(len(n_data)):
-        # 상가업소번호 추출
-        shop_id = n_data.iloc[i, 0]
-            # 새로운 데이터 저장
         row = n_data.iloc[i]
-        data = Data(
-            상가업소번호=row['상가업소번호'],
-            상호명=row['상호명'],
-            상권업종대분류코드=row['상권업종대분류코드'],
-            상권업종대분류명=row['상권업종대분류명'],
-            상권업종중분류명=row['상권업종중분류명'],
-            상권업종소분류명=row['상권업종소분류명'],
-            시도명=row['시도명'],
-            시군구명=row['시군구명'],
-            행정동명=row['행정동명'],
-            법정동명=row['법정동명'],
-            지번주소=row['지번주소'],
-            도로명주소=row['도로명주소'],
-            경도=row['경도'],
-            위도=row['위도'] ,
-            학원_종류 = row['학원_종류'],
-            원장님 = row['원장님'],
-            레벨테스트 = row['레벨테스트'],
-            강사 = row['강사'],
-            별점 = row['별점'],
-            전화번호 = row['전화번호'],
-            셔틀버스 = row['셔틀버스'],
-            수강료 = row['수강료']
+
+        data, created = Data.objects.update_or_create(
+            상가업소번호=clean_value(row['상가업소번호']),
+            defaults={
+                '상호명': clean_value(row['상호명']),
+                '상권업종대분류코드': clean_value(row['상권업종대분류코드']),
+                '상권업종대분류명': clean_value(row['상권업종대분류명']),
+                '상권업종중분류명': clean_value(row['상권업종중분류명']),
+                '상권업종소분류명': clean_value(row['상권업종소분류명']),
+                '시도명': clean_value(row['시도명']),
+                '시군구명': clean_value(row['시군구명']),
+                '행정동명': clean_value(row['행정동명']),
+                '법정동명': clean_value(row['법정동명']),
+                '지번주소': clean_value(row['지번주소']),
+                '도로명주소': clean_value(row['도로명주소']),
+                '경도': clean_value(row['경도']),
+                '위도': clean_value(row['위도']),
+                '학원사진': clean_value(row['학원사진']),
+                '대표원장': clean_value(row['대표원장']),
+                '레벨테스트': clean_value(row['레벨테스트']),
+                '강사': clean_value(row['강사']),
+
+                # Boolean 필드 변환
+                '대상_유아': convert_to_boolean(row['대상_유아']),
+                '대상_초등': convert_to_boolean(row['대상_초등']),
+                '대상_중등': convert_to_boolean(row['대상_중등']),
+                '대상_고등': convert_to_boolean(row['대상_고등']),
+                '대상_특목고': convert_to_boolean(row['대상_특목고']),
+                '대상_일반': convert_to_boolean(row['대상_일반']),
+                '대상_기타': convert_to_boolean(row['대상_기타']),
+
+                '인증_명문대': convert_to_boolean(row['인증_명문대']),
+                '인증_경력': convert_to_boolean(row['인증_경력']),
+
+                '소개글': clean_value(row['소개글']),
+
+                '과목_종합': convert_to_boolean(row['과목_종합']),
+                '과목_수학': convert_to_boolean(row['과목_수학']),
+                '과목_영어': convert_to_boolean(row['과목_영어']),
+                '과목_과학': convert_to_boolean(row['과목_과학']),
+                '과목_외국어': convert_to_boolean(row['과목_외국어']),
+                '과목_예체능': convert_to_boolean(row['과목_예체능']),
+                '과목_컴퓨터': convert_to_boolean(row['과목_컴퓨터']),
+                '과목_논술': convert_to_boolean(row['과목_논술']),
+                '과목_기타': convert_to_boolean(row['과목_기타']),
+                '과목_독서실스터디카페': convert_to_boolean(row['과목_독서실스터디카페']),
+
+                '별점': clean_value(row['별점']),
+                '전화번호': clean_value(row['전화번호']),
+                '영업시간': clean_value(row['영업시간']),
+                '셔틀버스': convert_to_boolean(row['셔틀버스']),
+                '수강료': clean_value(row['수강료']),
+                '수강료_평균': clean_value(row['수강료_평균']),
+            }
         )
-        data.save()
-            # for index, row in n_data.iterrows():
-            #     data = Data(
-            #         상가업소번호=row['상가업소번호'],
-            #         상호명=row['상호명'],
-            #         상권업종대분류코드=row['상권업종대분류코드'],
-            #         상권업종대분류명=row['상권업종대분류명'],
-            #         상권업종중분류명=row['상권업종중분류명'],
-            #         상권업종소분류명=row['상권업종소분류명'],
-            #         표준산업분류명=row['표준산업분류명'],
-            #         시도명=row['시도명'],
-            #         시군구명=row['시군구명'],
-            #         행정동명=row['행정동명'],
-            #         법정동명=row['법정동명'],
-            #         지번주소=row['지번주소'],
-            #         건물명=row['건물명'],
-            #         도로명주소=row['도로명주소'],
-            #         구우편번호=row['구우편번호'],
-            #         층정보=row['층정보'],
-            #         경도=row['경도'],
-            #         위도=row['위도']
-            #     )
-            #     data.save()
+
     return render(request, 'main/data_update.html')
+
