@@ -1,108 +1,242 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학원 지도</title>
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c9bd03a648dc9479e4ea809402b541f1&libraries=clusterer"></script>
-<style>
-    #map { width: 100%; height: 400px; }
-    #category { margin: 10px 0; }
-    #category button { margin-right: 5px; padding: 5px 10px; cursor: pointer; }
-    #controls { margin: 10px 0; }
-    #controls button { padding: 5px 10px; cursor: pointer; }
-    #info { margin-top: 10px; }
-    #info ul { list-style: none; padding: 0; }
-    #info li { margin-bottom: 5px; }
-</style>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            width: 100%;
+            height: 50%;
+        }
+
+/* 카테고리 버튼 전체 컨테이너 (지도 상단 고정 & 드래그 스크롤) */
+#category-container {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    z-index: 100;
+    padding: 0.5rem 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    -ms-overflow-style: none;  /* IE, Edge */
+    scrollbar-width: none;      /* Firefox */
+}
+
+/* 스크롤바 숨기기 */
+#category-container::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari */
+}
+
+/* 버튼을 가로로 정렬 */
+#category {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+}
+
+/* 버튼 디자인 */
+#category button {
+    flex: 0 0 auto;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 0.3rem;
+    background-color: #f9f9f9;
+    white-space: nowrap;
+    user-select: none; /* 텍스트 선택 방지 */
+}
+
+#category button:hover {
+    background-color: #e0e0e0;
+}
+
+        #info {
+            position: fixed;
+            bottom: -300px;
+            left: 0;
+            width: 100%;
+            background-color: #fff;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            transition: bottom 0.4s ease-in-out;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            z-index: 10;
+        }
+
+        #info.active {
+            bottom: 0;
+        }
+
+        #info ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #info li {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        #info .close-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>학원 지도</h1>
+    <a href="{% url 'academy_list' %}">검색하기</a><br>
+    <div id="controls">
+        <button onclick="moveToCurrentLocation()">현 위치로 이동</button>
+    </div>
+
+<!-- 카테고리 버튼 (지도 상단 고정 & 가로 스크롤) -->
+<div id="category-container">
     <div id="category">
         <button onclick="filterMarkers('전체')">전체</button>
         <button onclick="filterMarkers('수학')">수학</button>
         <button onclick="filterMarkers('영어')">영어</button>
         <button onclick="filterMarkers('과학')">과학</button>
         <button onclick="filterMarkers('외국어')">외국어</button>
-        <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
         <button onclick="filterMarkers('예체능')">예체능</button>
+        <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
+        <button onclick="filterMarkers('논술')">논술</button>
         <button onclick="filterMarkers('기타')">기타</button>
-        <button onclick="filterMarkers('독서실 / 스터디카페')">독서실 / 스터디카페</button>
+        <button onclick="filterMarkers('독서실/스터디카페')">독서실/스터디카페</button>
     </div>
-    <div id="map"></div>
-    <div id="controls">
-    <button onclick="moveToCurrentLocation()">현 위치로 이동</button>
 </div>
+
+    <div id="map"></div>
+
+
+
     <div id="info">
+        <button class="close-btn" onclick="closeInfo()">×</button>
         <ul id="academyInfo"></ul>
     </div>
 
 <script>
+    function moveToCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            var locPosition = new kakao.maps.LatLng(lat, lng);
+
+            map.setCenter(locPosition);  // 지도 중심 이동
+            map.setLevel(2);             // 확대 레벨 조정
+
+            // 현재 위치 마커 표시
+            if (!currentPositionOverlay) {
+                currentPositionOverlay = new kakao.maps.Marker({
+                    map: map,
+                    position: locPosition,
+                    title: "현재 위치",
+                    image: new kakao.maps.MarkerImage(
+                        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/red_b.png',
+                        new kakao.maps.Size(24, 35)
+                    )
+                });
+            } else {
+                currentPositionOverlay.setPosition(locPosition);
+            }
+
+        }, function(error) {
+            alert('위치 정보를 가져올 수 없습니다.');
+            console.error("Geolocation Error:", error);
+        });
+    } else {
+        alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
+    }
+}
+
     var map, clusterer, selectedCategory = '전체', currentPositionOverlay, currentLocation;
 
-    // 지도 초기화
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
             currentLocation = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
             initializeMap(currentLocation);
-            showCurrentLocation(currentLocation); // 현재 위치를 빨간 점으로 표시
+            showCurrentLocation(currentLocation);
         });
     } else {
-        var defaultPosition = new kakao.maps.LatLng(37.566826, 126.9786567); // 서울 기본 위치
+        var defaultPosition = new kakao.maps.LatLng(37.566826, 126.9786567);
         initializeMap(defaultPosition);
     }
 
     function initializeMap(center) {
         map = new kakao.maps.Map(document.getElementById('map'), {
             center: center,
-            level: 4
+            level: 3
         });
 
-        // 마커 클러스터러 생성
         clusterer = new kakao.maps.MarkerClusterer({
             map: map,
             averageCenter: true,
             minLevel: 4,
-            disableClickZoom: false // 클릭 시 줌 활성화
+            disableClickZoom: false
         });
 
-        // 클러스터 클릭 시 배율 확대
         kakao.maps.event.addListener(clusterer, 'clusterclick', function(cluster) {
             map.setLevel(map.getLevel() - 1, { anchor: cluster.getCenter() });
         });
 
-        // 지도 영역 변경 시 학원 데이터 가져오기
         kakao.maps.event.addListener(map, 'bounds_changed', fetchAcademies);
 
-        // 초기 데이터 로드
         fetchAcademies();
     }
 
     function showCurrentLocation(locPosition) {
-        // 현재 위치를 빨간 점(커스텀 오버레이)으로 표시
         if (!currentPositionOverlay) {
             currentPositionOverlay = new kakao.maps.CustomOverlay({
                 position: locPosition,
-                content: `<div style="width:10px; height:10px; background-color:red; border-radius:50%;"></div>`,
+                content: `<div style="width:0.625rem; height:0.625rem; background-color:red; border-radius:50%;"></div>`,
                 zIndex: 1
             });
             currentPositionOverlay.setMap(map);
         } else {
-            currentPositionOverlay.setPosition(locPosition); // 위치 갱신
+            currentPositionOverlay.setPosition(locPosition);
         }
     }
 
     function fetchAcademies() {
-        // 현재 지도 영역의 좌표 가져오기
         var bounds = map.getBounds();
         var swLatLng = bounds.getSouthWest();
         var neLatLng = bounds.getNorthEast();
 
-        // 서버에 데이터 요청
         fetch('/api/filtered_academies', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken() // CSRF 토큰 추가
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({
                 swLat: swLatLng.getLat(),
@@ -114,9 +248,7 @@
         })
         .then(response => response.json())
         .then(data => {
-            clusterer.clear(); // 기존 마커 제거
-
-            // 새 마커 추가
+            clusterer.clear();
             var markers = data.map(function(item) {
                 var marker = new kakao.maps.Marker({
                     position: new kakao.maps.LatLng(item.위도, item.경도),
@@ -124,6 +256,7 @@
                 });
 
                 kakao.maps.event.addListener(marker, 'click', function() {
+                    console.log("마커 클릭: ", item);
                     showAcademyInfo(item);
                 });
 
@@ -132,36 +265,26 @@
 
             clusterer.addMarkers(markers);
         })
-        .catch(error => console.error('Error fetching academies:', error));
+        .catch(error => console.error('Error fetching academies:', error));  // 오류 수정
     }
 
     function filterMarkers(category) {
         selectedCategory = category;
-        fetchAcademies(); // 새 데이터 로드
+        fetchAcademies();
     }
 
     function showAcademyInfo(data) {
         var infoList = document.getElementById('academyInfo');
+        document.getElementById('info').classList.add('active');
         infoList.innerHTML = `
-            <li>
-                <strong>
-                    <a href="/academy/${data.id}">${data.상호명}</a>
-                </strong>
-            </li>
+            <li><strong><a href="/academy/${data.id}">${data.상호명}</a></strong></li>
             <li><strong>도로명주소:</strong> ${data.도로명주소}</li>
             <li><strong>전화번호:</strong> ${data.전화번호}</li>
-            <li><strong>학원 종류:</strong> ${data.학원_종류}</li>
         `;
     }
 
-    // 현 위치로 이동 버튼 동작
-    function moveToCurrentLocation() {
-        if (currentLocation) {
-            map.setCenter(currentLocation); // 지도를 현재 위치로 이동
-            map.setLevel(4); // 적절한 줌 레벨로 조정
-        } else {
-            alert('현재 위치를 가져올 수 없습니다.');
-        }
+    function closeInfo() {
+        document.getElementById('info').classList.remove('active');
     }
 
     function getCSRFToken() {
@@ -174,9 +297,57 @@
         }
         return '';
     }
+
+    // 드래그 스크롤 기능 추가
+const categoryContainer = document.getElementById('category-container');
+let isDown = false;
+let startX, scrollLeft;
+
+categoryContainer.addEventListener('mousedown', (e) => {
+    isDown = true;
+    categoryContainer.classList.add('active');
+    startX = e.pageX - categoryContainer.offsetLeft;
+    scrollLeft = categoryContainer.scrollLeft;
+});
+
+categoryContainer.addEventListener('mouseleave', () => {
+    isDown = false;
+    categoryContainer.classList.remove('active');
+});
+
+categoryContainer.addEventListener('mouseup', () => {
+    isDown = false;
+    categoryContainer.classList.remove('active');
+});
+
+categoryContainer.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - categoryContainer.offsetLeft;
+    const walk = (x - startX) * 1.5;  // 드래그 감도 조절
+    categoryContainer.scrollLeft = scrollLeft - walk;
+});
+
+// 터치 이벤트 (모바일 지원)
+categoryContainer.addEventListener('touchstart', (e) => {
+    isDown = true;
+    startX = e.touches[0].pageX - categoryContainer.offsetLeft;
+    scrollLeft = categoryContainer.scrollLeft;
+});
+
+categoryContainer.addEventListener('touchend', () => {
+    isDown = false;
+});
+
+categoryContainer.addEventListener('touchmove', (e) => {
+    if (!isDown) return;
+    const x = e.touches[0].pageX - categoryContainer.offsetLeft;
+    const walk = (x - startX) * 1.5;  // 드래그 감도 조절
+    categoryContainer.scrollLeft = scrollLeft - walk;
+});
+
+
+
 </script>
-
-
-
 </body>
 </html>

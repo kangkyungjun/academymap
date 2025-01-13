@@ -34,3 +34,5 @@ urlpatterns = [
 
     path('data_update', main.views.data_update, name='data_update'),
 ]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

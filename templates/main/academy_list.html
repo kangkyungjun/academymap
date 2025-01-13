@@ -39,12 +39,12 @@
         </select>
     </div>
 
-        <div class="selectbox">
-        <label for="학원_종류">학원 종류:</label>
-        <select name="학원_종류" id="학원_종류">
-            <option value="">-- 선택하세요 --</option>
-            {% for kind in 학원_종류_list %}
-            <option value="{{ kind }}" {% if kind == 학원_종류_selected %}selected{% endif %}>{{ kind }}</option>
+    <div class="selectbox">
+        <label for="과목">과목:</label>
+        <select name="과목" id="과목">
+            <option value="">전체</option>
+            {% for subject in 과목_list %}
+            <option value="{{ subject }}" {% if subject == 과목_selected %}selected{% endif %}>{{ subject }}</option>
             {% endfor %}
         </select>
     </div>
@@ -66,54 +66,91 @@
     {% endif %}
 </div>
 
+<!-- 페이지 네비게이션 -->
+<div class="pagination">
+    {% if academylist.has_previous %}
+        <a href="?page=1{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">처음</a>
+        <a href="?page={{ academylist.previous_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">이전</a>
+    {% endif %}
+
+    <span>페이지 {{ academylist.number }} / {{ academylist.paginator.num_pages }}</span>
+
+    {% if academylist.has_next %}
+        <a href="?page={{ academylist.next_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">다음</a>
+        <a href="?page={{ academylist.paginator.num_pages }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">마지막</a>
+    {% endif %}
+</div>
+
 <script type="text/javascript">
     $(document).ready(function () {
-    $("#시도명").change(function () {
-        let 시도명 = $(this).val();
-        if (시도명) {
-            $.ajax({
-                url: "{% url 'get_regions' %}",
-                data: {
-                    level: "시군구명",
-                    parent_value: 시도명
-                },
-                success: function (response) {
-                    let options = '<option value="">-- 선택하세요 --</option>';
-                    response.regions.forEach(function (region) {
-                        options += `<option value="${region}">${region}</option>`;
-                    });
-                    $("#시군구명").html(options).prop("disabled", false);
-                    $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
-                }
-            });
-        } else {
-            $("#시군구명").html('<option value="">-- 먼저 시도명을 선택하세요 --</option>').prop("disabled", true);
-            $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
-        }
-    });
+        $("#시도명").change(function () {
+            let 시도명 = $(this).val();
+            if (시도명) {
+                $.ajax({
+                    url: "{% url 'get_regions' %}",
+                    data: { level: "시군구명", parent_value: 시도명 },
+                    success: function (response) {
+                        let options = '<option value="">-- 선택하세요 --</option>';
+                        response.regions.forEach(function (region) {
+                            options += `<option value="${region}">${region}</option>`;
+                        });
+                        $("#시군구명").html(options).prop("disabled", false);
+                        $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+                    }
+                });
+            } else {
+                $("#시군구명").html('<option value="">-- 먼저 시도명을 선택하세요 --</option>').prop("disabled", true);
+                $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+            }
+        });
 
-    $("#시군구명").change(function () {
-        let 시군구명 = $(this).val();
-        if (시군구명) {
-            $.ajax({
-                url: "{% url 'get_regions' %}",
-                data: {
-                    level: "행정동명",
-                    parent_value: 시군구명
-                },
-                success: function (response) {
-                    let options = '<option value="">-- 선택하세요 --</option>';
-                    response.regions.forEach(function (region) {
-                        options += `<option value="${region}">${region}</option>`;
-                    });
-                    $("#행정동명").html(options).prop("disabled", false);
-                }
-            });
-        } else {
-            $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
-        }
+        $("#시군구명").change(function () {
+            let 시군구명 = $(this).val();
+            if (시군구명) {
+                $.ajax({
+                    url: "{% url 'get_regions' %}",
+                    data: { level: "행정동명", parent_value: 시군구명 },
+                    success: function (response) {
+                        let options = '<option value="">-- 선택하세요 --</option>';
+                        response.regions.forEach(function (region) {
+                            options += `<option value="${region}">${region}</option>`;
+                        });
+                        $("#행정동명").html(options).prop("disabled", false);
+                    }
+                });
+            } else {
+                $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+            }
+        });
     });
-});
 </script>
+
+<style>
+    .selectbox label {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .selectbox select, button {
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 1rem;
+    }
+
+    button {
+        margin-top: 1rem;
+        padding: 0.75rem;
+    }
+
+    h1 {
+        margin-top: 2rem;
+        font-size: 1.5rem;
+    }
+
+    a {
+        font-size: 1rem;
+        text-decoration: none;
+    }
+</style>
 
 {% endblock %}
