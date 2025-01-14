@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -5,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학원 지도</title>
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c9bd03a648dc9479e4ea809402b541f1&libraries=clusterer"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0,0&icon_names=my_location" />
+    <style>
+.material-symbols-outlined {
+  font-variation-settings:
+  'FILL' 0,
+  'wght' 200,
+  'GRAD' 0,
+  'opsz' 24
+}
+
+</style>
 
     <style>
         * {
@@ -18,68 +30,79 @@
             height: 100%;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            background-color: #f0f8f8;
         }
 
         #map {
             width: 100%;
-            height: 50%;
+            height: 90%;
         }
 
-/* 카테고리 버튼 전체 컨테이너 (지도 상단 고정 & 드래그 스크롤) */
-#category-container {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-    z-index: 100;
-    padding: 0.5rem 0;
-    background-color: rgba(255, 255, 255, 0.9);
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    -ms-overflow-style: none;  /* IE, Edge */
-    scrollbar-width: none;      /* Firefox */
-}
+        #controls {
+            position: fixed;
+            top: 5rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+        ::-webkit-scrollbar {
+          display: none;
+        }
+        #controls::-webkit-scrollbar{
+              display:none;
+        }
 
-/* 스크롤바 숨기기 */
-#category-container::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari */
-}
 
-/* 버튼을 가로로 정렬 */
-#category {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0 0.5rem;
-}
+        #controls button {
+            padding: 0.8rem 1.2rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            background-color: #008B8B;
+            color: #fff;
+            cursor: pointer;
+        }
 
-/* 버튼 디자인 */
-#category button {
-    flex: 0 0 auto;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    border: 1px solid #ccc;
-    border-radius: 0.3rem;
-    background-color: #f9f9f9;
-    white-space: nowrap;
-    user-select: none; /* 텍스트 선택 방지 */
-}
 
-#category button:hover {
-    background-color: #e0e0e0;
-}
+        #controls button:hover {
+            background-color: #006767;
+        }
+
+        #category-container {
+            position: absolute;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            overflow-x: auto;
+            white-space: nowrap;
+            z-index: 100;
+            padding: 0.5rem 0;
+            background-color: rgba(0, 139, 139, 0.1);
+            border-radius: 0.5rem;
+        }
+
+        #category button {
+            flex: 0 0 auto;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: 1px solid #008B8B;
+            border-radius: 0.3rem;
+            background-color: #fff;
+            color: #008B8B;
+        }
+
+        #category button:hover, #category button.active {
+            background-color: #008B8B;
+            color: #fff;
+        }
 
         #info {
             position: fixed;
-            bottom: -300px;
+            bottom: -100%;
             left: 0;
             width: 100%;
             background-color: #fff;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
             padding: 1rem;
             transition: bottom 0.4s ease-in-out;
             border-top-left-radius: 1rem;
@@ -109,14 +132,19 @@
             border: none;
             font-size: 1.5rem;
             cursor: pointer;
+            color: #008B8B;
         }
     </style>
 </head>
 
 <body>
-    <a href="{% url 'academy_list' %}">검색하기</a><br>
+
+    <a class="searched-list" href="{% url 'academy_list' %}">
+        ←검색
+    </a>
+
     <div id="controls">
-        <button onclick="moveToCurrentLocation()">현 위치로 이동</button>
+        <button onclick="moveToCurrentLocation()"><span class="material-symbols-outlined">my_location</span></button>
     </div>
 
 <!-- 카테고리 버튼 (지도 상단 고정 & 가로 스크롤) -->
@@ -349,5 +377,38 @@ categoryContainer.addEventListener('touchmove', (e) => {
 
 
 </script>
+    <script>
+    kakao.maps.event.addListener(map, 'dragstart', function() {
+      map.setDraggable(false);
+    });
+
+    kakao.maps.event.addListener(map, 'dragend', function() {
+      map.setDraggable(true);
+    });
+
+    let isPinching = false;
+    let lastDistance;
+
+    map.container.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        isPinching = true;
+        lastDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      }
+    });
+
+    map.container.addEventListener('touchmove', function(e) {
+      if (isPinching && e.touches.length === 2) {
+        const currentDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+        const zoomDelta = (currentDistance - lastDistance) * 0.01;
+        map.setLevel(map.getLevel() + zoomDelta);
+        lastDistance = currentDistance;
+      }
+    });
+
+    map.container.addEventListener('touchend', function() {
+      isPinching = false;
+    });
+
+    </script>
 </body>
 </html>
