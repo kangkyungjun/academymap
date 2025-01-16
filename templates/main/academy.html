@@ -4,6 +4,75 @@
 
 {% load humanize %}
 
+<style>
+    .univ_detail_box1 {
+        display: flex;
+        align-items: center;
+        margin: 2rem 0;
+    }
+
+    .univ_detail_logo img {
+        width: 8rem;
+        height: 8rem;
+        object-fit: cover;
+    }
+
+    .univ_detail_name {
+        font-size: 2rem;
+        margin-left: 1rem;
+    }
+
+    .univ_table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 2rem;
+    }
+
+    .univ_table td {
+        border: 1px solid #ddd;
+        padding: 1rem;
+        font-size: 1rem;
+    }
+
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #ccc;
+    }
+
+    div {
+        font-size: 1.2rem;
+        margin-top: 1rem;
+    }
+
+    a {
+        font-size: 1rem;
+        text-decoration: none;
+        color: #007BFF;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+        .univ_detail_box1 {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .univ_detail_name {
+            margin-left: 0;
+            margin-top: 1rem;
+        }
+
+        .univ_table td {
+            font-size: 0.9rem;
+            padding: 0.5rem;
+        }
+    }
+</style>
+
 <div class="title_small"> {% include 'main/search.html' %} </div>
 
 {% if academy %}
