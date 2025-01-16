@@ -1,30 +1,17 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>학원 지도</title>
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c9bd03a648dc9479e4ea809402b541f1&libraries=clusterer"></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0,0&icon_names=my_location" />
-    <style>
-.material-symbols-outlined {
-  font-variation-settings:
-  'FILL' 0,
-  'wght' 200,
-  'GRAD' 0,
-  'opsz' 24
-}
-
-</style>
-
+    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=rh9hwnvmx1&submodules=geocoder"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0,0&icon_names=my_location,search" />
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
         html, body {
             width: 100%;
             height: 100%;
@@ -32,41 +19,23 @@
             font-family: Arial, sans-serif;
             background-color: #f0f8f8;
         }
-
         #map {
             width: 100%;
             height: 90%;
         }
-
         #controls {
             position: fixed;
-            top: 5rem;
+            top: 18rem;
             right: 1rem;
             z-index: 1000;
         }
-        ::-webkit-scrollbar {
-          display: none;
-        }
-        #controls::-webkit-scrollbar{
-              display:none;
-        }
-
-
         #controls button {
-            padding: 0.8rem 1.2rem;
-            font-size: 1rem;
+            font-size: 2rem;
             border: none;
             border-radius: 0.5rem;
-            background-color: #008B8B;
-            color: #fff;
+            color: #008B8B;
             cursor: pointer;
         }
-
-
-        #controls button:hover {
-            background-color: #006767;
-        }
-
         #category-container {
             position: absolute;
             top: 1.5rem;
@@ -80,7 +49,6 @@
             background-color: rgba(0, 139, 139, 0.1);
             border-radius: 0.5rem;
         }
-
         #category button {
             flex: 0 0 auto;
             padding: 0.5rem 1rem;
@@ -91,63 +59,57 @@
             background-color: #fff;
             color: #008B8B;
         }
-
         #category button:hover, #category button.active {
             background-color: #008B8B;
             color: #fff;
         }
+        /* 팝업 스타일 */
+.popup {
+    position: fixed;
+    bottom: -300px;
+    left: 0;
+    width: 100%;
+    background-color: #fff;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    transition: bottom 0.3s ease-in-out;
+    z-index: 1000;
+}
 
-        #info {
-            position: fixed;
-            bottom: -100%;
-            left: 0;
-            width: 100%;
-            background-color: #fff;
-            padding: 1rem;
-            transition: bottom 0.4s ease-in-out;
-            border-top-left-radius: 1rem;
-            border-top-right-radius: 1rem;
-            z-index: 10;
-        }
+/* 팝업 활성화 시 */
+.popup.active {
+    bottom: 0;
+}
 
-        #info.active {
-            bottom: 0;
-        }
+#popupContent h3 {
+    margin-top: 0;
+}
 
-        #info ul {
-            list-style: none;
-            padding: 0;
-        }
+#popupContent p {
+    margin: 5px 0;
+}
 
-        #info li {
-            margin-bottom: 0.5rem;
-            font-size: 1rem;
-        }
+.popup button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background-color: #ff5a5f;
+    color: white;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+}
 
-        #info .close-btn {
-            position: absolute;
-            top: 0.5rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #008B8B;
-        }
     </style>
 </head>
-
 <body>
 
-    <a class="searched-list" href="{% url 'academy_list' %}">
-        ←검색
-    </a>
+<div style="width: 40%; background-color: white;"><a href="{% url 'academy_list' %}"><span class="material-symbols-outlined">search</span></a></div>
+<div id="map"></div>
 
-    <div id="controls">
-        <button onclick="moveToCurrentLocation()"><span class="material-symbols-outlined">my_location</span></button>
-    </div>
-
-<!-- 카테고리 버튼 (지도 상단 고정 & 가로 스크롤) -->
+<div id="controls">
+    <button onclick="moveToCurrentLocation()"><span class="material-symbols-outlined">my_location</span></button>
+</div>
 <div id="category-container">
     <div id="category">
         <button onclick="filterMarkers('전체')">전체</button>
@@ -163,254 +125,227 @@
     </div>
 </div>
 
-    <div id="map"></div>
 
-
-
-    <div id="info">
-        <button class="close-btn" onclick="closeInfo()">×</button>
-        <ul id="academyInfo"></ul>
-    </div>
+<!-- 학원 정보 팝업 -->
+<div id="academyPopup" class="popup">
+    <div id="popupContent"></div>
+    <button onclick="closePopup()">닫기</button>
+</div>
 
 <script>
-    function moveToCurrentLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            var locPosition = new kakao.maps.LatLng(lat, lng);
+let map, markers = [], selectedCategory = '전체', currentMarker, infoWindow, markerClustering;
 
-            map.setCenter(locPosition);  // 지도 중심 이동
-            map.setLevel(2);             // 확대 레벨 조정
 
-            // 현재 위치 마커 표시
-            if (!currentPositionOverlay) {
-                currentPositionOverlay = new kakao.maps.Marker({
-                    map: map,
-                    position: locPosition,
-                    title: "현재 위치",
-                    image: new kakao.maps.MarkerImage(
-                        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/red_b.png',
-                        new kakao.maps.Size(24, 35)
-                    )
-                });
-            } else {
-                currentPositionOverlay.setPosition(locPosition);
+var htmlMarker1 = {
+    content: '<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:14px;color:white;text-align:center;font-weight:bold;background-color:#4CAF50;border-radius:50%;"></div>',
+    size: naver.maps.Size(40, 40),
+    anchor: naver.maps.Point(20, 20)
+},
+htmlMarker2 = {
+    content: '<div style="cursor:pointer;width:50px;height:50px;line-height:52px;font-size:16px;color:white;text-align:center;font-weight:bold;background-color:#2196F3;border-radius:50%;"></div>',
+    size: naver.maps.Size(50, 50),
+    anchor: naver.maps.Point(25, 25)
+},
+htmlMarker3 = {
+    content: '<div style="cursor:pointer;width:60px;height:60px;line-height:62px;font-size:18px;color:white;text-align:center;font-weight:bold;background-color:#FFC107;border-radius:50%;"></div>',
+    size: naver.maps.Size(60, 60),
+    anchor: naver.maps.Point(30, 30)
+},
+htmlMarker4 = {
+    content: '<div style="cursor:pointer;width:70px;height:70px;line-height:72px;font-size:20px;color:white;text-align:center;font-weight:bold;background-color:#FF5722;border-radius:50%;"></div>',
+    size: naver.maps.Size(70, 70),
+    anchor: naver.maps.Point(35, 35)
+},
+htmlMarker5 = {
+    content: '<div style="cursor:pointer;width:80px;height:80px;line-height:82px;font-size:22px;color:white;text-align:center;font-weight:bold;background-color:#9C27B0;border-radius:50%;"></div>',
+    size: naver.maps.Size(80, 80),
+    anchor: naver.maps.Point(40, 40)
+};
+
+
+
+
+// 지도 초기화
+function initMap() {
+    navigator.geolocation.getCurrentPosition(function (position) {
+        const userLocation = new naver.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+        map = new naver.maps.Map('map', {
+            center: userLocation,
+            zoom: 17,
+            zoomControl: true,
+            zoomControlOptions: {
+                position: naver.maps.Position.TOP_RIGHT
             }
+        });
 
-        }, function(error) {
+        // 내 위치 마커 추가
+        currentMarker = new naver.maps.Marker({
+            position: userLocation,
+            map: map,
+            icon: {
+                content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
+                anchor: new naver.maps.Point(7.5, 7.5)
+            }
+        });
+
+        fetchAcademies();  // 학원 데이터 불러오기
+
+        // 지도 이동 시 학원 데이터 다시 불러오기
+        naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+
+    }, function () {
+        // 위치 정보를 가져오지 못했을 때 기본 위치 (서울시청)
+        const defaultLocation = new naver.maps.LatLng(37.5665, 126.9780);
+        map = new naver.maps.Map('map', {
+            center: defaultLocation,
+            zoom: 17
+        });
+        fetchAcademies();
+    });
+}
+
+// 학원 데이터 불러오기 및 마커 표시
+function fetchAcademies() {
+    const bounds = map.getBounds();
+    const sw = bounds.getSW();
+    const ne = bounds.getNE();
+
+    fetch('/api/filtered_academies', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+            swLat: sw._lat,
+            swLng: sw._lng,
+            neLat: ne._lat,
+            neLng: ne._lng,
+            category: selectedCategory
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearMarkers();
+        data.forEach(item => addMarker(item));
+        applyClustering();
+    })
+    .catch(error => console.error('Error fetching academies:', error));
+}
+
+// 마커 추가
+function addMarker(academy) {
+    const marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(academy.위도, academy.경도),
+        map: map,
+        title: academy.상호명
+    });
+
+    marker.addListener('click', function () {
+        showAcademyInfoPopup(academy);
+    });
+
+    markers.push(marker);
+}
+
+// 마커 클러스터 적용
+function applyClustering() {
+    if (markerClustering) {
+        markerClustering.setMap(null);  // 기존 클러스터 제거
+    }
+
+    markerClustering = new MarkerClustering({
+        minClusterSize: 2,              // 최소 클러스터 크기
+        maxZoom: 17,                    // 최대 줌 레벨
+        map: map,                       // 클러스터가 적용될 지도
+        markers: markers,               // 클러스터링할 마커 배열
+        disableClickZoom: false,        // 클러스터 클릭 시 확대 여부
+        gridSize: 120,                  // 클러스터 간격
+        icons: [htmlMarker1, htmlMarker2, htmlMarker3, htmlMarker4, htmlMarker5],  // 클러스터 아이콘
+        indexGenerator: [10, 100, 200, 500, 1000],  // 클러스터 단계 기준
+        stylingFunction: function (clusterMarker, count) {
+            $(clusterMarker.getElement()).find('div:first-child').text(count);
+        }
+    });
+}
+
+// 마커 초기화
+function clearMarkers() {
+    markers.forEach(marker => marker.setMap(null));
+    markers = [];
+}
+
+// 학원 정보 팝업
+function showAcademyInfoPopup(academy) {
+    const popup = document.getElementById('academyPopup');
+    const popupContent = document.getElementById('popupContent');
+
+    popupContent.innerHTML = `
+        <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>
+        <p><strong>전화번호:</strong> ${academy.전화번호}</p>
+        <p><strong>주소:</strong> ${academy.도로명주소}</p>
+    `;
+
+    popup.classList.add('active');
+}
+
+// 팝업 닫기
+function closePopup() {
+    document.getElementById('academyPopup').classList.remove('active');
+}
+
+// 카테고리 필터링
+function filterMarkers(category) {
+    selectedCategory = category;
+    fetchAcademies();
+}
+
+// ✅ 내 위치로 이동 기능 (수정됨)
+function moveToCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+            const userLocation = new naver.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+            map.setCenter(userLocation);
+            map.setZoom(17);
+
+            // 기존 위치 마커가 있으면 위치 업데이트
+            if (currentMarker) {
+                currentMarker.setPosition(userLocation);
+            } else {
+                currentMarker = new naver.maps.Marker({
+                    position: userLocation,
+                    map: map,
+                    icon: {
+                        content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
+                        anchor: new naver.maps.Point(7.5, 7.5)
+                    }
+                });
+            }
+        }, function () {
             alert('위치 정보를 가져올 수 없습니다.');
-            console.error("Geolocation Error:", error);
         });
     } else {
         alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
     }
 }
 
-    var map, clusterer, selectedCategory = '전체', currentPositionOverlay, currentLocation;
-
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            currentLocation = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
-            initializeMap(currentLocation);
-            showCurrentLocation(currentLocation);
-        });
-    } else {
-        var defaultPosition = new kakao.maps.LatLng(37.566826, 126.9786567);
-        initializeMap(defaultPosition);
-    }
-
-    function initializeMap(center) {
-        map = new kakao.maps.Map(document.getElementById('map'), {
-            center: center,
-            level: 3
-        });
-
-        clusterer = new kakao.maps.MarkerClusterer({
-            map: map,
-            averageCenter: true,
-            minLevel: 4,
-            disableClickZoom: false
-        });
-
-        kakao.maps.event.addListener(clusterer, 'clusterclick', function(cluster) {
-            map.setLevel(map.getLevel() - 1, { anchor: cluster.getCenter() });
-        });
-
-        kakao.maps.event.addListener(map, 'bounds_changed', fetchAcademies);
-
-        fetchAcademies();
-    }
-
-    function showCurrentLocation(locPosition) {
-        if (!currentPositionOverlay) {
-            currentPositionOverlay = new kakao.maps.CustomOverlay({
-                position: locPosition,
-                content: `<div style="width:1rem; height:1rem; background-color:red; border-radius:50%; border: 0.2rem solid white; "></div>`,
-                zIndex: 3
-            });
-            currentPositionOverlay.setMap(map);
-        } else {
-            currentPositionOverlay.setPosition(locPosition);
+// CSRF 토큰 가져오기
+function getCSRFToken() {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.startsWith('csrftoken=')) {
+            return cookie.substring('csrftoken='.length);
         }
     }
+    return '';
+}
 
-    function fetchAcademies() {
-        var bounds = map.getBounds();
-        var swLatLng = bounds.getSouthWest();
-        var neLatLng = bounds.getNorthEast();
-
-        fetch('/api/filtered_academies', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify({
-                swLat: swLatLng.getLat(),
-                swLng: swLatLng.getLng(),
-                neLat: neLatLng.getLat(),
-                neLng: neLatLng.getLng(),
-                category: selectedCategory
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            clusterer.clear();
-            var markers = data.map(function(item) {
-                var marker = new kakao.maps.Marker({
-                    position: new kakao.maps.LatLng(item.위도, item.경도),
-                    title: item.상호명
-                });
-
-                kakao.maps.event.addListener(marker, 'click', function() {
-                    console.log("마커 클릭: ", item);
-                    showAcademyInfo(item);
-                });
-
-                return marker;
-            });
-
-            clusterer.addMarkers(markers);
-        })
-        .catch(error => console.error('Error fetching academies:', error));  // 오류 수정
-    }
-
-    function filterMarkers(category) {
-        selectedCategory = category;
-        fetchAcademies();
-    }
-
-    function showAcademyInfo(data) {
-        var infoList = document.getElementById('academyInfo');
-        document.getElementById('info').classList.add('active');
-        infoList.innerHTML = `
-            <li><strong><a href="/academy/${data.id}">${data.상호명}</a></strong></li>
-            <li><strong>도로명주소:</strong> ${data.도로명주소}</li>
-            <li><strong>전화번호:</strong> ${data.전화번호}</li>
-            <li><strong>전화번호:</strong> ${data.전화번호}</li>
-            <li><strong>전화번호:</strong> ${data.전화번호}</li>
-        `;
-    }
-
-    function closeInfo() {
-        document.getElementById('info').classList.remove('active');
-    }
-
-    function getCSRFToken() {
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var cookie = cookies[i].trim();
-            if (cookie.startsWith('csrftoken=')) {
-                return cookie.substring('csrftoken='.length);
-            }
-        }
-        return '';
-    }
-
-    // 드래그 스크롤 기능 추가
-const categoryContainer = document.getElementById('category-container');
-let isDown = false;
-let startX, scrollLeft;
-
-categoryContainer.addEventListener('mousedown', (e) => {
-    isDown = true;
-    categoryContainer.classList.add('active');
-    startX = e.pageX - categoryContainer.offsetLeft;
-    scrollLeft = categoryContainer.scrollLeft;
-});
-
-categoryContainer.addEventListener('mouseleave', () => {
-    isDown = false;
-    categoryContainer.classList.remove('active');
-});
-
-categoryContainer.addEventListener('mouseup', () => {
-    isDown = false;
-    categoryContainer.classList.remove('active');
-});
-
-categoryContainer.addEventListener('mousemove', (e) => {
-    if (!isDown) return;
-    e.preventDefault();
-    const x = e.pageX - categoryContainer.offsetLeft;
-    const walk = (x - startX) * 1.5;  // 드래그 감도 조절
-    categoryContainer.scrollLeft = scrollLeft - walk;
-});
-
-// 터치 이벤트 (모바일 지원)
-categoryContainer.addEventListener('touchstart', (e) => {
-    isDown = true;
-    startX = e.touches[0].pageX - categoryContainer.offsetLeft;
-    scrollLeft = categoryContainer.scrollLeft;
-});
-
-categoryContainer.addEventListener('touchend', () => {
-    isDown = false;
-});
-
-categoryContainer.addEventListener('touchmove', (e) => {
-    if (!isDown) return;
-    const x = e.touches[0].pageX - categoryContainer.offsetLeft;
-    const walk = (x - startX) * 1.5;  // 드래그 감도 조절
-    categoryContainer.scrollLeft = scrollLeft - walk;
-});
-
-
+// 지도 초기화
+naver.maps.onJSContentLoaded = initMap;
 
 </script>
-    <script>
-    kakao.maps.event.addListener(map, 'dragstart', function() {
-      map.setDraggable(false);
-    });
-
-    kakao.maps.event.addListener(map, 'dragend', function() {
-      map.setDraggable(true);
-    });
-
-    let isPinching = false;
-    let lastDistance;
-
-    map.container.addEventListener('touchstart', function(e) {
-      if (e.touches.length === 2) {
-        isPinching = true;
-        lastDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-      }
-    });
-
-    map.container.addEventListener('touchmove', function(e) {
-      if (isPinching && e.touches.length === 2) {
-        const currentDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-        const zoomDelta = (currentDistance - lastDistance) * 0.01;
-        map.setLevel(map.getLevel() + zoomDelta);
-        lastDistance = currentDistance;
-      }
-    });
-
-    map.container.addEventListener('touchend', function() {
-      isPinching = false;
-    });
-
-    </script>
 </body>
 </html>

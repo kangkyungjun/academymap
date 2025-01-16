@@ -29,7 +29,7 @@ def main(request):
 def search(request):
     if request.method == 'POST':
         searched = request.POST['searched']
-        data = Data.objects.filter(상호명__contains=searched)
+        data = Data.objects.filter(Q(상호명__contains=searched) | Q(법정동명__contains=searched))
         context = {'searched': searched, 'data': data}
         return render(request, 'main/academy.html', context)
     else:

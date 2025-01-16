@@ -7,7 +7,7 @@
 
 <form style="width:100%" class="d-flex" method="POST" action="{% url 'search' %}">
     {% csrf_token %}
-    <input class="form-control me-2" type="search" placeholder="학원명 검색" name="searched" aria-label="Search">
+    <input class="form-control me-2" type="search" placeholder="학원명/동 검색" name="searched" aria-label="Search">
     <button class="search_button" type="submit"> <span class="material-symbols-outlined">search</span> </button>
 </form>
 
