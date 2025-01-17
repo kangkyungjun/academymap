@@ -3,34 +3,133 @@
 {% block contents %}
 <br>
 
-<a href="{% url 'map' %}">←지도에서보기</a><br>
+<!-- 지도 보기 링크 -->
+<a href="{% url 'map' %}" class="map-view-link">←지도에서보기</a><br>
 
+<!-- 검색 폼 -->
 <form style="width:100%" class="d-flex" method="POST" action="{% url 'search' %}">
     {% csrf_token %}
-    <input class="form-control me-2" type="search" placeholder="학원명/동 검색" name="searched" aria-label="Search">
-    <button class="search_button" type="submit"> <span class="material-symbols-outlined">search</span> </button>
+    <input class="form-control me-2 search-input" type="search" placeholder="학원명/동 검색" name="searched" aria-label="Search">
+    <button class="search_button" type="submit">
+        <span class="material-symbols-outlined">search</span>
+    </button>
 </form>
 
+<!-- 검색 결과 -->
 {% if searched %}
     <table class="search-results">
         <tbody>
             {% for academy in data %}
-                <tr>
-                    <td>
-                        <a class="searched-list" href="{% url 'academy' academy.id %}">
-                            <img src="{{ university.mark }}" alt="{{ academy.상호명 }}" class="university-img">
-                        </a>
-                    </td>
-                    <td>
-                            {{ dat.대상_유아 }}
-                    </td>
-                    <td>
-                            {{ dat.과목_종합 }}
-                    </td>
-                </tr>
+            <tr>
+                <td>
+                    <a class="searched-list" href="{% url 'academy' academy.id %}">
+                        <img src="{{ university.mark }}" alt="{{ academy.상호명 }}" class="university-img"> {{ academy.상호명 }}
+                    </a>
+
+                </td>
+                <td>
+                    {{ academy.대상_유아 }}
+                </td>
+                <td>
+                    {{ academy.과목_종합 }}
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
 {% endif %}
+
+<style>
+    /* 기본 폰트, 레이아웃 */
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 1rem;
+        background-color: #f0f8f8;
+    }
+
+    /* 지도 보기 링크 */
+    .map-view-link {
+        font-size: 1rem;
+        color: #007BFF;
+        text-decoration: none;
+        margin-bottom: 1rem;
+    }
+    .map-view-link:hover {
+        text-decoration: underline;
+    }
+
+    /* 검색 폼 */
+    .d-flex {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .search-input {
+        flex: 1;
+        padding: 0.5rem;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 0.3rem;
+        margin-right: 0.5rem;
+        outline: none;
+    }
+    .search_button {
+        background-color: #4CAF50;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        border-radius: 0.3rem;
+        font-size: 1rem;
+    }
+    .search_button:hover {
+        background-color: #45a049;
+    }
+
+    /* 검색 결과 테이블 */
+    .search-results {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .search-results tr {
+        border-bottom: 1px solid #ddd;
+    }
+    .search-results td {
+        padding: 0.5rem;
+        vertical-align: middle;
+    }
+
+    /* 이미지 */
+    .university-img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 0.3rem;
+    }
+
+    /* 반응형 처리 */
+    @media (max-width: 600px) {
+        .search-input {
+            font-size: 0.9rem;
+        }
+        .search_button {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.7rem;
+        }
+        .map-view-link {
+            font-size: 0.9rem;
+        }
+
+        .university-img {
+            width: 50px;
+            height: 50px;
+        }
+        .search-results td {
+            font-size: 0.9rem;
+            padding: 0.4rem;
+        }
+    }
+</style>
 
 {% endblock %}
