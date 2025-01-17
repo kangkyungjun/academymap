@@ -6,53 +6,67 @@
 
 <div class="title_small"> {% include 'main/search.html' %} </div>
 
+<!-- 검색 및 필터 영역 -->
 <form action="{% url 'academy_list' %}" method="get" id="search_form">
-    <div class="selectbox">
-        <label for="시도명">시도명:</label>
-        <select name="시도명" id="시도명">
-            <option value="">-- 선택하세요 --</option>
-            {% for region in 시도명_list %}
-            <option value="{{ region }}" {% if region == 시도명_selected %}selected{% endif %}>{{ region }}</option>
-            {% endfor %}
-        </select>
-    </div>
 
-    <div class="selectbox">
-        <label for="시군구명">시군구명:</label>
-        <select name="시군구명" id="시군구명" {% if not 시도명_selected %}disabled{% endif %}>
-            <option value="">-- 먼저 시도명을 선택하세요 --</option>
-            {% if 시군구명_selected %}
-            <option value="{{ 시군구명_selected }}" selected>{{ 시군구명_selected }}</option>
-            {% endif %}
-        </select>
-    </div>
+    <!-- 필터들을 한 줄에 배치해, 가로 스크롤이 가능하도록 구성 -->
+    <div class="filters-container">
+        <!-- 시도명 -->
+        <div class="selectbox">
+            <label for="시도명">시도명</label>
+            <select name="시도명" id="시도명" class="filter-select">
+                <option value="">-- 선택하세요 --</option>
+                {% for region in 시도명_list %}
+                <option value="{{ region }}" {% if region == 시도명_selected %}selected{% endif %}>{{ region }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-    <div class="selectbox">
-        <label for="행정동명">행정동명:</label>
-        <select name="행정동명" id="행정동명" {% if not 시군구명_selected %}disabled{% endif %}>
-            <option value="">-- 먼저 시군구명을 선택하세요 --</option>
-            {% if 행정동명_selected %}
-            <option value="{{ 행정동명_selected }}" selected>{{ 행정동명_selected }}</option>
-            {% endif %}
-        </select>
-    </div>
+        <!-- 시군구명 -->
+        <div class="selectbox">
+            <label for="시군구명">시군구명</label>
+            <select name="시군구명" id="시군구명" class="filter-select"
+                    {% if not 시도명_selected %}disabled{% endif %}>
+                <option value="">-- 먼저 시도명을 선택하세요 --</option>
+                {% if 시군구명_selected %}
+                <option value="{{ 시군구명_selected }}" selected>{{ 시군구명_selected }}</option>
+                {% endif %}
+            </select>
+        </div>
 
-    <div class="selectbox">
-        <label for="과목">과목:</label>
-        <select name="과목" id="과목">
-            <option value="">전체</option>
-            {% for subject in 과목_list %}
-            <option value="{{ subject }}" {% if subject == 과목_selected %}selected{% endif %}>{{ subject }}</option>
-            {% endfor %}
-        </select>
-    </div>
+        <!-- 행정동명 -->
+        <div class="selectbox">
+            <label for="행정동명">행정동명</label>
+            <select name="행정동명" id="행정동명" class="filter-select"
+                    {% if not 시군구명_selected %}disabled{% endif %}>
+                <option value="">-- 먼저 시군구명을 선택하세요 --</option>
+                {% if 행정동명_selected %}
+                <option value="{{ 행정동명_selected }}" selected>{{ 행정동명_selected }}</option>
+                {% endif %}
+            </select>
+        </div>
 
-    <button type="submit">검색</button>
+        <!-- 과목 -->
+        <div class="selectbox">
+            <label for="과목">과목</label>
+            <select name="과목" id="과목" class="filter-select">
+                <option value="">전체</option>
+                {% for subject in 과목_list %}
+                <option value="{{ subject }}" {% if subject == 과목_selected %}selected{% endif %}>
+                    {{ subject }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- 검색 버튼 -->
+        <button type="submit" class="filter-btn">검색</button>
+    </div>
 </form>
 
 <br>
 
-
+<!-- 검색 결과 목록 -->
 <div>
     {% if academylist %}
         {% for academy in academylist %}
@@ -66,20 +80,37 @@
 <!-- 페이지 네비게이션 -->
 <div class="pagination">
     {% if academylist.has_previous %}
-        <a href="?page=1{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">처음</a>
-        <a href="?page={{ academylist.previous_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">이전</a>
+        <a href="?page=1{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
+                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
+                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
+                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">처음</a>
+
+        <a href="?page={{ academylist.previous_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
+                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
+                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
+                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">이전</a>
     {% endif %}
 
     <span>페이지 {{ academylist.number }} / {{ academylist.paginator.num_pages }}</span>
 
     {% if academylist.has_next %}
-        <a href="?page={{ academylist.next_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">다음</a>
-        <a href="?page={{ academylist.paginator.num_pages }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}{% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}{% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}{% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">마지막</a>
+        <a href="?page={{ academylist.next_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
+                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
+                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
+                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">다음</a>
+
+        <a href="?page={{ academylist.paginator.num_pages }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
+                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
+                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
+                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">마지막</a>
     {% endif %}
 </div>
 
+<!-- AJAX로 시군구명, 행정동명을 동적으로 로드 -->
 <script type="text/javascript">
     $(document).ready(function () {
+
+        // 시도명 변경 -> 시군구명 목록 로드
         $("#시도명").change(function () {
             let 시도명 = $(this).val();
             if (시도명) {
@@ -92,7 +123,8 @@
                             options += `<option value="${region}">${region}</option>`;
                         });
                         $("#시군구명").html(options).prop("disabled", false);
-                        $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+                        $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>')
+                                     .prop("disabled", true);
                     }
                 });
             } else {
@@ -101,6 +133,7 @@
             }
         });
 
+        // 시군구명 변경 -> 행정동명 목록 로드
         $("#시군구명").change(function () {
             let 시군구명 = $(this).val();
             if (시군구명) {
@@ -122,55 +155,117 @@
     });
 </script>
 
+<!-- 스타일: 모바일 친화적으로 개선 -->
 <style>
+    /* 기본 바디 스타일 */
     body {
-        font-size: 1.6rem;
-        padding: 2%;
+        font-size: 1.4rem;       /* 모바일용으로 살짝 줄임 */
+        padding: 1.5rem;
+        margin: 0;
+        font-family: "Noto Sans KR", sans-serif;
+        background-color: #f0f8f8;
     }
 
+    .title_small {
+        margin-bottom: 1rem;
+    }
+
+    /* 필터들을 한 줄에 모아서 가로 스크롤 가능하게 */
+    .filters-container {
+        display: flex;
+        flex-wrap: nowrap;        /* 줄바꿈 없이 가로로 */
+        overflow-x: auto;         /* 넘칠 경우 가로 스크롤 */
+        white-space: nowrap;
+        background-color: #ffffff;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 0.5rem;
+        box-sizing: border-box;
+        margin-bottom: 1rem;
+    }
+
+    /* 각 필터(Select + Label) 묶음을 정돈 */
     .selectbox {
-        margin-bottom: 2%;
+        display: flex;
+        flex-direction: column; /* 레이블 위, 셀렉트 아래 */
+        min-width: 110px;       /* 너무 좁아지지 않도록 */
+        margin-right: 0.8rem;
     }
 
     .selectbox label {
         font-weight: bold;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
+        font-size: 1.2rem;  /* 레이블 폰트 */
     }
 
-    .selectbox select, button {
-        width: 100%;
-        padding: 0.75rem;
-        font-size: 1.4rem;
+    .filter-select,
+    .filter-btn {
+        font-size: 1.2rem;
+        padding: 0.5rem 0.7rem;
+        border: 1px solid #ccc;
+        border-radius: 0.3rem;
+        outline: none;
     }
 
-    button {
+    /* 검색 버튼 */
+    .filter-btn {
         background-color: #4CAF50;
         color: white;
-        border: none;
         cursor: pointer;
+        margin-top: 1.6rem; /* 레이블과 높이를 맞추기 위해 약간 여백 */
+        min-width: 70px;
     }
-
-    button:hover {
+    .filter-btn:hover {
         background-color: #45a049;
     }
 
-    h1 {
-        margin-top: 3rem;
-        font-size: 2rem;
+    /* 마지막 selectbox 마진 제거 (선택사항) */
+    .selectbox:last-child {
+        margin-right: 0;
     }
 
+    /* 검색 결과 부분 */
     a {
-        font-size: 1.2rem;
+        font-size: 1.3rem;
         text-decoration: none;
+        color: #333;
+    }
+    a:hover {
+        color: #4CAF50;
+        text-decoration: underline;
     }
 
     .pagination {
         margin-top: 2rem;
         text-align: center;
     }
-
     .pagination a {
         margin: 0 0.5rem;
+        font-size: 1.2rem;
+        color: #333;
+        text-decoration: none;
+    }
+    .pagination a:hover {
+        color: #4CAF50;
+        text-decoration: underline;
+    }
+
+    /* 반응형: 아주 작은 화면에서 select 크기/폰트 줄이기 */
+    @media (max-width: 480px) {
+        body {
+            padding: 1rem;
+        }
+        .selectbox {
+            min-width: 90px;
+        }
+        .selectbox label {
+            font-size: 1rem;
+        }
+        .filter-select,
+        .filter-btn {
+            font-size: 1rem;
+            padding: 0.4rem 0.6rem;
+        }
     }
 </style>
 

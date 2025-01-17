@@ -1,4 +1,5 @@
 {% extends "templates/main/base.html" %}
+{% load static %}
 
 {% block contents %}
 
@@ -32,6 +33,7 @@
         border: 1px solid #ddd;
         padding: 1rem;
         font-size: 1rem;
+        vertical-align: top;  /* 여러 줄 데이터 대비 */
     }
 
     hr {
@@ -61,88 +63,276 @@
             text-align: center;
         }
 
+        .univ_detail_logo img {
+            width: 6rem;
+            height: 6rem;
+        }
+
         .univ_detail_name {
             margin-left: 0;
             margin-top: 1rem;
+            font-size: 1.6rem;
         }
 
         .univ_table td {
             font-size: 0.9rem;
             padding: 0.5rem;
         }
+
+        div {
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
     }
 </style>
 
 <div class="title_small"> {% include 'main/search.html' %} </div>
 
+<!-- ▼ 이전 버튼 추가 ▼ -->
+<a class="go-back-btn" href="javascript:history.back()">
+    <
+</a>
+
 {% if academy %}
+<!-- 상단 박스: 학원 로고 + 학원명 (예: university.mark, academy.상호명) -->
 <div class="univ_detail_box1">
-    <div class="univ_detail_logo"><img src="{{ university.mark }}" alt="{{ university.name }}" style="width: 8rem; height: 8rem;"></div>
+    <div class="univ_detail_logo">
+        <!-- 학원사진(학원사진 필드)가 있다면 university.mark 대신 academy.학원사진 사용 -->
+        {% if academy.학원사진 %}
+        <img src="{{ academy.학원사진.url }}" alt="{{ academy.상호명 }}">
+        {% else %}
+        <img src="{% static 'images/no_image.png' %}" alt="No Image">
+        {% endif %}
+    </div>
     <div class="univ_detail_name">{{ academy.상호명 }}</div>
 </div>
 
 <hr>
 
+<!-- 예: 별점/리뷰 링크 등 추가 정보 -->
 <div class="univ_detail_box1">
-    <div class="univ_detail_name">별점 _ 리뷰작성(링크)</div>
+    <div class="univ_detail_name">별점 ★★★☆☆
+        <a href="#">리뷰 작성</a>
+    </div>
 </div>
 
 <hr>
 
+<!-- 모델의 모든 필드를 보여주는 테이블 -->
 <div>
     <table class="univ_table">
+        <!-- 상호명 -->
         <tr>
             <td>학원명</td>
-            <td>{{ academy.상호명|linebreaksbr }} _ 전화 연결(링크) </td>
+            <td>
+                {{ academy.상호명|linebreaksbr }}
+                <br>
+                <!-- 예: 전화 링크 -->
+                {% if academy.전화번호 %}
+                  <a href="tel:{{ academy.전화번호 }}">전화 걸기</a>
+                {% endif %}
+            </td>
         </tr>
+
+        <!-- 업종 관련 필드 -->
         <tr>
-            <td>전문과목</td>
+            <td>상권업종대분류코드</td>
             <td>{{ academy.상권업종대분류코드 }}</td>
         </tr>
+        <tr>
+            <td>상권업종대분류명</td>
+            <td>{{ academy.상권업종대분류명 }}</td>
+        </tr>
+        <tr>
+            <td>상권업종중분류명</td>
+            <td>{{ academy.상권업종중분류명 }}</td>
+        </tr>
+        <tr>
+            <td>상권업종소분류명</td>
+            <td>{{ academy.상권업종소분류명 }}</td>
+        </tr>
+
+        <!-- 지역(시도, 시군구, 행정동, 법정동 등) -->
+        <tr>
+            <td>시도명</td>
+            <td>{{ academy.시도명 }}</td>
+        </tr>
+        <tr>
+            <td>시군구명</td>
+            <td>{{ academy.시군구명 }}</td>
+        </tr>
+        <tr>
+            <td>행정동명</td>
+            <td>{{ academy.행정동명 }}</td>
+        </tr>
+        <tr>
+            <td>법정동명</td>
+            <td>{{ academy.법정동명 }}</td>
+        </tr>
+
+        <!-- 주소 관련 필드 -->
+        <tr>
+            <td>지번주소</td>
+            <td>{{ academy.지번주소 }}</td>
+        </tr>
+        <tr>
+            <td>도로명주소</td>
+            <td>{{ academy.도로명주소 }}</td>
+        </tr>
+
+        <!-- 좌표 -->
+        <tr>
+            <td>경도</td>
+            <td>{{ academy.경도 }}</td>
+        </tr>
+        <tr>
+            <td>위도</td>
+            <td>{{ academy.위도 }}</td>
+        </tr>
+
+        <!-- 대표원장, 레벨테스트, 강사, 셔틀버스 등 -->
         <tr>
             <td>대표원장</td>
-            <td>{{ academy.상권업종대분류코드 }}</td>
-        </tr>
-        <tr>
-            <td>지번</td>
-            <td>{{ academy.지번주소  }}</td>
-        </tr>
-        <tr>
-            <td>도로명</td>
-            <td>{{ academy.도로명주소  }}</td>
+            <td>{{ academy.대표원장 }}</td>
         </tr>
         <tr>
             <td>레벨테스트</td>
-            <td>{{ academy.상권업종대분류코드 }}</td>
+            <td>{{ academy.레벨테스트 }}</td>
         </tr>
         <tr>
-            <td>강사현황</td>
-            <td>{{ academy.상권업종대분류코드 }}</td>
+            <td>강사</td>
+            <td>{{ academy.강사 }}</td>
         </tr>
         <tr>
-            <td>셔틀</td>
-            <td>{{ academy.상권업종대분류코드 }}</td>
+            <td>셔틀버스</td>
+            <td>{{ academy.셔틀버스 }}</td>
         </tr>
 
+        <!-- 과목(불리언) 필드들 -->
+        <tr>
+            <td>과목_종합</td>
+            <td>{{ academy.과목_종합 }}</td>
+        </tr>
+        <tr>
+            <td>과목_수학</td>
+            <td>{{ academy.과목_수학 }}</td>
+        </tr>
+        <tr>
+            <td>과목_영어</td>
+            <td>{{ academy.과목_영어 }}</td>
+        </tr>
+        <tr>
+            <td>과목_과학</td>
+            <td>{{ academy.과목_과학 }}</td>
+        </tr>
+        <tr>
+            <td>과목_외국어</td>
+            <td>{{ academy.과목_외국어 }}</td>
+        </tr>
+        <tr>
+            <td>과목_예체능</td>
+            <td>{{ academy.과목_예체능 }}</td>
+        </tr>
+        <tr>
+            <td>과목_컴퓨터</td>
+            <td>{{ academy.과목_컴퓨터 }}</td>
+        </tr>
+        <tr>
+            <td>과목_논술</td>
+            <td>{{ academy.과목_논술 }}</td>
+        </tr>
+        <tr>
+            <td>과목_기타</td>
+            <td>{{ academy.과목_기타 }}</td>
+        </tr>
+        <tr>
+            <td>과목_독서실스터디카페</td>
+            <td>{{ academy.과목_독서실스터디카페 }}</td>
+        </tr>
+
+        <!-- 대상(유아, 초등, 중등, 고등 등) 필드 -->
+        <tr>
+            <td>대상_유아</td>
+            <td>{{ academy.대상_유아 }}</td>
+        </tr>
+        <tr>
+            <td>대상_초등</td>
+            <td>{{ academy.대상_초등 }}</td>
+        </tr>
+        <tr>
+            <td>대상_중등</td>
+            <td>{{ academy.대상_중등 }}</td>
+        </tr>
+        <tr>
+            <td>대상_고등</td>
+            <td>{{ academy.대상_고등 }}</td>
+        </tr>
+        <tr>
+            <td>대상_특목고</td>
+            <td>{{ academy.대상_특목고 }}</td>
+        </tr>
+        <tr>
+            <td>대상_일반</td>
+            <td>{{ academy.대상_일반 }}</td>
+        </tr>
+        <tr>
+            <td>대상_기타</td>
+            <td>{{ academy.대상_기타 }}</td>
+        </tr>
+
+        <!-- 인증 정보 -->
+        <tr>
+            <td>인증_명문대</td>
+            <td>{{ academy.인증_명문대 }}</td>
+        </tr>
+        <tr>
+            <td>인증_경력</td>
+            <td>{{ academy.인증_경력 }}</td>
+        </tr>
+
+        <!-- 소개글, 별점, 영업시간 등 -->
+        <tr>
+            <td>소개글</td>
+            <td>{{ academy.소개글|linebreaksbr }}</td>
+        </tr>
+        <tr>
+            <td>별점</td>
+            <td>{{ academy.별점 }}</td>
+        </tr>
+        <tr>
+            <td>전화번호</td>
+            <td>{{ academy.전화번호 }}</td>
+        </tr>
+        <tr>
+            <td>영업시간</td>
+            <td>{{ academy.영업시간 }}</td>
+        </tr>
+        <tr>
+            <td>수강료</td>
+            <td>{{ academy.수강료 }}</td>
+        </tr>
+        <tr>
+            <td>수강료_평균</td>
+            <td>{{ academy.수강료_평균 }}</td>
+        </tr>
     </table>
 </div>
 
+<!-- 예시: 추가 설명 문구들 -->
 <div>
     본 학원은 ... 입니다.
 </div>
-
 <div>
-    전체 학비 평균 대비 000원 낮/높 습니다.
+    전체 학비 평균 대비 000원 낮/높습니다.
 </div>
 <div>
     리뷰 내용 _ 작성하기
 </div>
 
-
 {% endif %}
 
-
-
-<script></script>
+<script>
+  // 필요 시 자바스크립트 작성
+</script>
 
 {% endblock %}

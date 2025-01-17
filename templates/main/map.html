@@ -1,351 +1,495 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학원 지도</title>
-    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=rh9hwnvmx1&submodules=geocoder"></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0,0&icon_names=my_location,search" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-            background-color: #f0f8f8;
-        }
-        #map {
-            width: 100%;
-            height: 90%;
-        }
-        #controls {
-            position: fixed;
-            top: 18rem;
-            right: 1rem;
-            z-index: 1000;
-        }
-        #controls button {
-            font-size: 2rem;
-            border: none;
-            border-radius: 0.5rem;
-            color: #008B8B;
-            cursor: pointer;
-        }
-        #category-container {
-            position: absolute;
-            top: 1.5rem;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            overflow-x: auto;
-            white-space: nowrap;
-            z-index: 100;
-            padding: 0.5rem 0;
-            background-color: rgba(0, 139, 139, 0.1);
-            border-radius: 0.5rem;
-        }
-        #category button {
-            flex: 0 0 auto;
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-            cursor: pointer;
-            border: 1px solid #008B8B;
-            border-radius: 0.3rem;
-            background-color: #fff;
-            color: #008B8B;
-        }
-        #category button:hover, #category button.active {
-            background-color: #008B8B;
-            color: #fff;
-        }
-        /* 팝업 스타일 */
-.popup {
-    position: fixed;
-    bottom: -300px;
-    left: 0;
-    width: 100%;
-    background-color: #fff;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
-    padding: 20px;
-    transition: bottom 0.3s ease-in-out;
-    z-index: 1000;
-}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학원 지도</title>
 
-/* 팝업 활성화 시 */
-.popup.active {
-    bottom: 0;
-}
+  <!-- 네이버 지도 JS -->
+  <script
+    type="text/javascript"
+    src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=rh9hwnvmx1&submodules=geocoder">
+  </script>
 
-#popupContent h3 {
-    margin-top: 0;
-}
+  <!-- 머티리얼 아이콘 -->
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0,0&display=swap"
+  />
 
-#popupContent p {
-    margin: 5px 0;
-}
+  <!-- jQuery (만약 팝업, AJAX에 활용하신다면) -->
+  <script
+    src="https://code.jquery.com/jquery-3.6.0.min.js">
+  </script>
 
-.popup button {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    background-color: #ff5a5f;
-    color: white;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
-}
+  <style>
+    /* 기본 초기화 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    /* 모바일 레이아웃에 맞춤 */
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f0f8f8;
+      /* 폰트 크기 조금 줄이기 (모바일) */
+      font-size: 14px;
+    }
 
-    </style>
+    /* 지도 영역 */
+    #map {
+      width: 100%;
+      height: calc(100% - 70px);
+      /* 카테고리 영역(버튼, 검색 아이콘 등) 높이를 제외한 나머지를 지도에 할당 */
+    }
+
+    /* 상단 검색 아이콘 (좌상단) */
+    .search-icon {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      z-index: 1100;
+      background-color: white;
+      border-radius: 0.5rem;
+      padding: 0.3rem;
+    }
+    .search-icon a {
+      text-decoration: none;
+      color: #008B8B;
+    }
+    .search-icon a:hover {
+      color: #006666;
+    }
+
+    /* 카테고리 컨테이너 (가로 스크롤) */
+    #category-container {
+      position: absolute;
+      top: 0.5rem;
+      left: 4rem; /* 검색 아이콘 오른쪽으로 */
+      right: 0.5rem;
+      /* 가로 스크롤 */
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      white-space: nowrap;
+      /* 스타일 */
+      z-index: 1000;
+      padding: 0.5rem;
+      background-color: rgba(0, 139, 139, 0.1);
+      border-radius: 0.5rem;
+    }
+    #category {
+      display: inline-flex;
+      gap: 0.3rem; /* 버튼 사이 간격 */
+    }
+    #category button {
+      flex: 0 0 auto;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: 1px solid #008B8B;
+      border-radius: 0.3rem;
+      background-color: #fff;
+      color: #008B8B;
+      white-space: nowrap;
+    }
+    #category button:hover,
+    #category button.active {
+      background-color: #008B8B;
+      color: #fff;
+    }
+    /* 가로 스크롤 커스텀 (크롬, 사파리 등) */
+    #category-container::-webkit-scrollbar {
+      height: 5px;
+    }
+    #category-container::-webkit-scrollbar-thumb {
+      background-color: #ccc;
+      border-radius: 2px;
+    }
+
+    /* 내 위치 버튼 (오른쪽 하단 or 원하는 위치) */
+    #controls {
+      position: absolute;
+      bottom: 5rem;
+      right: 0.8rem;
+      z-index: 1000;
+    }
+    #controls button {
+      font-size: 1.8rem;
+      border: none;
+      border-radius: 0.5rem;
+      color: #008B8B;
+      cursor: pointer;
+      background-color: #fff;
+      padding: 0.4rem;
+      box-shadow: 0 0 5px rgba(0,0,0,0.15);
+    }
+
+    /* 팝업 스타일 (하단 슬라이드) */
+    .popup {
+      position: fixed;
+      bottom: -300px;
+      left: 0;
+      width: 100%;
+      background-color: #fff;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      transition: bottom 0.3s ease-in-out;
+      z-index: 1000;
+    }
+    .popup.active {
+      bottom: 0;
+    }
+    #popupContent h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    #popupContent p {
+      margin: 5px 0;
+      font-size: 0.9rem;
+    }
+    .popup button {
+      display: block;
+      width: 100%;
+      padding: 0.8rem;
+      background-color: #ff5a5f;
+      color: #fff;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 0.3rem;
+      margin-top: 1rem;
+    }
+    .popup button:hover {
+      background-color: #ff3a40;
+    }
+
+    /* 반응형 (아주 작은 화면에서 폰트, 버튼 크기 조금 더 줄이기) */
+    @media (max-width: 400px) {
+      #category button {
+        font-size: 0.75rem;
+      }
+      #controls button {
+        font-size: 1.6rem;
+      }
+      #popupContent h3 {
+        font-size: 1rem;
+      }
+      #popupContent p {
+        font-size: 0.85rem;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
-<div style="width: 40%; background-color: white;"><a href="{% url 'academy_list' %}"><span class="material-symbols-outlined">search</span></a></div>
+<!-- 검색 아이콘 (좌상단) -->
+<div class="search-icon">
+  <a href="{% url 'academy_list' %}">
+    <span class="material-symbols-outlined" style="font-size:1.8rem;">search</span>
+  </a>
+</div>
+
+<!-- 카테고리 버튼(가로 스크롤) -->
+<div id="category-container">
+  <div id="category">
+    <button onclick="filterMarkers('전체')">전체</button>
+    <button onclick="filterMarkers('수학')">수학</button>
+    <button onclick="filterMarkers('영어')">영어</button>
+    <button onclick="filterMarkers('과학')">과학</button>
+    <button onclick="filterMarkers('외국어')">외국어</button>
+    <button onclick="filterMarkers('예체능')">예체능</button>
+    <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
+    <button onclick="filterMarkers('논술')">논술</button>
+    <button onclick="filterMarkers('기타')">기타</button>
+    <button onclick="filterMarkers('독서실/스터디카페')">독서실/스터디카페</button>
+  </div>
+</div>
+
+<!-- 지도 영역 -->
 <div id="map"></div>
 
+<!-- 내 위치 버튼 -->
 <div id="controls">
-    <button onclick="moveToCurrentLocation()"><span class="material-symbols-outlined">my_location</span></button>
-</div>
-<div id="category-container">
-    <div id="category">
-        <button onclick="filterMarkers('전체')">전체</button>
-        <button onclick="filterMarkers('수학')">수학</button>
-        <button onclick="filterMarkers('영어')">영어</button>
-        <button onclick="filterMarkers('과학')">과학</button>
-        <button onclick="filterMarkers('외국어')">외국어</button>
-        <button onclick="filterMarkers('예체능')">예체능</button>
-        <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
-        <button onclick="filterMarkers('논술')">논술</button>
-        <button onclick="filterMarkers('기타')">기타</button>
-        <button onclick="filterMarkers('독서실/스터디카페')">독서실/스터디카페</button>
-    </div>
+  <button onclick="moveToCurrentLocation()">
+    <span class="material-symbols-outlined">my_location</span>
+  </button>
 </div>
 
-
-<!-- 학원 정보 팝업 -->
+<!-- 학원 정보 팝업 (하단 슬라이드) -->
 <div id="academyPopup" class="popup">
-    <div id="popupContent"></div>
-    <button onclick="closePopup()">닫기</button>
+  <div id="popupContent"></div>
+  <button onclick="closePopup()">닫기</button>
 </div>
 
 <script>
-let map, markers = [], selectedCategory = '전체', currentMarker, infoWindow, markerClustering;
+/*
+  전역 변수:
+  - map: 지도 객체
+  - markers: 개별 마커(academy)들이 담길 배열
+  - selectedCategory: 현재 선택한 과목 카테고리
+  - currentMarker: 내 위치를 표시하는 마커
+*/
+let map, markers = [];
+let selectedCategory = '전체';
+let currentMarker = null;
 
-
-var htmlMarker1 = {
-    content: '<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:14px;color:white;text-align:center;font-weight:bold;background-color:#4CAF50;border-radius:50%;"></div>',
-    size: naver.maps.Size(40, 40),
-    anchor: naver.maps.Point(20, 20)
-},
-htmlMarker2 = {
-    content: '<div style="cursor:pointer;width:50px;height:50px;line-height:52px;font-size:16px;color:white;text-align:center;font-weight:bold;background-color:#2196F3;border-radius:50%;"></div>',
-    size: naver.maps.Size(50, 50),
-    anchor: naver.maps.Point(25, 25)
-},
-htmlMarker3 = {
-    content: '<div style="cursor:pointer;width:60px;height:60px;line-height:62px;font-size:18px;color:white;text-align:center;font-weight:bold;background-color:#FFC107;border-radius:50%;"></div>',
-    size: naver.maps.Size(60, 60),
-    anchor: naver.maps.Point(30, 30)
-},
-htmlMarker4 = {
-    content: '<div style="cursor:pointer;width:70px;height:70px;line-height:72px;font-size:20px;color:white;text-align:center;font-weight:bold;background-color:#FF5722;border-radius:50%;"></div>',
-    size: naver.maps.Size(70, 70),
-    anchor: naver.maps.Point(35, 35)
-},
-htmlMarker5 = {
-    content: '<div style="cursor:pointer;width:80px;height:80px;line-height:82px;font-size:22px;color:white;text-align:center;font-weight:bold;background-color:#9C27B0;border-radius:50%;"></div>',
-    size: naver.maps.Size(80, 80),
-    anchor: naver.maps.Point(40, 40)
+/**
+ * 과목별 마커 색상 매핑
+ */
+const categoryColors = {
+  '수학': '#FF0000',   // 빨간색
+  '영어': '#0000FF',   // 파란색
+  '과학': '#008000',   // 녹색
+  '외국어': '#800080', // 보라색
+  '예체능': '#FFA500', // 주황색
+  '컴퓨터': '#FFC0CB', // 핑크
+  '논술': '#8B4513',   // 갈색
+  '기타': '#808080',   // 회색
+  '독서실/스터디카페': '#00CED1', // 청록
 };
 
-
-
-
-// 지도 초기화
+/**
+ * 지도 초기화
+ */
 function initMap() {
-    navigator.geolocation.getCurrentPosition(function (position) {
-        const userLocation = new naver.maps.LatLng(position.coords.latitude, position.coords.longitude);
+  navigator.geolocation.getCurrentPosition(
+    function (position) {
+      const userLocation = new naver.maps.LatLng(position.coords.latitude, position.coords.longitude);
 
-        map = new naver.maps.Map('map', {
-            center: userLocation,
-            zoom: 17,
-            zoomControl: true,
-            zoomControlOptions: {
-                position: naver.maps.Position.TOP_RIGHT
-            }
-        });
+      map = new naver.maps.Map('map', {
+        center: userLocation,
+        zoom: 18,
+        minZoom: 15, // 너무 축소하지 못하도록 제한
+        zoomControl: false
+      });
 
-        // 내 위치 마커 추가
-        currentMarker = new naver.maps.Marker({
-            position: userLocation,
-            map: map,
-            icon: {
-                content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
-                anchor: new naver.maps.Point(7.5, 7.5)
-            }
-        });
-
-        fetchAcademies();  // 학원 데이터 불러오기
-
-        // 지도 이동 시 학원 데이터 다시 불러오기
-        naver.maps.Event.addListener(map, 'idle', fetchAcademies);
-
-    }, function () {
-        // 위치 정보를 가져오지 못했을 때 기본 위치 (서울시청)
-        const defaultLocation = new naver.maps.LatLng(37.5665, 126.9780);
-        map = new naver.maps.Map('map', {
-            center: defaultLocation,
-            zoom: 17
-        });
-        fetchAcademies();
-    });
-}
-
-// 학원 데이터 불러오기 및 마커 표시
-function fetchAcademies() {
-    const bounds = map.getBounds();
-    const sw = bounds.getSW();
-    const ne = bounds.getNE();
-
-    fetch('/api/filtered_academies', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify({
-            swLat: sw._lat,
-            swLng: sw._lng,
-            neLat: ne._lat,
-            neLng: ne._lng,
-            category: selectedCategory
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        clearMarkers();
-        data.forEach(item => addMarker(item));
-        applyClustering();
-    })
-    .catch(error => console.error('Error fetching academies:', error));
-}
-
-// 마커 추가
-function addMarker(academy) {
-    const marker = new naver.maps.Marker({
-        position: new naver.maps.LatLng(academy.위도, academy.경도),
+      // 내 위치 마커
+      currentMarker = new naver.maps.Marker({
+        position: userLocation,
         map: map,
-        title: academy.상호명
-    });
-
-    marker.addListener('click', function () {
-        showAcademyInfoPopup(academy);
-    });
-
-    markers.push(marker);
-}
-
-// 마커 클러스터 적용
-function applyClustering() {
-    if (markerClustering) {
-        markerClustering.setMap(null);  // 기존 클러스터 제거
-    }
-
-    markerClustering = new MarkerClustering({
-        minClusterSize: 2,              // 최소 클러스터 크기
-        maxZoom: 17,                    // 최대 줌 레벨
-        map: map,                       // 클러스터가 적용될 지도
-        markers: markers,               // 클러스터링할 마커 배열
-        disableClickZoom: false,        // 클러스터 클릭 시 확대 여부
-        gridSize: 120,                  // 클러스터 간격
-        icons: [htmlMarker1, htmlMarker2, htmlMarker3, htmlMarker4, htmlMarker5],  // 클러스터 아이콘
-        indexGenerator: [10, 100, 200, 500, 1000],  // 클러스터 단계 기준
-        stylingFunction: function (clusterMarker, count) {
-            $(clusterMarker.getElement()).find('div:first-child').text(count);
+        icon: {
+          content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
+          anchor: new naver.maps.Point(7.5, 7.5)
         }
-    });
+      });
+
+      // 초기 학원 데이터 로드
+      fetchAcademies();
+
+      // 지도 이동/줌 변경 후 다시 데이터
+      naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+    },
+    function () {
+      // 위치 정보를 못 받으면 서울시청으로
+      const defaultLocation = new naver.maps.LatLng(37.5665, 126.9780);
+
+      map = new naver.maps.Map('map', {
+        center: defaultLocation,
+        zoom: 18,
+        minZoom: 15,
+        zoomControl: false
+      });
+
+      fetchAcademies();
+    }
+  );
 }
 
-// 마커 초기화
-function clearMarkers() {
-    markers.forEach(marker => marker.setMap(null));
-    markers = [];
+/**
+ * 서버에서 학원 데이터 받아오기
+ */
+function fetchAcademies() {
+  const bounds = map.getBounds();
+  const sw = bounds.getSW();
+  const ne = bounds.getNE();
+
+  fetch('/api/filtered_academies', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken()
+    },
+    body: JSON.stringify({
+      swLat: sw._lat,
+      swLng: sw._lng,
+      neLat: ne._lat,
+      neLng: ne._lng,
+      category: selectedCategory
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    clearMarkers();
+    // 개별 마커를 지도에 표시
+    data.forEach(item => addMarker(item));
+  })
+  .catch(error => {
+    console.error('Error fetching academies:', error);
+  });
 }
 
-// 학원 정보 팝업
-function showAcademyInfoPopup(academy) {
-    const popup = document.getElementById('academyPopup');
-    const popupContent = document.getElementById('popupContent');
+/**
+ * 마커 생성
+ * - 과목에 따라 색상/모양 달리 표시
+ * - 상호명도 함께 표시
+ */
+function addMarker(academy) {
+  const category = academy.category;
+  const color = categoryColors[category] || null;
 
-    popupContent.innerHTML = `
-        <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>
-        <p><strong>전화번호:</strong> ${academy.전화번호}</p>
-        <p><strong>주소:</strong> ${academy.도로명주소}</p>
+  let markerContent;
+  if (color) {
+    markerContent = `
+      <div style="
+        min-width:60px;
+        padding:3px 5px;
+        background-color:${color};
+        color:white;
+        border-radius:4px;
+        font-size:12px;
+        font-weight:bold;
+        text-align:center;
+      ">
+        ${academy.상호명}
+      </div>
     `;
+  } else {
+    // 분류 없는 경우 기본 파란 핀 + 상호명
+    markerContent = `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+      ">
+        <div style="
+          width:10px;
+          height:10px;
+          background-color:blue;
+          border:2px solid white;
+          border-radius:50%;
+          margin-bottom:2px;
+        "></div>
+        <span style="
+          font-size:12px;
+          background-color:white;
+          padding:2px 4px;
+          border-radius:4px;
+          border:1px solid #ccc;
+        ">
+          ${academy.상호명}
+        </span>
+      </div>
+    `;
+  }
 
-    popup.classList.add('active');
+  const marker = new naver.maps.Marker({
+    position: new naver.maps.LatLng(academy.위도, academy.경도),
+    map: map,
+    icon: {
+      content: markerContent,
+      anchor: new naver.maps.Point(10, 10)
+    },
+    title: academy.상호명
+  });
+
+  // 마커 클릭 시 팝업 열기
+  naver.maps.Event.addListener(marker, 'click', function () {
+    showAcademyInfoPopup(academy);
+  });
+
+  markers.push(marker);
 }
 
-// 팝업 닫기
+/**
+ * 기존 마커 제거
+ */
+function clearMarkers() {
+  markers.forEach(marker => marker.setMap(null));
+  markers = [];
+}
+
+/**
+ * 학원 정보 팝업 열기
+ */
+function showAcademyInfoPopup(academy) {
+  const popup = document.getElementById('academyPopup');
+  const popupContent = document.getElementById('popupContent');
+
+  popupContent.innerHTML = `
+    <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>
+    <p><strong>전화번호:</strong> ${academy.전화번호 || '정보 없음'}</p>
+    <p><strong>주소:</strong> ${academy.도로명주소 || '정보 없음'}</p>
+  `;
+  popup.classList.add('active');
+}
 function closePopup() {
-    document.getElementById('academyPopup').classList.remove('active');
+  document.getElementById('academyPopup').classList.remove('active');
 }
 
-// 카테고리 필터링
+/**
+ * 카테고리 필터 버튼
+ */
 function filterMarkers(category) {
-    selectedCategory = category;
-    fetchAcademies();
+  selectedCategory = category;
+  fetchAcademies();
 }
 
-// ✅ 내 위치로 이동 기능 (수정됨)
+/**
+ * 내 위치로 이동
+ */
 function moveToCurrentLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function (position) {
-            const userLocation = new naver.maps.LatLng(position.coords.latitude, position.coords.longitude);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function (position) {
+      const userLocation = new naver.maps.LatLng(position.coords.latitude, position.coords.longitude);
+      map.setCenter(userLocation);
+      map.setZoom(18);
 
-            map.setCenter(userLocation);
-            map.setZoom(17);
-
-            // 기존 위치 마커가 있으면 위치 업데이트
-            if (currentMarker) {
-                currentMarker.setPosition(userLocation);
-            } else {
-                currentMarker = new naver.maps.Marker({
-                    position: userLocation,
-                    map: map,
-                    icon: {
-                        content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
-                        anchor: new naver.maps.Point(7.5, 7.5)
-                    }
-                });
-            }
-        }, function () {
-            alert('위치 정보를 가져올 수 없습니다.');
+      if (currentMarker) {
+        currentMarker.setPosition(userLocation);
+      } else {
+        currentMarker = new naver.maps.Marker({
+          position: userLocation,
+          map: map,
+          icon: {
+            content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
+            anchor: new naver.maps.Point(7.5, 7.5)
+          }
         });
-    } else {
-        alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
-    }
+      }
+    }, function () {
+      alert('위치 정보를 가져올 수 없습니다.');
+    });
+  } else {
+    alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
+  }
 }
 
-// CSRF 토큰 가져오기
+/**
+ * Django CSRF 토큰
+ */
 function getCSRFToken() {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.startsWith('csrftoken=')) {
-            return cookie.substring('csrftoken='.length);
-        }
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    const cookie = cookies[i].trim();
+    if (cookie.startsWith('csrftoken=')) {
+      return cookie.substring('csrftoken='.length);
     }
-    return '';
+  }
+  return '';
 }
 
-// 지도 초기화
+/**
+ * 지도 로드 후 initMap()
+ */
 naver.maps.onJSContentLoaded = initMap;
-
 </script>
+
 </body>
 </html>
