@@ -26,6 +26,9 @@ SECRET_KEY = 'django-insecure-9is+m$(xcx&=4)-33^7m_fgq=*vchw2iuvfwgdruu5se)ilgir
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+CSRF_TRUSTED_ORIGINS = ['https://academymap-mvffo.run.goorm.site']
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 ALLOWED_HOSTS = ['*']
 
 
