@@ -1,272 +1,434 @@
 {% extends "templates/main/base.html" %}
-
 {% block contents %}
 
+{% load static %}
 {% load humanize %}
 
-<div class="title_small"> {% include 'main/search.html' %} </div>
+<style>
+  /* 기본 문서 설정 */
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background-color: #f0f8f8;
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 14px;
+    overflow: hidden; /* 상단/하단 고정 위해 내부 스크롤만 사용 */
+  }
 
-<!-- 검색 및 필터 영역 -->
-<form action="{% url 'academy_list' %}" method="get" id="search_form">
+  /* 상단바: 높이 20vh 고정 */
+  .top-bar-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 20vh;
+    background-color: #f0f8f8;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
 
-    <!-- 필터들을 한 줄에 배치해, 가로 스크롤이 가능하도록 구성 -->
+  /* 첫 줄: (왼)뒤로가기 / (중앙)타이틀 / (오른)search.html */
+  .top-row {
+    flex: 0 0 auto;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+  }
+
+  .go-back-btn {
+    text-decoration: none;
+    background-color: #f0f8f8;
+    color: #333;
+    padding: 0.3rem 0.7rem;
+    border-radius: 0.3rem;
+    font-size: 1rem;
+  }
+  .go-back-btn:hover {
+    background-color: #e0e0e0;
+  }
+
+  .title-bar {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  /* 오른쪽 - 간단 검색 (search.html) */
+  .search-area {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* 두 번째 줄: (시도/시군구/행정동/과목 + 검색버튼) => GET: academy_list */
+  .filters-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .filters-inner {
+    width: 90%;
+    max-width: 800px;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+  }
+
+  .filter-select-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .filter-select-wrap label {
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 0.2rem;
+    color: #333;
+  }
+  .filter-select {
+    font-size: 0.8rem;
+    padding: 0.3rem;
+    border: 1px solid #ccc;
+    border-radius: 0.3rem;
+    outline: none;
+  }
+
+  .filter-btn {
+    flex: 0 0 auto; /* 고정 크기 */
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 0.3rem;
+    cursor: pointer;
+  }
+  .filter-btn:hover {
+    background-color: #45a049;
+  }
+
+  /* 내용 영역: 남은 80vh - 하단 3rem */
+  .content-area {
+    position: absolute;
+    top: 20vh;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 20vh - 3rem);
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 1rem;
+  }
+
+  /* 학원 목록 아이템 */
+  .academy-list-item {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    padding: 0.5rem 0;
+    align-items: flex-start;
+  }
+  .academy-img-wrap {
+    width: 20%;
+    min-width: 70px;
+    text-align: center;
+  }
+  .academy-img {
+    width: 100%;
+    max-width: 120px;
+    object-fit: cover;
+    border-radius: 0.3rem;
+  }
+  .academy-info-wrap {
+    width: 80%;
+    padding-left: 0.5rem;
+  }
+  .academy-name {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+    color: #333;
+    text-decoration: none;
+  }
+  .academy-name:hover {
+    text-decoration: underline;
+  }
+  .academy-intro {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 0.3rem;
+  }
+  .academy-subinfo {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.1rem;
+  }
+
+  /* 하단 페이지네이션 (3rem 높이 고정) */
+  .pagination {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3rem;
+    background-color: #f0f8f8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  }
+  .pagination a {
+    margin: 0 0.5rem;
+    font-size: 0.9rem;
+    color: #333;
+    text-decoration: none;
+  }
+  .pagination a:hover {
+    color: #4CAF50;
+    text-decoration: underline;
+  }
+
+  @media (max-width: 480px) {
+    .academy-img {
+      max-width: 80px;
+    }
+    .academy-name {
+      font-size: 0.95rem;
+    }
+    .academy-intro, .academy-subinfo {
+      font-size: 0.75rem;
+    }
+  }
+</style>
+
+<!-- 상단 20vh 영역 -->
+<div class="top-bar-container">
+
+  <!-- 첫 줄: 뒤로가기, 아카데미맵, 오른쪽 -> search.html (POST /search) -->
+  <div class="top-row">
+    <a class="go-back-btn" href="javascript:history.back()">&lt;</a>
+    <div class="title-bar"> <a href="{% url 'map' %}">아카데미맵</a></div>
+    <div class="search-icon">
+    <a href="{% url 'search' %}"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></a>
+  </div>
+  </div>
+
+  <!-- 두 번째 줄: 필터 (시도,시군구,행정동,과목 + '검색'버튼) => GET /academy_list -->
+  <form action="{% url 'academy_list' %}" method="get" style="width:100%; margin:0; padding:0;" id="search_form">
     <div class="filters-container">
+      <div class="filters-inner">
         <!-- 시도명 -->
-        <div class="selectbox">
-            <label for="시도명">시도명</label>
-            <select name="시도명" id="시도명" class="filter-select">
-                <option value="">-- 선택하세요 --</option>
-                {% for region in 시도명_list %}
-                <option value="{{ region }}" {% if region == 시도명_selected %}selected{% endif %}>{{ region }}</option>
-                {% endfor %}
-            </select>
+        <div class="filter-select-wrap">
+          <label for="시도명">시도명</label>
+          <select name="시도명" id="시도명" class="filter-select">
+            <option value="">-- 선택하세요 --</option>
+            {% for region in 시도명_list %}
+            <option value="{{ region }}" {% if region == 시도명_selected %}selected{% endif %}>
+              {{ region }}
+            </option>
+            {% endfor %}
+          </select>
         </div>
 
         <!-- 시군구명 -->
-        <div class="selectbox">
-            <label for="시군구명">시군구명</label>
-            <select name="시군구명" id="시군구명" class="filter-select"
-                    {% if not 시도명_selected %}disabled{% endif %}>
-                <option value="">-- 먼저 시도명을 선택하세요 --</option>
-                {% if 시군구명_selected %}
-                <option value="{{ 시군구명_selected }}" selected>{{ 시군구명_selected }}</option>
-                {% endif %}
-            </select>
+        <div class="filter-select-wrap">
+          <label for="시군구명">시군구명</label>
+          <select name="시군구명" id="시군구명" class="filter-select"
+                  {% if not 시도명_selected %}disabled{% endif %}>
+            <option value="">-- 먼저 시도명을 선택하세요 --</option>
+            {% if 시군구명_selected %}
+            <option value="{{ 시군구명_selected }}" selected>{{ 시군구명_selected }}</option>
+            {% endif %}
+          </select>
         </div>
 
         <!-- 행정동명 -->
-        <div class="selectbox">
-            <label for="행정동명">행정동명</label>
-            <select name="행정동명" id="행정동명" class="filter-select"
-                    {% if not 시군구명_selected %}disabled{% endif %}>
-                <option value="">-- 먼저 시군구명을 선택하세요 --</option>
-                {% if 행정동명_selected %}
-                <option value="{{ 행정동명_selected }}" selected>{{ 행정동명_selected }}</option>
-                {% endif %}
-            </select>
+        <div class="filter-select-wrap">
+          <label for="행정동명">행정동명</label>
+          <select name="행정동명" id="행정동명" class="filter-select"
+                  {% if not 시군구명_selected %}disabled{% endif %}>
+            <option value="">-- 먼저 시군구명을 선택하세요 --</option>
+            {% if 행정동명_selected %}
+            <option value="{{ 행정동명_selected }}" selected>{{ 행정동명_selected }}</option>
+            {% endif %}
+          </select>
         </div>
 
         <!-- 과목 -->
-        <div class="selectbox">
-            <label for="과목">과목</label>
-            <select name="과목" id="과목" class="filter-select">
-                <option value="">전체</option>
-                {% for subject in 과목_list %}
-                <option value="{{ subject }}" {% if subject == 과목_selected %}selected{% endif %}>
-                    {{ subject }}
-                </option>
-                {% endfor %}
-            </select>
+        <div class="filter-select-wrap">
+          <label for="과목">과목</label>
+          <select name="과목" id="과목" class="filter-select">
+            <option value="">전체</option>
+            {% for subject in 과목_list %}
+            <option value="{{ subject }}" {% if subject == 과목_selected %}selected{% endif %}>
+              {{ subject }}
+            </option>
+            {% endfor %}
+          </select>
         </div>
 
         <!-- 검색 버튼 -->
         <button type="submit" class="filter-btn">검색</button>
+      </div>
     </div>
-</form>
-
-<br>
-
-<!-- 검색 결과 목록 -->
-<div>
-    {% if academylist %}
-        {% for academy in academylist %}
-            <a href="{% url 'academy' academy.id %}">{{ academy.상호명 }}</a><br>
-        {% endfor %}
-    {% else %}
-        <p>결과가 없습니다.</p>
-    {% endif %}
+  </form>
 </div>
 
-<!-- 페이지 네비게이션 -->
+<!-- 본문 컨텐츠 (80vh - 3rem 아래 페이지) -->
+<div class="content-area">
+  {% if academylist %}
+    {% for academy in academylist %}
+    <div class="academy-list-item">
+      <div class="academy-img-wrap">
+        {% if academy.학원사진 %}
+          <img src="{{ academy.학원사진.url }}" alt="{{ academy.상호명 }}" class="academy-img" />
+        {% else %}
+          <img src="{% static 'images/no_image.png' %}" alt="No Image" class="academy-img" />
+        {% endif %}
+      </div>
+      <div class="academy-info-wrap">
+        <a href="{% url 'academy' academy.id %}" class="academy-name">
+          {{ academy.상호명 }}
+        </a>
+        {% if academy.소개글 %}
+        <div class="academy-intro">{{ academy.소개글|linebreaksbr }}</div>
+        {% else %}
+        <div class="academy-intro">소개 정보가 없습니다.</div>
+        {% endif %}
+
+        {% if academy.별점 %}
+        <div class="academy-subinfo">별점: ★ {{ academy.별점 }}</div>
+        {% endif %}
+        <div class="academy-subinfo">지번주소: {{ academy.지번주소 }}</div>
+        <div class="academy-subinfo">도로명주소: {{ academy.도로명주소 }}</div>
+
+        <div class="academy-subinfo">
+          대상학년:
+          {% if academy.대상_유아 %}유아 {% endif %}
+          {% if academy.대상_초등 %}초등 {% endif %}
+          {% if academy.대상_중등 %}중등 {% endif %}
+          {% if academy.대상_고등 %}고등 {% endif %}
+          {% if academy.대상_특목고 %}특목고 {% endif %}
+          {% if academy.대상_일반 %}일반 {% endif %}
+          {% if academy.대상_기타 %}기타{% endif %}
+        </div>
+
+        <div class="academy-subinfo">
+          과목:
+          {% if academy.과목_종합 %}종합 {% endif %}
+          {% if academy.과목_수학 %}수학 {% endif %}
+          {% if academy.과목_영어 %}영어 {% endif %}
+          {% if academy.과목_과학 %}과학 {% endif %}
+          {% if academy.과목_외국어 %}외국어 {% endif %}
+          {% if academy.과목_예체능 %}예체능 {% endif %}
+          {% if academy.과목_컴퓨터 %}컴퓨터 {% endif %}
+          {% if academy.과목_논술 %}논술 {% endif %}
+          {% if academy.과목_기타 %}기타 {% endif %}
+          {% if academy.과목_독서실스터디카페 %}독서실/스터디카페{% endif %}
+        </div>
+        <div class="academy-subinfo">영업시간: {{ academy.영업시간 }}</div>
+        <div class="academy-subinfo">셔틀버스: {{ academy.셔틀버스 }}</div>
+        <div class="academy-subinfo">수강료: {{ academy.수강료 }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p>결과가 없습니다.</p>
+  {% endif %}
+</div>
+
+<!-- 하단 페이지네이션 (이전, n/m, 다음, 마지막) -->
 <div class="pagination">
-    {% if academylist.has_previous %}
-        <a href="?page=1{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
-                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
-                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
-                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">처음</a>
+  {% if academylist.has_previous %}
+    <a href="?page=1
+      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
+      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
+      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
+      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
+      ">
+      처음
+    </a>
 
-        <a href="?page={{ academylist.previous_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
-                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
-                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
-                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">이전</a>
-    {% endif %}
+    <a href="?page={{ academylist.previous_page_number }}
+      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
+      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
+      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
+      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
+      ">
+      이전
+    </a>
+  {% endif %}
 
-    <span>페이지 {{ academylist.number }} / {{ academylist.paginator.num_pages }}</span>
+  <span>{{ academylist.number }}/{{ academylist.paginator.num_pages }}</span>
 
-    {% if academylist.has_next %}
-        <a href="?page={{ academylist.next_page_number }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
-                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
-                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
-                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">다음</a>
+  {% if academylist.has_next %}
+    <a href="?page={{ academylist.next_page_number }}
+      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
+      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
+      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
+      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
+      ">
+      다음
+    </a>
 
-        <a href="?page={{ academylist.paginator.num_pages }}{% if 시도명_selected %}&시도명={{ 시도명_selected }}{% endif %}
-                   {% if 시군구명_selected %}&시군구명={{ 시군구명_selected }}{% endif %}
-                   {% if 행정동명_selected %}&행정동명={{ 행정동명_selected }}{% endif %}
-                   {% if 과목_selected %}&과목={{ 과목_selected }}{% endif %}">마지막</a>
-    {% endif %}
+    <a href="?page={{ academylist.paginator.num_pages }}
+      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
+      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
+      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
+      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
+      ">
+      마지막
+    </a>
+  {% endif %}
 </div>
 
-<!-- AJAX로 시군구명, 행정동명을 동적으로 로드 -->
+<!-- AJAX: 시도명 -> 시군구명 -> 행정동명 -->
 <script type="text/javascript">
-    $(document).ready(function () {
-
-        // 시도명 변경 -> 시군구명 목록 로드
-        $("#시도명").change(function () {
-            let 시도명 = $(this).val();
-            if (시도명) {
-                $.ajax({
-                    url: "{% url 'get_regions' %}",
-                    data: { level: "시군구명", parent_value: 시도명 },
-                    success: function (response) {
-                        let options = '<option value="">-- 선택하세요 --</option>';
-                        response.regions.forEach(function (region) {
-                            options += `<option value="${region}">${region}</option>`;
-                        });
-                        $("#시군구명").html(options).prop("disabled", false);
-                        $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>')
-                                     .prop("disabled", true);
-                    }
-                });
-            } else {
-                $("#시군구명").html('<option value="">-- 먼저 시도명을 선택하세요 --</option>').prop("disabled", true);
-                $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
-            }
+  $(document).ready(function () {
+    $("#시도명").change(function () {
+      let 시도명 = $(this).val();
+      if (시도명) {
+        $.ajax({
+          url: "{% url 'get_regions' %}",
+          data: { level: "시군구명", parent_value: 시도명 },
+          success: function (response) {
+            let options = '<option value="">-- 선택하세요 --</option>';
+            response.regions.forEach(function (region) {
+              options += `<option value="${region}">${region}</option>`;
+            });
+            $("#시군구명").html(options).prop("disabled", false);
+            $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>')
+                         .prop("disabled", true);
+          }
         });
-
-        // 시군구명 변경 -> 행정동명 목록 로드
-        $("#시군구명").change(function () {
-            let 시군구명 = $(this).val();
-            if (시군구명) {
-                $.ajax({
-                    url: "{% url 'get_regions' %}",
-                    data: { level: "행정동명", parent_value: 시군구명 },
-                    success: function (response) {
-                        let options = '<option value="">-- 선택하세요 --</option>';
-                        response.regions.forEach(function (region) {
-                            options += `<option value="${region}">${region}</option>`;
-                        });
-                        $("#행정동명").html(options).prop("disabled", false);
-                    }
-                });
-            } else {
-                $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
-            }
-        });
+      } else {
+        $("#시군구명").html('<option value="">-- 먼저 시도명을 선택하세요 --</option>').prop("disabled", true);
+        $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+      }
     });
+
+    $("#시군구명").change(function () {
+      let 시군구명 = $(this).val();
+      if (시군구명) {
+        $.ajax({
+          url: "{% url 'get_regions' %}",
+          data: { level: "행정동명", parent_value: 시군구명 },
+          success: function (response) {
+            let options = '<option value="">-- 선택하세요 --</option>';
+            response.regions.forEach(function (region) {
+              options += `<option value="${region}">${region}</option>`;
+            });
+            $("#행정동명").html(options).prop("disabled", false);
+          }
+        });
+      } else {
+        $("#행정동명").html('<option value="">-- 먼저 시군구명을 선택하세요 --</option>').prop("disabled", true);
+      }
+    });
+  });
 </script>
-
-<!-- 스타일: 모바일 친화적으로 개선 -->
-<style>
-    /* 기본 바디 스타일 */
-    body {
-        font-size: 1.4rem;       /* 모바일용으로 살짝 줄임 */
-        padding: 1.5rem;
-        margin: 0;
-        font-family: "Noto Sans KR", sans-serif;
-        background-color: #f0f8f8;
-    }
-
-    .title_small {
-        margin-bottom: 1rem;
-    }
-
-    /* 필터들을 한 줄에 모아서 가로 스크롤 가능하게 */
-    .filters-container {
-        display: flex;
-        flex-wrap: nowrap;        /* 줄바꿈 없이 가로로 */
-        overflow-x: auto;         /* 넘칠 경우 가로 스크롤 */
-        white-space: nowrap;
-        background-color: #ffffff;
-        padding: 0.5rem;
-        border: 1px solid #ddd;
-        border-radius: 0.5rem;
-        box-sizing: border-box;
-        margin-bottom: 1rem;
-    }
-
-    /* 각 필터(Select + Label) 묶음을 정돈 */
-    .selectbox {
-        display: flex;
-        flex-direction: column; /* 레이블 위, 셀렉트 아래 */
-        min-width: 110px;       /* 너무 좁아지지 않도록 */
-        margin-right: 0.8rem;
-    }
-
-    .selectbox label {
-        font-weight: bold;
-        margin-bottom: 0.3rem;
-        font-size: 1.2rem;  /* 레이블 폰트 */
-    }
-
-    .filter-select,
-    .filter-btn {
-        font-size: 1.2rem;
-        padding: 0.5rem 0.7rem;
-        border: 1px solid #ccc;
-        border-radius: 0.3rem;
-        outline: none;
-    }
-
-    /* 검색 버튼 */
-    .filter-btn {
-        background-color: #4CAF50;
-        color: white;
-        cursor: pointer;
-        margin-top: 1.6rem; /* 레이블과 높이를 맞추기 위해 약간 여백 */
-        min-width: 70px;
-    }
-    .filter-btn:hover {
-        background-color: #45a049;
-    }
-
-    /* 마지막 selectbox 마진 제거 (선택사항) */
-    .selectbox:last-child {
-        margin-right: 0;
-    }
-
-    /* 검색 결과 부분 */
-    a {
-        font-size: 1.3rem;
-        text-decoration: none;
-        color: #333;
-    }
-    a:hover {
-        color: #4CAF50;
-        text-decoration: underline;
-    }
-
-    .pagination {
-        margin-top: 2rem;
-        text-align: center;
-    }
-    .pagination a {
-        margin: 0 0.5rem;
-        font-size: 1.2rem;
-        color: #333;
-        text-decoration: none;
-    }
-    .pagination a:hover {
-        color: #4CAF50;
-        text-decoration: underline;
-    }
-
-    /* 반응형: 아주 작은 화면에서 select 크기/폰트 줄이기 */
-    @media (max-width: 480px) {
-        body {
-            padding: 1rem;
-        }
-        .selectbox {
-            min-width: 90px;
-        }
-        .selectbox label {
-            font-size: 1rem;
-        }
-        .filter-select,
-        .filter-btn {
-            font-size: 1rem;
-            padding: 0.4rem 0.6rem;
-        }
-    }
-</style>
 
 {% endblock %}
