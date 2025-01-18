@@ -28,7 +28,7 @@ urlpatterns = [
     path('search', main.views.search, name='search'),
     path('get_regions', main.views.get_regions, name='get_regions'),
 
-    path('map', main.views.map, name='map'),
+    path('', main.views.map, name='map'),
     path('api/filtered_academies', main.views.filtered_academies, name='filtered_academies'),
 
 

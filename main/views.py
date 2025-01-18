@@ -28,12 +28,15 @@ def main(request):
 
 def search(request):
     if request.method == 'POST':
-        searched = request.POST['searched']
-        data = Data.objects.filter(Q(상호명__contains=searched) | Q(법정동명__contains=searched))
+        searched = request.POST.get('searched', '')
+        data = Data.objects.filter(
+            Q(상호명__icontains=searched) | Q(법정동명__icontains=searched)
+        )
         context = {'searched': searched, 'data': data}
-        return render(request, 'main/academy.html', context)
+        # ⬇⬇ 여기서 'search.html' 템플릿으로 렌더링하도록 변경
+        return render(request, 'main/search.html', context)
     else:
-        return render(request, 'main/academy.html')
+        return render(request, 'main/search.html')
 
 def academy(request, pk):
     academy = get_object_or_404(Data, pk=pk)
@@ -78,7 +81,7 @@ def academy_list(request):
         queryset = queryset.filter(**filter_field)
 
     # Paginator 적용 (페이지당 30개씩)
-    paginator = Paginator(queryset, 30)
+    paginator = Paginator(queryset, 1000)
     page = request.GET.get('page')  # 현재 페이지 번호
 
     try:
@@ -143,6 +146,7 @@ def filtered_academies(request):
         '독서실/스터디카페': '과목_독서실스터디카페',
     }
 
+    # 위치 범위 필터
     queryset = Data.objects.filter(
         위도__gte=sw_lat,
         위도__lte=ne_lat,
@@ -150,12 +154,26 @@ def filtered_academies(request):
         경도__lte=ne_lng,
     )
 
+    # 과목 필터 (BooleanField)
     if category and category != '전체' and category in 과목_mapping:
         filter_field = {과목_mapping[category]: True}
         queryset = queryset.filter(**filter_field)
 
-    data = list(queryset.values('id', '상호명', '위도', '경도', '도로명주소', '전화번호'))
+    # 기존 필드 + '시군구명' 추가
+    data = list(
+        queryset.values(
+            'id',
+            '상호명',
+            '위도',
+            '경도',
+            '도로명주소',
+            '전화번호',
+            '시군구명',   # 시군구명 필드를 함께 반환
+        )
+    )
+
     return JsonResponse(data, safe=False)
+
 
 
 
