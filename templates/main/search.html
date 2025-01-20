@@ -1,192 +1,194 @@
 {% extends "templates/main/base.html" %}
-{% block contents %}
-
 {% load static %}
+{% block contents %}
 {% load humanize %}
 
 <style>
+  /* 공통 스타일 */
   html, body {
-    margin: 0; padding: 0;
-    width: 100%; height: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
     background-color: #f0f8f8;
     font-family: Arial, sans-serif;
     font-size: 14px;
-    overflow: hidden; /* 상단바 고정, 내부 스크롤만 허용 */
+    overflow: hidden;
   }
 
-  /* 상단 바: 고정 20vh 높이 */
+  /* 상단바 고정 */
   .top-bar-container {
     position: fixed;
-    top: 0; left: 0;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 20vh;
+    height: 20vh; /* 높이 20% */
     background-color: #f0f8f8;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     z-index: 1000;
   }
 
-  /* 첫 줄: (왼)뒤로가기 / (중앙)아카데미맵 / (오른)검색 폼 */
+  /* 첫 줄: 뒤로가기 버튼, 중앙 제목, 오른쪽 검색 */
   .top-row {
-    flex: 0 0 auto;
-    width: 100%;
+    width: 90%;
+    max-width: 800px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 0.5rem 1rem;
+    align-items: center;
+    margin: auto;
   }
 
-  /* 뒤로가기 버튼 (왼) */
+  /* 뒤로가기 버튼 */
   .go-back-btn {
     text-decoration: none;
-    background-color: #f0f8f8;
+    background-color: transparent;
     color: #333;
-    padding: 0.3rem 0.7rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 0.5rem;
     border-radius: 0.3rem;
-    font-size: 1rem;
+    transition: background-color 0.3s ease;
   }
+
   .go-back-btn:hover {
     background-color: #e0e0e0;
   }
 
-  /* 중앙 타이틀 (누르면 map 이동) */
+  /* 중앙 제목 */
   .title-bar {
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     font-weight: bold;
-    text-align: center;
-  }
-  .title-bar a {
-    text-decoration: none;
     color: #333;
   }
-  .title-bar a:hover {
-    text-decoration: underline;
-  }
 
-  /* 검색 폼 (POST /search) */
+  /* 검색 폼 */
   .search-form {
     display: flex;
+    width: 100%;
+    max-width: 400px;
+    margin: auto;
+    margin-top: 1rem;
     align-items: center;
-    margin-left: auto;
   }
+
   .search-input {
     flex: 1;
-    padding: 0.5rem;
+    padding: 0.7rem;
     font-size: 1rem;
     border: 1px solid #ccc;
-    border-radius: 0.3rem;
-    margin-right: 0.5rem;
+    border-radius: 0.3rem 0 0 0.3rem;
     outline: none;
   }
-  .search_button {
-    background-color: #4CAF50;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-    border-radius: 0.3rem;
+
+  .search-button {
+    padding: 0.7rem 1rem;
     font-size: 1rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 0 0.3rem 0.3rem 0;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
   }
-  .search_button:hover {
+
+  .search-button:hover {
     background-color: #45a049;
   }
 
-  /* 내용 영역: 아래 80vh */
+  /* 내용 영역 */
   .content-area {
     position: absolute;
     top: 20vh;
     left: 0;
     width: 100%;
     height: calc(100% - 20vh);
-    overflow-y: auto; /* 스크롤 가능 */
+    overflow-y: auto;
     padding: 1rem;
     box-sizing: border-box;
   }
 
-  /* 검색 결과 목록을 academy_list와 같은 형식: 왼쪽 20% 사진, 오른쪽 80% 정보 */
+  /* 검색 결과 스타일 */
   .academy-list-item {
     display: flex;
     border-bottom: 1px solid #ddd;
     padding: 0.5rem 0;
-    align-items: flex-start;
   }
+
   .academy-img-wrap {
     width: 20%;
-    min-width: 70px;
     text-align: center;
   }
+
   .academy-img {
     width: 100%;
-    max-width: 120px;
+    height: auto;
+    max-width: 80px;
     object-fit: cover;
     border-radius: 0.3rem;
   }
+
   .academy-info-wrap {
     width: 80%;
-    padding-left: 0.5rem;
+    padding-left: 1rem;
   }
+
   .academy-name {
     font-size: 1rem;
     font-weight: bold;
     margin-bottom: 0.3rem;
-    color: #333;
-    text-decoration: none;
   }
-  .academy-name:hover {
-    text-decoration: underline;
-  }
+
   .academy-intro {
     font-size: 0.9rem;
     color: #555;
-    margin-bottom: 0.3rem;
-  }
-  .academy-subinfo {
-    font-size: 0.8rem;
-    color: #666;
-    margin-bottom: 0.1rem;
   }
 
-  /* 반응형 (max-width: 600px) */
+  /* 반응형 스타일 */
   @media (max-width: 600px) {
+    .title-bar {
+      font-size: 1.2rem;
+    }
+
     .search-input {
       font-size: 0.9rem;
+      padding: 0.5rem;
     }
-    .search_button {
+
+    .search-button {
       font-size: 0.9rem;
-      padding: 0.4rem 0.7rem;
+      padding: 0.5rem;
     }
-    .academy-img {
-      max-width: 80px;
-    }
+
     .academy-name {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
-    .academy-intro, .academy-subinfo {
-      font-size: 0.75rem;
+
+    .academy-intro {
+      font-size: 0.8rem;
     }
   }
 </style>
 
+<!-- 상단 바 -->
 <div class="top-bar-container">
   <div class="top-row">
-    <!-- 왼쪽: 뒤로가기 -->
-    <a class="go-back-btn" href="javascript:history.back()">&lt;</a>
-
-    <!-- 중앙: 아카데미맵 (링크 -> map) -->
-    <div class="title-bar">
-      <a href="{% url 'map' %}">아카데미맵</a>
-    </div>
-
-    <!-- 오른쪽: 검색 폼 (POST /search) -->
-    <form style="margin-left:auto;" class="search-form" method="POST" action="{% url 'search' %}">
-      {% csrf_token %}
-      <input class="search-input" type="search" placeholder="학원명/동 검색" name="searched" />
-      <button class="search_button" type="submit">
-        <span class="material-symbols-outlined">search</span>
-      </button>
-    </form>
+    <!-- 뒤로가기 버튼 -->
+    <a href="javascript:history.back()" class="go-back-btn">&lt;</a>
+    <!-- 중앙 제목 -->
+    <div class="title-bar"><a href="{% url 'map' %}">아카데미맵</a></div>
+    <!-- 오른쪽 빈 공간 (필요 시 추가) -->
+    <div></div>
   </div>
+  <!-- 검색 폼 -->
+  <form class="search-form" method="POST" action="{% url 'search' %}">
+    {% csrf_token %}
+    <input class="search-input" type="search" placeholder="학원명/동 검색" name="searched">
+    <button class="search-button" type="submit">🔍</button>
+  </form>
 </div>
 
 <!-- 내용 영역(검색 결과) -->
