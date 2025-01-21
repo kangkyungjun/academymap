@@ -1,49 +1,11 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>학원 지도</title>
-
-  <!-- 네이버 지도 JS (geocoder 모듈) -->
-  <script
-    type="text/javascript"
-    src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=rh9hwnvmx1&submodules=geocoder"
-  ></script>
-
-  <!-- 머티리얼 아이콘 -->
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200,0,0&display=swap"
-  />
-
-  <!-- jQuery -->
-  <script
-    src="https://code.jquery.com/jquery-3.6.0.min.js"
-  ></script>
+{% extends "templates/main/base.html" %}
+{% load static %}
+{% block contents %}
+{% load humanize %}
 
   <style>
-    /* 기본 초기화 */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    text-decoration-line: none;
-    }
-    a {
-  color: black;
-}
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: Arial, sans-serif;
-      background-color: #f0f8f8;
-      font-size: 14px; /* 모바일용으로 조금 줄임 */
-    }
-    ::-webkit-scrollbar {
-  display: none;
-}
+
+
 #navbar{
  background-color: #008B8B;
  height: 2.5rem;
@@ -182,49 +144,47 @@
       }
     }
   </style>
-</head>
 
-<body>
-<div id="navbar">
-  <!-- 검색 아이콘 (왼상단) -->
-  <div class="search-icon">
-    <a href="{% url 'academy_list' %}"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></a>
+  <div id="navbar">
+    <!-- 검색 아이콘 (왼상단) -->
+    <div class="search-icon">
+      <a href="{% url 'academy_list' %}"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></a>
+    </div>
   </div>
-</div>
 
 
 
-<!-- 카테고리 버튼 (가로 스크롤) -->
-<div id="category-container">
-  <div id="category">
-    <button onclick="filterMarkers('전체')">전체</button>
-    <button onclick="filterMarkers('수학')">수학</button>
-    <button onclick="filterMarkers('영어')">영어</button>
-    <button onclick="filterMarkers('과학')">과학</button>
-    <button onclick="filterMarkers('외국어')">외국어</button>
-    <button onclick="filterMarkers('예체능')">예체능</button>
-    <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
-    <button onclick="filterMarkers('논술')">논술</button>
-    <button onclick="filterMarkers('기타')">기타</button>
-    <button onclick="filterMarkers('독서실/스터디카페')">독서실/스터디카페</button>
+  <!-- 카테고리 버튼 (가로 스크롤) -->
+  <div id="category-container">
+    <div id="category">
+      <button onclick="filterMarkers('전체')">전체</button>
+      <button onclick="filterMarkers('수학')">수학</button>
+      <button onclick="filterMarkers('영어')">영어</button>
+      <button onclick="filterMarkers('과학')">과학</button>
+      <button onclick="filterMarkers('외국어')">외국어</button>
+      <button onclick="filterMarkers('예체능')">예체능</button>
+      <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
+      <button onclick="filterMarkers('논술')">논술</button>
+      <button onclick="filterMarkers('기타')">기타</button>
+      <button onclick="filterMarkers('독서실/스터디카페')">독서실/스터디카페</button>
+    </div>
   </div>
-</div>
 
-<!-- 지도 영역 -->
-<div id="map"></div>
+  <!-- 지도 영역 -->
+  <div id="map"></div>
 
-<!-- 내 위치 버튼 -->
-<div id="controls">
-  <button onclick="moveToCurrentLocation()">
-    <span class="material-symbols-outlined">my_location</span>
-  </button>
-</div>
+  <!-- 내 위치 버튼 -->
+  <div id="controls">
+    <button onclick="moveToCurrentLocation()">
+      <span class="material-symbols-outlined">my_location</span>
+    </button>
+  </div>
 
-<!-- 학원 정보 팝업 -->
-<div id="academyPopup" class="popup">
-  <div id="popupContent"></div>
-  <button onclick="closePopup()">닫기</button>
-</div>
+  <!-- 학원 정보 팝업 -->
+  <div id="academyPopup" class="popup">
+    <div id="popupContent"></div>
+    <button onclick="closePopup()">닫기</button>
+  </div>
 
 <script>
 /*
@@ -540,5 +500,5 @@ function getCSRFToken() {
 // 지도 로드 후 initMap
 naver.maps.onJSContentLoaded = initMap;
 </script>
-</body>
-</html>
+
+{% endblock %}
