@@ -4,59 +4,7 @@
 {% load humanize %}
 
 <style>
-  /* 공통 스타일 */
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #f0f8f8;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    overflow: hidden;
-  }
 
-  /* 상단바 고정 */
-  .top-bar-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 20vh; /* 높이 20% */
-    background-color: #f0f8f8;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-  }
-
-  /* 첫 줄: 뒤로가기 버튼, 중앙 제목, 오른쪽 검색 */
-  .top-row {
-    width: 90%;
-    max-width: 800px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: auto;
-  }
-
-  /* 뒤로가기 버튼 */
-  .go-back-btn {
-    text-decoration: none;
-    background-color: transparent;
-    color: #333;
-    font-size: 1.2rem;
-    font-weight: bold;
-    padding: 0.5rem;
-    border-radius: 0.3rem;
-    transition: background-color 0.3s ease;
-  }
-
-  .go-back-btn:hover {
-    background-color: #e0e0e0;
-  }
 
   /* 중앙 제목 */
   .title-bar {
@@ -187,7 +135,7 @@
   <form class="search-form" method="POST" action="{% url 'search' %}">
     {% csrf_token %}
     <input class="search-input" type="search" placeholder="학원명/동 검색" name="searched">
-    <button class="search-button" type="submit">🔍</button>
+    <button class="search-button" type="submit"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></button>
   </form>
 </div>
 

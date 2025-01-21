@@ -4,54 +4,8 @@
 {% load humanize %}
 
 <style>
-/* 전체 화면을 100% 차지 */
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #f0f8f8;
-  font-family: "Noto Sans KR", sans-serif;
-  font-size: 14px;
-  overflow: hidden; /* 상단 바 고정, 내부 스크롤만 */
-}
 
-/* 상단 바 (고정) - 높이 15vh 예시 */
-.top-bar-container {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%;
-  height: 15vh;
-  background-color: #f0f8f8;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  z-index: 1000;
-}
 
-/* 한 줄짜리 상단 영역: 뒤로가기, 타이틀(아카데미맵), 검색 아이콘 */
-.top-row {
-  flex: 0 0 auto;
-  width: 100%;
-  height: 3rem;  /* 적절한 높이 */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 1rem;
-}
-
-/* 뒤로가기 버튼 (왼쪽) */
-.go-back-btn {
-  text-decoration: none;
-  background-color: #f0f0f0;
-  color: #333;
-  padding: 0.3rem 0.7rem;
-  border-radius: 0.3rem;
-  font-size: 1rem;
-}
-.go-back-btn:hover {
-  background-color: #e0e0e0;
-}
 
 /* 중앙 타이틀 (아카데미맵 링크 -> map) */
 .title-bar {
