@@ -28,8 +28,12 @@
 
   <style>
 
-/* 공통 영역 */
+/*--------  공통 영역 ------------ */
 /* 기본 문서 설정 */
+    *{
+    text-decoration: none;
+    color: black;
+}
   html, body {
     margin: 0; padding: 0;
     width: 100%; height: 100%;
@@ -92,10 +96,373 @@ a {
   background-color: transparent;
   transition: background-color 0.3s ease;}
 
+/* 중앙 타이틀 */
+  .title-bar {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+  }
 
+/* ----------- academy_list.html 부분 ------------ */
+  /* 오른쪽 - 간단 검색 (search.html) */
+  .search-area {
+    display: inline-flex;
+    align-items: center;
+  }
 
+  /* 두 번째 줄: (시도/시군구/행정동/과목 + 검색버튼) => GET: academy_list */
+  .filters-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
 
+  .filters-inner {
+    width: 90%;
+    max-width: 800px;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+  }
 
+  .filter-select-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .filter-select-wrap label {
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 0.2rem;
+    color: #333;
+  }
+  .filter-select {
+    font-size: 0.8rem;
+    padding: 0.3rem;
+    border: 1px solid #ccc;
+    border-radius: 0.3rem;
+    outline: none;
+  }
+
+  .filter-btn {
+    flex: 0 0 auto; /* 고정 크기 */
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 0.3rem;
+    cursor: pointer;
+  }
+  .filter-btn:hover {
+    background-color: #45a049;
+  }
+
+  /* 내용 영역: 남은 80vh - 하단 3rem */
+  .content-area {
+    position: absolute;
+    top: 20vh;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 20vh - 3rem);
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 1rem;
+  }
+
+  /* 학원 목록 아이템 */
+  .academy-list-item {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    padding: 0.5rem 0;
+    align-items: flex-start;
+  }
+  .academy-img-wrap {
+    width: 20%;
+    min-width: 70px;
+    text-align: center;
+  }
+  .academy-img {
+    width: 100%;
+    max-width: 120px;
+    object-fit: cover;
+    border-radius: 0.3rem;
+  }
+  .academy-info-wrap {
+    width: 80%;
+    padding-left: 0.5rem;
+  }
+  .academy-name {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+    color: #333;
+    text-decoration: none;
+  }
+  .academy-name:hover {
+    text-decoration: underline;
+  }
+  .academy-intro {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 0.3rem;
+  }
+  .academy-subinfo {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.1rem;
+  }
+
+  /* 하단 페이지네이션 (3rem 높이 고정) */
+  .pagination {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3rem;
+    background-color: #f0f8f8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  }
+  .pagination a {
+    margin: 0 0.5rem;
+    font-size: 0.9rem;
+    color: #333;
+    text-decoration: none;
+  }
+  .pagination a:hover {
+    color: #4CAF50;
+    text-decoration: underline;
+  }
+
+  @media (max-width: 480px) {
+    .academy-img {
+      max-width: 80px;
+    }
+    .academy-name {
+      font-size: 0.95rem;
+    }
+    .academy-intro, .academy-subinfo {
+      font-size: 0.75rem;
+    }
+  }
+
+  /* ------------- academy.html------------------ */
+
+.title-bar a:hover {
+  text-decoration: underline;
+}
+
+/* 오른쪽 검색 아이콘 (academy_list) */
+.search-icon {
+  text-decoration: none;
+  color: #333;
+}
+.search-icon span:hover {
+  color: #007BFF;
+}
+
+/* 두 번째 줄(옵션): 만약 여기에 다른 간단 정보 넣고 싶다면?
+   여기서는 비워둠 or margin-bottom 로 상단 영역 확장 */
+.top-second-row {
+  flex: 1;
+  /* 여유 공간: 예시로 비워둠 */
+}
+
+/* 본문 내용 스크롤 - 남은 영역 */
+.content-area {
+  position: absolute;
+  top: 15vh;  /* 상단 바 높이만큼 아래 */
+  left: 0;
+  width: 100%;
+  height: calc(100% - 15vh);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 1rem;
+}
+
+/* 기존 스타일 (학원 상세 레이아웃)  */
+
+.univ_detail_box1 {
+  display: flex;
+  align-items: center;
+  margin: 2rem 0;
+}
+.univ_detail_logo img {
+  width: 8rem;
+  height: 8rem;
+  object-fit: cover;
+}
+.univ_detail_name {
+  font-size: 2rem;
+  margin-left: 1rem;
+}
+.univ_table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2rem;
+}
+.univ_table td {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  font-size: 1rem;
+  vertical-align: top;
+}
+hr {
+  margin: 2rem 0;
+  border: none;
+  border-top: 1px solid #ccc;
+}
+div {
+  font-size: 1.2rem;
+  margin-top: 1rem;
+}
+a {
+  font-size: 1rem;
+  text-decoration: none;
+  color: #007BFF;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* 반응형 (768px 이하) */
+@media (max-width: 768px) {
+  .univ_detail_box1 {
+    flex-direction: column;
+    text-align: center;
+  }
+  .univ_detail_logo img {
+    width: 6rem;
+    height: 6rem;
+  }
+  .univ_detail_name {
+    margin-left: 0;
+    margin-top: 1rem;
+    font-size: 1.6rem;
+  }
+  .univ_table td {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+  div {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+}
+
+/* -------- search.html --------------- */
+
+  /* 검색 폼 */
+  .search-form {
+    display: flex;
+    width: 100%;
+    max-width: 400px;
+    margin: auto;
+    margin-top: 1rem;
+    align-items: center;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 0.7rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.3rem 0 0 0.3rem;
+    outline: none;
+  }
+
+  .search-button {
+    padding: 0.7rem 1rem;
+    font-size: 1rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 0 0.3rem 0.3rem 0;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .search-button:hover {
+    background-color: #45a049;
+  }
+
+  /* 내용 영역 */
+  .content-area {
+    position: absolute;
+    top: 20vh;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 20vh);
+    overflow-y: auto;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  /* 검색 결과 스타일 */
+  .academy-list-item {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    padding: 0.5rem 0;
+  }
+
+  .academy-img-wrap {
+    width: 20%;
+    text-align: center;
+  }
+
+  .academy-img {
+    width: 100%;
+    height: auto;
+    max-width: 80px;
+    object-fit: cover;
+    border-radius: 0.3rem;
+  }
+
+  .academy-info-wrap {
+    width: 80%;
+    padding-left: 1rem;
+  }
+
+  .academy-name {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+  }
+
+  .academy-intro {
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  /* 반응형 스타일 */
+  @media (max-width: 600px) {
+    .title-bar {
+      font-size: 1.2rem;
+    }
+
+    .search-input {
+      font-size: 0.9rem;
+      padding: 0.5rem;
+    }
+
+    .search-button {
+      font-size: 0.9rem;
+      padding: 0.5rem;
+    }
+
+    .academy-name {
+      font-size: 0.9rem;
+    }
+
+    .academy-intro {
+      font-size: 0.8rem;
+    }
+  }
   </style>
 
 
