@@ -5,7 +5,6 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, F, Count
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from django.core.paginator import Paginator
@@ -18,6 +17,11 @@ from .models import Data  # Data 모델 import
 from django.core.cache import cache
 from django.utils.timezone import now
 from django.db import models
+
+from .models import Data
+from .forms import AcademyForm
+
+from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
 
@@ -44,6 +48,7 @@ def academy(request, pk):
     return render(request, 'main/academy.html', context)
 
 
+@csrf_exempt  # CSRF 예외 처리
 def academy_list(request):
     # 시도명 목록 (초기화)
     시도명_list = Data.objects.values_list('시도명', flat=True).distinct()
@@ -187,6 +192,63 @@ def convert_to_boolean(value):
     if str(value).strip().lower() in ['true', '1', 'yes', 'o', 'y', '예']:
         return True
     return False
+
+
+def manage(request):
+    """ 학원 리스트 관리 페이지 (검색 및 페이지네이션 포함) """
+    search_query = request.GET.get('search', '')
+    queryset = Data.objects.all()
+
+    if search_query:
+        queryset = queryset.filter(상호명__icontains=search_query)
+
+    # 페이지네이션 설정 (100개씩)
+    paginator = Paginator(queryset, 100)
+    page = request.GET.get('page')
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+    }
+    return render(request, 'main/manage.html', context)
+def add_academy(request):
+    """ 학원 정보 등록 페이지 """
+    if request.method == 'POST':
+        form = AcademyForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('manage')
+    else:
+        form = AcademyForm()
+    return render(request, 'main/add_academy.html', {'form': form})
+
+def modify_academy(request, pk):
+    """ 기존 학원 정보 수정 페이지 """
+    academy = get_object_or_404(Data, pk=pk)
+    if request.method == 'POST':
+        form = AcademyForm(request.POST, request.FILES, instance=academy)
+        if form.is_valid():
+            form.save()
+            return redirect('manage')
+    else:
+        form = AcademyForm(instance=academy)
+    return render(request, 'main/modify_academy.html', {'form': form, 'academy': academy})
+
+def delete_academy(request, pk):
+    """ 학원 정보 삭제 페이지 """
+    academy = get_object_or_404(Data, pk=pk)
+    if request.method == 'POST':
+        academy.delete()
+        return redirect('manage')
+    return render(request, 'main/delete_academy.html', {'academy': academy})
+
+
 
 def data_update(request):
     n_data = pd.read_excel('n_data.xlsx')

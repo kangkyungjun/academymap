@@ -1,0 +1,11 @@
+{% extends "templates/main/base.html" %}
+
+{% block contents %}
+<h2>새 학원 등록</h2>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">등록</button>
+</form>
+<a href="{% url 'manage' %}" class="btn btn-secondary">목록으로</a>
+{% endblock %}

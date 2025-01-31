@@ -1,0 +1,11 @@
+{% extends "templates/main/base.html" %}
+
+{% block contents %}
+<h2>{{ academy.상호명 }} 삭제</h2>
+<p>정말로 삭제하시겠습니까?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">삭제</button>
+</form>
+<a href="{% url 'manage' %}" class="btn btn-secondary">목록으로</a>
+{% endblock %}

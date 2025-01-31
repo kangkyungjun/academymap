@@ -1,0 +1,60 @@
+{% extends "templates/main/base.html" %}
+
+{% block contents %}
+<h2>학원 관리</h2>
+
+<!-- 검색 폼 -->
+<form method="get" class="mb-3">
+    <input type="text" name="search" placeholder="학원명 검색" value="{{ search_query }}" class="form-control w-25 d-inline-block">
+    <button type="submit" class="btn btn-primary">검색</button>
+</form>
+
+<a href="{% url 'add_academy' %}" class="btn btn-success mb-3">새 학원 추가</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>학원명</th>
+            <th>대표원장</th>
+            <th>전화번호</th>
+            <th>주소</th>
+            <th>수정</th>
+            <th>삭제</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for academy in page_obj %}
+        <tr>
+            <td>{{ academy.상호명 }}</td>
+            <td>{{ academy.대표원장 }}</td>
+            <td>{{ academy.전화번호 }}</td>
+            <td>{{ academy.도로명주소 }}</td>
+            <td><a href="{% url 'modify_academy' academy.pk %}" class="btn btn-warning">수정</a></td>
+            <td><a href="{% url 'delete_academy' academy.pk %}" class="btn btn-danger">삭제</a></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center">검색 결과가 없습니다.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Pagination -->
+<nav>
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">처음</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">이전</a></li>
+        {% endif %}
+
+        <li class="page-item disabled"><span class="page-link">페이지 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">다음</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">마지막</a></li>
+        {% endif %}
+    </ul>
+</nav>
+
+{% endblock %}

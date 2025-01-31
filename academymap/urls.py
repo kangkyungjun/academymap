@@ -1,19 +1,3 @@
-"""
-URL configuration for academymap project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
 from django.urls import path
 from django.conf.urls.static import static
@@ -31,7 +15,13 @@ urlpatterns = [
     path('', main.views.map, name='map'),
     path('api/filtered_academies', main.views.filtered_academies, name='filtered_academies'),
 
+    # 학원 관리 페이지 관련 URL 추가
+    path('manage/', main.views.manage, name='manage'),
+    path('manage/add/', main.views.add_academy, name='add_academy'),
+    path('manage/modify/<int:pk>/', main.views.modify_academy, name='modify_academy'),
+    path('manage/delete/<int:pk>/', main.views.delete_academy, name='delete_academy'),
 
+    # 전체 데이터 업로드 시 사용
     path('data_update', main.views.data_update, name='data_update'),
 ]
 
