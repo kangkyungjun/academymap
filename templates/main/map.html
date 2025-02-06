@@ -3,6 +3,7 @@
 {% block contents %}
 {% load humanize %}
 
+<script defer src=".main/map.js"></script>
 
   <div id="navbar">
     <!-- 검색 아이콘 (왼상단) -->
@@ -13,21 +14,21 @@
 
 
 
-  <!-- 카테고리 버튼 (가로 스크롤) -->
-  <div id="category-container">
-    <div id="category">
-      <button onclick="filterMarkers('전체')">전체</button>
-      <button onclick="filterMarkers('수학')">수학</button>
-      <button onclick="filterMarkers('영어')">영어</button>
-      <button onclick="filterMarkers('과학')">과학</button>
-      <button onclick="filterMarkers('외국어')">외국어</button>
-      <button onclick="filterMarkers('예체능')">예체능</button>
-      <button onclick="filterMarkers('컴퓨터')">컴퓨터</button>
-      <button onclick="filterMarkers('논술')">논술</button>
-      <button onclick="filterMarkers('기타')">기타</button>
-      <button onclick="filterMarkers('독서실/스터디카페')">독서실/스터디카페</button>
-    </div>
+<!-- 카테고리 버튼 (가로 스크롤) -->
+<div id="category-container">
+  <div id="category">
+    <button onclick="filterMarkers(this, '전체')">전체</button>
+    <button onclick="filterMarkers(this, '수학')">수학</button>
+    <button onclick="filterMarkers(this, '영어')">영어</button>
+    <button onclick="filterMarkers(this, '과학')">과학</button>
+    <button onclick="filterMarkers(this, '외국어')">외국어</button>
+    <button onclick="filterMarkers(this, '예체능')">예체능</button>
+    <button onclick="filterMarkers(this, '컴퓨터')">컴퓨터</button>
+    <button onclick="filterMarkers(this, '논술')">논술</button>
+    <button onclick="filterMarkers(this, '기타')">기타</button>
+    <button onclick="filterMarkers(this, '독서실/스터디카페')">독서실/스터디카페</button>
   </div>
+</div>
 
   <!-- 지도 영역 -->
   <div id="map"></div>
@@ -45,319 +46,751 @@
     <button onclick="closePopup()">닫기</button>
   </div>
 </div>
+
+<!-- Toggle Panel Button -->
+<button id="toggle-panel" onclick="togglePanel()">\</button>
+
+<!-- 패널(콘텐츠 영역): 처음엔 숨김 -->
+<div id="panel-container" style="display: none;"></div>
+
 <script>
-/*
-  전역 변수
-  - map: 지도 객체
-  - markers: 현재 지도에 표시 중인 (실제) 마커 배열
-  - selectedCategory: 카테고리 필터
-  - currentMarker: 내 위치 마커
-  - allAcademyData: 서버에서 받아온 학원 데이터 (지도 범위 내)
-  - markerBoxes: 현재 표시된 마커들의 "화면 좌표 Bounding Box" 목록 (겹침 방지용)
-*/
-let map, markers = [];
-let selectedCategory = '전체';
-let currentMarker = null;
-let allAcademyData = [];
-let markerBoxes = []; // {x, y, w, h} 형식으로 저장, 겹침 감지
+  /*
+    전역 변수
+    - map: 지도 객체
+    - markers: 현재 지도에 표시 중인 마커 배열
+    - selectedCategory: 과목(카테고리) 필터 – '전체' 또는 아래 항목 중 하나
+    - currentMarker: 내 위치 마커
+    - allAcademyData: 서버에서 받아온 학원 데이터 (현재 지도 영역 내)
+    - markerBoxes: 기존에 배치한 마커들의 화면 좌표 박스 (줌 아웃 시 클러스터용)
+  */
+  let map, markers = [];
+  let selectedCategory = '전체';
+  let currentMarker = null;
+  let allAcademyData = [];
+  let markerBoxes = [];
 
-// 과목별 색상
-const categoryColors = {
-  '수학': '#FF0000',
-  '영어': '#0000FF',
-  '과학': '#008000',
-  '외국어': '#800080',
-  '예체능': '#FFA500',
-  '컴퓨터': '#FFC0CB',
-  '논술': '#8B4513',
-  '기타': '#808080',
-  '독서실/스터디카페': '#00CED1',
-};
+  // 과목별 색상
+  const categoryColors = {
+    '종합': '#000000',
+    '수학': '#FF0000',
+    '영어': '#0000FF',
+    '과학': '#008000',
+    '외국어': '#800080',
+    '예체능': '#FFA500',
+    '컴퓨터': '#FFC0CB',
+    '논술': '#8B4513',
+    '기타': '#808080',
+    '독서실/스터디카페': '#00CED1'
+  };
 
-// 지도 초기화
-function initMap() {
-  navigator.geolocation.getCurrentPosition(pos => {
-    const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-    map = new naver.maps.Map('map', {
-      center: userLoc,
-      zoom: 17,
-      minZoom: 11,
-      zoomControl: false
+  // 도로명주소 단축 함수
+  function getShortAddress(address) {
+    if (!address) return "";
+    const parts = address.split(" ");
+    if (parts.length >= 3) {
+      return parts.slice(2).join(" ");
+    }
+    return address;
+  }
+
+  // 학원 종류 추정 함수
+  function getAcademyType(ac) {
+    const name = ac.상호명;
+    if (name.indexOf('수학') !== -1) return '수학';
+    if (name.indexOf('영어') !== -1) return '영어';
+    if (name.indexOf('과학') !== -1) return '과학';
+    if (name.indexOf('외국어') !== -1) return '외국어';
+    if (name.indexOf('예체능') !== -1) return '예체능';
+    if (name.indexOf('컴퓨터') !== -1) return '컴퓨터';
+    if (name.indexOf('논술') !== -1) return '논술';
+    if (name.indexOf('독서실') !== -1 || name.indexOf('스터디카페') !== -1)
+      return '독서실/스터디카페';
+    if (name.indexOf('종합') !== -1) return '종합';
+    return '기타';
+  }
+
+  // easing 함수
+  function easeInOutQuad(t) {
+    return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+  }
+
+  // smoothZoom 함수: targetZoom까지 duration(ms) 동안 부드럽게 줌 인
+  function smoothZoom(targetZoom, duration) {
+    let startZoom = map.getZoom();
+    let startTime = performance.now();
+    function animateZoom() {
+      let now = performance.now();
+      let elapsed = now - startTime;
+      let t = Math.min(elapsed / duration, 1);
+      let newZoom = startZoom + (targetZoom - startZoom) * easeInOutQuad(t);
+      map.setZoom(newZoom);
+      if(t < 1) {
+        requestAnimationFrame(animateZoom);
+      }
+    }
+    requestAnimationFrame(animateZoom);
+  }
+
+  // 지도 초기화
+  function initMap() {
+    console.log('지도 초기화 시작');
+    navigator.geolocation.getCurrentPosition(pos => {
+      const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+      map = new naver.maps.Map('map', {
+        center: userLoc,
+        zoom: 17,
+        minZoom: 7,
+        zoomControl: false
+      });
+      console.log('현재 위치:', pos.coords.latitude, pos.coords.longitude);
+      currentMarker = new naver.maps.Marker({
+        position: userLoc,
+        map: map,
+        icon: {
+          content: '<div style="width:18px;height:18px;background-color:red;border-radius:50%;border:3px solid white;"></div>',
+          anchor: new naver.maps.Point(7.5, 7.5)
+        }
+      });
+      fetchAcademies();
+      naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+    }, err => {
+      console.error('위치 정보를 가져오지 못했습니다:', err);
+      const defaultLoc = new naver.maps.LatLng(37.5665, 126.9780);
+      map = new naver.maps.Map('map', {
+        center: defaultLoc,
+        zoom: 17,
+        minZoom: 7,
+        zoomControl: false
+      });
+      fetchAcademies();
     });
+  }
 
-    // 내 위치 마커
-    currentMarker = new naver.maps.Marker({
-      position: userLoc,
+  // 학원 데이터 요청
+  function fetchAcademies() {
+    console.log('학원 데이터 요청, 필터:', selectedCategory);
+    const bounds = map.getBounds();
+    const sw = bounds.getSW();
+    const ne = bounds.getNE();
+    console.log('지도 범위:', sw, ne);
+
+    fetch('/api/filtered_academies', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({
+        swLat: sw._lat,
+        swLng: sw._lng,
+        neLat: ne._lat,
+        neLng: ne._lng,
+        category: selectedCategory
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log('받은 학원 데이터:', data);
+      allAcademyData = data;
+      renderMarkers();
+    })
+    .catch(error => console.error('학원 데이터 요청 에러:', error));
+  }
+
+  // 마커 렌더링
+  function renderMarkers() {
+    clearMarkers();
+    const zoomLevel = map.getZoom();
+    console.log('현재 zoom 레벨:', zoomLevel);
+    if (zoomLevel < 16) {
+      const grouped = {};
+      allAcademyData.forEach(ac => {
+        const regionKey = ac.시군구명 || '기타';
+        if (!grouped[regionKey]) grouped[regionKey] = [];
+        grouped[regionKey].push(ac);
+      });
+      for (const region in grouped) {
+        const arr = grouped[region];
+        if (arr.length === 0) continue;
+        const rep = arr[0];
+        const markerContent = `
+          <div style="min-width:60px; padding:3px 5px; background-color:#333; color:#fff; border-radius:4px; font-size:20px; font-weight:bold; text-align:center;">
+            ${region} (${arr.length})
+          </div>
+        `;
+        console.log(`지역 그룹 마커 배치: ${region} (${arr.length}개)`);
+        placeMarkerNoOverlap(rep.위도, rep.경도, markerContent, region);
+      }
+    } else {
+      let groupedByAddress = {};
+      allAcademyData.forEach(ac => {
+        const address = ac.도로명주소 || "unknown";
+        if (!groupedByAddress[address]) {
+          groupedByAddress[address] = [];
+        }
+        groupedByAddress[address].push(ac);
+      });
+      for (let address in groupedByAddress) {
+        let group = groupedByAddress[address];
+        if (group.length === 1) {
+          let ac = group[0];
+          let markerContent = generateAcademyMarkerContent(ac);
+          placeMarkerAt(ac.위도, ac.경도, markerContent, ac);
+        } else {
+          let representative = group[0];
+          let bubbleContent = generateBubbleMarkerContent(group);
+          placeBubbleMarker(representative.위도, representative.경도, bubbleContent, group);
+        }
+      }
+    }
+  }
+
+  // 개별 학원 마커 생성
+  function placeMarkerAt(lat, lng, content, dataObj) {
+    let marker = new naver.maps.Marker({
+      position: new naver.maps.LatLng(lat, lng),
       map: map,
-      icon: {
-        content: '<div style="width:18px;height:18px;background-color:red;border-radius:50%;border:3px solid white;"></div>',
-        anchor: new naver.maps.Point(7.5, 7.5)
+      icon: { content: content, anchor: new naver.maps.Point(10, 10) },
+      title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''
+    });
+    naver.maps.Event.addListener(marker, 'click', function(){
+      showAcademyInfoPopup(dataObj);
+    });
+    markers.push(marker);
+  }
+
+  // 말풍선(그룹) 마커 생성
+  function placeBubbleMarker(lat, lng, content, group) {
+    let marker = new naver.maps.Marker({
+      position: new naver.maps.LatLng(lat, lng),
+      map: map,
+      icon: { content: content, anchor: new naver.maps.Point(10, 10) },
+      title: group.length + "개 학원"
+    });
+    naver.maps.Event.addListener(marker, 'click', function(){
+      showGroupPopup(group, marker.getPosition());
+    });
+    markers.push(marker);
+  }
+
+  // 줌 아웃 클러스터용 (오버랩 조정 적용)
+  function placeMarkerNoOverlap(lat, lng, content, dataObj) {
+    const proj = map.getProjection();
+    let screenPt = proj.fromCoordToOffset(new naver.maps.LatLng(lat, lng));
+    const markerW = 60, markerH = 24;
+    let overlapped = true;
+    const MAX_ATTEMPTS = 50;
+    let attempts = 0;
+    while (overlapped && attempts < MAX_ATTEMPTS) {
+      overlapped = false;
+      for (let b of markerBoxes) {
+        if (Math.abs(screenPt.x - b.x) < markerW && Math.abs(screenPt.y - b.y) < markerH) {
+          overlapped = true;
+          screenPt.y += markerH + 2;
+          break;
+        }
+      }
+      attempts++;
+    }
+    const finalCoord = proj.fromOffsetToCoord(screenPt);
+    const marker = new naver.maps.Marker({
+      position: finalCoord,
+      map: map,
+      icon: { content: content, anchor: new naver.maps.Point(10, 10) },
+      title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''
+    });
+    naver.maps.Event.addListener(marker, 'click', function() {
+      if (typeof dataObj === 'object' && dataObj.id) {
+        showAcademyInfoPopup(dataObj);
+      } else if (typeof dataObj === 'string') {
+        console.log("지역 클러스터 마커 클릭: " + dataObj);
+        let targetZoom = map.getZoom() + 1;
+        map.panTo(marker.getPosition(), { duration: 500 });
+        smoothZoom(targetZoom, 500);
       }
     });
+    markers.push(marker);
+    markerBoxes.push({ x: screenPt.x, y: screenPt.y, w: markerW, h: markerH });
+  }
 
-    fetchAcademies();
-    naver.maps.Event.addListener(map, 'idle', fetchAcademies);
-
-  }, err => {
-    const defaultLoc = new naver.maps.LatLng(37.5665, 126.9780);
-    map = new naver.maps.Map('map', {
-      center: defaultLoc,
-      zoom: 17,
-      minZoom: 11,
-      zoomControl: false
-    });
-    fetchAcademies();
-  });
-}
-
-// 서버에서 학원 데이터 (현재 범위 + 카테고리) 가져오기
-function fetchAcademies() {
-  const bounds = map.getBounds();
-  const sw = bounds.getSW();
-  const ne = bounds.getNE();
-
-  fetch('/api/filtered_academies', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCSRFToken()
-    },
-    body: JSON.stringify({
-      swLat: sw._lat,
-      swLng: sw._lng,
-      neLat: ne._lat,
-      neLng: ne._lng,
-      category: selectedCategory
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    allAcademyData = data;
-    renderMarkers();
-  })
-  .catch(error => console.error('Error:', error));
-}
-
-// 지역 vs 개별 학원 (간단 구현) - zoom 레벨 16 기준
-function renderMarkers() {
-  clearMarkers();
-
-  const zoomLevel = map.getZoom();
-  if (zoomLevel < 16) {
-    // 시군구명으로 그룹핑
-    const grouped = {};
-    allAcademyData.forEach(ac => {
-      const regionKey = ac.시군구명 || '기타';
-      if (!grouped[regionKey]) grouped[regionKey] = [];
-      grouped[regionKey].push(ac);
-    });
-
-    for (const region in grouped) {
-      const arr = grouped[region];
-      if (arr.length === 0) continue;
-      const rep = arr[0]; // 대표로 첫 번째
-      const markerContent = `
-        <div style="
-          min-width:60px; padding:3px 5px;
-          background-color:#333; color:#fff;
-          border-radius:4px; font-size:20px;
-          font-weight:bold; text-align:center;
-        ">
-          ${region} (${arr.length})
+  // 단일 학원 마커 콘텐츠 생성
+  function generateAcademyMarkerContent(ac) {
+    if (selectedCategory === '전체') {
+      const academyType = getAcademyType(ac);
+      const color = categoryColors[academyType] || 'blue';
+      return `
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>
+          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>
         </div>
       `;
-      placeMarkerNoOverlap(rep.위도, rep.경도, markerContent, region);
+    } else {
+      const color = categoryColors[selectedCategory];
+      return `
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>
+          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>
+        </div>
+      `;
     }
-
-  } else {
-    // 개별 학원 표시
-    allAcademyData.forEach(ac => {
-      const category = ac.category;
-      const color = categoryColors[category] || null;
-
-      let markerContent;
-      if (color) {
-        markerContent = `
-          <div style="
-            min-width:60px;
-            padding:3px 5px;
-            background-color:${color};
-            color:white;
-            border-radius:4px;
-            font-size:12px;
-            font-weight:bold;
-            text-align:center;
-          ">
-            ${ac.상호명}
-          </div>
-        `;
-      } else {
-        markerContent = `
-          <div style="
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-          ">
-            <div style="
-              width:15px;
-              height:15px;
-              background-color:blue;
-              border:2px solid white;
-              border-radius:50%;
-              margin-bottom:2px;
-            "></div>
-            <span style="
-              font-size:13px;
-              font-weight:bold;
-              padding:2px 4px;
-              border-radius:4px;
-            ">
-              ${ac.상호명}
-            </span>
-          </div>
-        `;
-      }
-
-      placeMarkerNoOverlap(ac.위도, ac.경도, markerContent, ac);
-    });
-  }
-}
-
-/**
- * 겹치지 않게 마커 배치
- * 1) 지도 좌표 -> 화면 좌표 변환
- * 2) 이미 사용 중인 box들과 겹치면 y 좌표를 조금씩 내려서 회피
- * 3) 최종 화면 좌표 -> 지도 좌표 역변환 -> Marker 생성
- */
-function placeMarkerNoOverlap(lat, lng, content, dataObj) {
-  // 1) 지도 -> 화면 좌표
-  const proj = map.getProjection();
-  let screenPt = proj.fromCoordToOffset(new naver.maps.LatLng(lat, lng));
-
-  // 마커 박스 크기(가정)
-  const markerW = 60, markerH = 24;
-  // 만약 상호명이 긴 경우 좀 더 넉넉히 잡을 수도 있음
-
-  // 2) 기존 마커와 겹치지 않을 때까지 반복
-  let overlapped = true;
-  const MAX_ATTEMPTS = 50; // 무한루프 방지
-  let attempts = 0;
-  while (overlapped && attempts < MAX_ATTEMPTS) {
-    overlapped = false;
-    for (let b of markerBoxes) {
-      // 충돌 여부 체크 (간단 AABB 충돌)
-      if (Math.abs(screenPt.x - b.x) < (markerW) &&
-          Math.abs(screenPt.y - b.y) < (markerH)) {
-        // 겹침
-        overlapped = true;
-        // Y 좌표를 약간 아래로 밀어본다 (또는 x+random 등)
-        screenPt.y += markerH + 2;
-        break;
-      }
-    }
-    attempts++;
   }
 
-  // 3) 최종 화면 좌표 -> 지도 좌표
-  const finalCoord = proj.fromOffsetToCoord(screenPt);
+  // 말풍선(그룹) 마커 콘텐츠 생성
+  function generateBubbleMarkerContent(group) {
+    let count = group.length;
+    let shortAddress = getShortAddress(group[0].도로명주소);
+    let repType = getAcademyType(group[0]);
+    let color = categoryColors[repType] || "#ff5733";
+    let content = `
+      <div style="position: relative; display: inline-block;">
+        <div style="background-color: ${color}; color: white; border-radius: 10px; padding: 5px 10px; font-size: 12px; text-align: center;">
+          ${shortAddress}<br/>(${count}개 학원)
+        </div>
+        <div style="position: absolute; left: 50%; transform: translateX(-50%); top: 100%;">
+          <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid ${color};"></div>
+        </div>
+      </div>
+    `;
+    return content;
+  }
 
-  const marker = new naver.maps.Marker({
-    position: finalCoord,
-    map: map,
-    icon: {
-      content: content,
-      anchor: new naver.maps.Point(10, 10)
-    },
-    // dataObj가 시군구명 등이면 title에 써도 좋고,
-    // academy 객체면 academy.상호명 등
-    title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''
-  });
+  // 그룹 팝업 표시
+  function showGroupPopup(group, position) {
+    const popup = document.getElementById('academyPopup');
+    const popupContent = document.getElementById('popupContent');
+    let shortAddress = getShortAddress(group[0].도로명주소);
+    let content = `<h3>${shortAddress} (${group.length}개 학원)</h3><ul>`;
+    group.forEach(ac => { content += `<li><a href="/academy/${ac.id}">${ac.상호명}</a></li>`; });
+    content += `</ul>`;
+    popupContent.innerHTML = content;
+    popup.classList.add('active');
+  }
 
-  // 클릭 이벤트 (팝업)
-  naver.maps.Event.addListener(marker, 'click', function() {
-    if (typeof dataObj === 'object' && dataObj.id) {
-      showAcademyInfoPopup(dataObj);
-    }
-  });
+  // 개별 학원 팝업 표시
+  function showAcademyInfoPopup(academy) {
+    const popup = document.getElementById('academyPopup');
+    const popupContent = document.getElementById('popupContent');
+    popupContent.innerHTML = `
+      <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>
+      <p><strong>전화번호:</strong> ${academy.전화번호 || '정보 없음'}</p>
+      <p><strong>주소:</strong> ${academy.도로명주소 || '정보 없음'}</p>
+    `;
+    popup.classList.add('active');
+  }
 
-  markers.push(marker);
+  function closePopup() {
+    document.getElementById('academyPopup').classList.remove('active');
+  }
 
-  // 새로 배치한 마커 박스 등록
-  markerBoxes.push({
-    x: screenPt.x,
-    y: screenPt.y,
-    w: markerW,
-    h: markerH
-  });
-}
+  // 모든 마커 제거
+  function clearMarkers() {
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+    markerBoxes = [];
+  }
 
-function showAcademyInfoPopup(academy) {
-  const popup = document.getElementById('academyPopup');
-  const popupContent = document.getElementById('popupContent');
-
-  popupContent.innerHTML = `
-    <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>
-    <p><strong>전화번호:</strong> ${academy.전화번호 || '정보 없음'}</p>
-    <p><strong>주소:</strong> ${academy.도로명주소 || '정보 없음'}</p>
-  `;
-  popup.classList.add('active');
-}
-
-function closePopup() {
-  document.getElementById('academyPopup').classList.remove('active');
-}
-
-// 모든 마커 지우기 + markerBoxes 초기화
-function clearMarkers() {
-  markers.forEach(m => m.setMap(null));
-  markers = [];
-  markerBoxes = [];
-}
-
-function filterMarkers(category) {
+function filterMarkers(btn, category) {
   selectedCategory = category;
+  console.log('카테고리 필터 변경:', category);
+  // 모든 버튼에서 active 클래스 제거
+  const buttons = document.querySelectorAll('#category button');
+  buttons.forEach(button => button.classList.remove('active'));
+  // 현재 클릭한 버튼에 active 클래스 추가
+  btn.classList.add('active');
+  // 학원 데이터 새로 불러오기
   fetchAcademies();
 }
 
-function moveToCurrentLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-      map.setCenter(userLoc);
-      map.setZoom(17);
-      if (currentMarker) {
-        currentMarker.setPosition(userLoc);
-      } else {
-        currentMarker = new naver.maps.Marker({
-          position: userLoc,
-          map: map,
-          icon: {
-            content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
-            anchor: new naver.maps.Point(7.5, 7.5)
-          }
-        });
+  function moveToCurrentLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+        map.setCenter(userLoc);
+        map.setZoom(17);
+        if (currentMarker) {
+          currentMarker.setPosition(userLoc);
+        } else {
+          currentMarker = new naver.maps.Marker({
+            position: userLoc,
+            map: map,
+            icon: {
+              content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
+              anchor: new naver.maps.Point(7.5, 7.5)
+            }
+          });
+        }
+        console.log('내 위치로 이동:', pos.coords.latitude, pos.coords.longitude);
+      }, () => { alert('위치 정보를 가져올 수 없습니다.'); });
+    } else { alert('이 브라우저는 위치 정보를 지원하지 않습니다.'); }
+  }
+
+  function getCSRFToken() {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.startsWith('csrftoken=')) {
+        return cookie.substring('csrftoken='.length);
       }
-    }, () => {
-      alert('위치 정보를 가져올 수 없습니다.');
-    });
-  } else {
-    alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
-  }
-}
-
-function getCSRFToken() {
-  const cookies = document.cookie.split(';');
-  for (let i = 0; i < cookies.length; i++) {
-    const cookie = cookies[i].trim();
-    if (cookie.startsWith('csrftoken=')) {
-      return cookie.substring('csrftoken='.length);
     }
+    return '';
   }
-  return '';
-}
 
-// 지도 로드 후 initMap
-naver.maps.onJSContentLoaded = initMap;
+  naver.maps.onJSContentLoaded = initMap;
+
+function togglePanel() {
+  var panel = document.getElementById("panel-container");
+  var button = document.getElementById("toggle-panel");
+
+  // 패널이 숨겨져 있으면 보여주고, 그렇지 않으면 숨김
+  if (panel.style.display === "none" || panel.style.display === "") {
+    // 버튼의 높이를 가져와 패널의 높이를 설정
+    var btnHeight = button.offsetHeight;
+    panel.style.height = btnHeight + "px";
+    panel.style.display = "block";
+  } else {
+    panel.style.display = "none";
+  }
+}
 </script>
+
+
+
+
+
+
+<!--<script>--    기존 코드!!!!!!! 마커로만 표현하는 방식!!!  >
+<!--  /*-->
+<!--    전역 변수-->
+<!--    - map: 지도 객체-->
+<!--    - markers: 현재 지도에 표시 중인 마커 배열-->
+<!--    - selectedCategory: 과목(카테고리) 필터 – '전체' 또는 아래 항목 중 하나-->
+<!--    - currentMarker: 내 위치 마커-->
+<!--    - allAcademyData: 서버에서 받아온 학원 데이터 (지도 범위 내)-->
+<!--    - markerBoxes: 현재 표시된 마커들의 "화면 좌표 Bounding Box" 목록 (겹침 방지용)-->
+<!--  */-->
+<!--  let map, markers = [];-->
+<!--  let selectedCategory = '전체';-->
+<!--  let currentMarker = null;-->
+<!--  let allAcademyData = [];-->
+<!--  let markerBoxes = [];-->
+
+<!--  // 과목별 색상 – views에서 사용할 과목 필터 키와 일치하도록 함-->
+<!--  // (과목을 고를땐 아래 항목을 사용하면 돼)-->
+<!--  const categoryColors = {-->
+<!--    '종합': '#000000',         // 종합은 검정색 (원하는 색상으로 수정 가능)-->
+<!--    '수학': '#FF0000',-->
+<!--    '영어': '#0000FF',-->
+<!--    '과학': '#008000',-->
+<!--    '외국어': '#800080',-->
+<!--    '예체능': '#FFA500',-->
+<!--    '컴퓨터': '#FFC0CB',-->
+<!--    '논술': '#8B4513',-->
+<!--    '기타': '#808080',-->
+<!--    '독서실/스터디카페': '#00CED1'-->
+<!--  };-->
+
+<!--  // academy의 학원 종류(과목)를 academy 이름(상호명)에서 추정하는 함수-->
+<!--  // (실제 데이터에 과목 정보가 없으므로, 상호명에 특정 키워드가 포함되었는지 검사)-->
+<!--  function getAcademyType(ac) {-->
+<!--    const name = ac.상호명;-->
+<!--    if (name.indexOf('수학') !== -1) return '수학';-->
+<!--    if (name.indexOf('영어') !== -1) return '영어';-->
+<!--    if (name.indexOf('과학') !== -1) return '과학';-->
+<!--    if (name.indexOf('외국어') !== -1) return '외국어';-->
+<!--    if (name.indexOf('예체능') !== -1) return '예체능';-->
+<!--    if (name.indexOf('컴퓨터') !== -1) return '컴퓨터';-->
+<!--    if (name.indexOf('논술') !== -1) return '논술';-->
+<!--    if (name.indexOf('독서실') !== -1 || name.indexOf('스터디카페') !== -1)-->
+<!--      return '독서실/스터디카페';-->
+<!--    if (name.indexOf('종합') !== -1) return '종합';-->
+<!--    return '기타';-->
+<!--  }-->
+
+<!--  // 지도 초기화-->
+<!--  function initMap() {-->
+<!--    console.log('지도 초기화 시작');-->
+<!--    navigator.geolocation.getCurrentPosition(pos => {-->
+<!--      const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);-->
+<!--      map = new naver.maps.Map('map', {-->
+<!--        center: userLoc,-->
+<!--        zoom: 17,-->
+<!--        minZoom: 7,-->
+<!--        zoomControl: false-->
+<!--      });-->
+<!--      console.log('현재 위치:', pos.coords.latitude, pos.coords.longitude);-->
+<!--      // 내 위치 마커 생성-->
+<!--      currentMarker = new naver.maps.Marker({-->
+<!--        position: userLoc,-->
+<!--        map: map,-->
+<!--        icon: {-->
+<!--          content: '<div style="width:18px;height:18px;background-color:red;border-radius:50%;border:3px solid white;"></div>',-->
+<!--          anchor: new naver.maps.Point(7.5, 7.5)-->
+<!--        }-->
+<!--      });-->
+<!--      fetchAcademies();-->
+<!--      naver.maps.Event.addListener(map, 'idle', fetchAcademies);-->
+<!--    }, err => {-->
+<!--      console.error('위치 정보를 가져오지 못했습니다:', err);-->
+<!--      const defaultLoc = new naver.maps.LatLng(37.5665, 126.9780);-->
+<!--      map = new naver.maps.Map('map', {-->
+<!--        center: defaultLoc,-->
+<!--        zoom: 17,-->
+<!--        minZoom: 7,-->
+<!--        zoomControl: false-->
+<!--      });-->
+<!--      fetchAcademies();-->
+<!--    });-->
+<!--  }-->
+
+<!--  // 서버에서 학원 데이터를 (현재 지도 영역 + 과목 필터)에 맞게 가져오기-->
+<!--  function fetchAcademies() {-->
+<!--    console.log('학원 데이터 요청, 필터:', selectedCategory);-->
+<!--    const bounds = map.getBounds();-->
+<!--    const sw = bounds.getSW();-->
+<!--    const ne = bounds.getNE();-->
+<!--    console.log('지도 범위:', sw, ne);-->
+
+<!--    fetch('/api/filtered_academies', {-->
+<!--      method: 'POST',-->
+<!--      headers: {-->
+<!--        'Content-Type': 'application/json',-->
+<!--        'X-CSRFToken': getCSRFToken()-->
+<!--      },-->
+<!--      // views에서는 category 값을 아래 항목(예, '수학', '영어', '종합' 등)을 기준으로 필터링함-->
+<!--      body: JSON.stringify({-->
+<!--        swLat: sw._lat,-->
+<!--        swLng: sw._lng,-->
+<!--        neLat: ne._lat,-->
+<!--        neLng: ne._lng,-->
+<!--        category: selectedCategory-->
+<!--      })-->
+<!--    })-->
+<!--    .then(res => res.json())-->
+<!--    .then(data => {-->
+<!--      console.log('받은 학원 데이터:', data);-->
+<!--      allAcademyData = data;-->
+<!--      renderMarkers();-->
+<!--    })-->
+<!--    .catch(error => console.error('학원 데이터 요청 에러:', error));-->
+<!--  }-->
+
+<!--  // 지도 확대 수준에 따라 마커를 그룹핑(줌 아웃 시 지역 클러스터) 또는 개별 표시(줌 인 시)-->
+<!--  function renderMarkers() {-->
+<!--    clearMarkers();-->
+<!--    const zoomLevel = map.getZoom();-->
+<!--    console.log('현재 zoom 레벨:', zoomLevel);-->
+<!--    if (zoomLevel < 16) {-->
+<!--      // 시군구명으로 그룹핑하여 표시 (지역별 그룹 아이콘 사용)-->
+<!--      const grouped = {};-->
+<!--      allAcademyData.forEach(ac => {-->
+<!--        const regionKey = ac.시군구명 || '기타';-->
+<!--        if (!grouped[regionKey]) grouped[regionKey] = [];-->
+<!--        grouped[regionKey].push(ac);-->
+<!--      });-->
+<!--      for (const region in grouped) {-->
+<!--        const arr = grouped[region];-->
+<!--        if (arr.length === 0) continue;-->
+<!--        const rep = arr[0]; // 대표 학원 선택-->
+<!--        const markerContent = `-->
+<!--          <div style="-->
+<!--            min-width:60px; padding:3px 5px;-->
+<!--            background-color:#333; color:#fff;-->
+<!--            border-radius:4px; font-size:20px;-->
+<!--            font-weight:bold; text-align:center;-->
+<!--          ">-->
+<!--            ${region} (${arr.length})-->
+<!--          </div>-->
+<!--        `;-->
+<!--        console.log(`지역 그룹 마커 배치: ${region} (${arr.length}개)`);-->
+<!--        // dataObj로 지역명을 전달 (문자열이면 클러스터로 인식)-->
+<!--        placeMarkerNoOverlap(rep.위도, rep.경도, markerContent, region);-->
+<!--      }-->
+<!--    } else {-->
+<!--      // 개별 학원 표시 (동그라미 모양, 텍스트 스타일 동일)-->
+<!--      allAcademyData.forEach(ac => {-->
+<!--        let markerContent;-->
+<!--        if (selectedCategory === '전체') {-->
+<!--          // 각 academy별로 학원 종류(과목)를 추정하여 색상 적용-->
+<!--          const academyType = getAcademyType(ac);-->
+<!--          const color = categoryColors[academyType] || 'blue';-->
+<!--          console.log(`개별 학원 마커 - ${ac.상호명}, 추정 과목: ${academyType}, 색상: ${color}`);-->
+<!--          markerContent = `-->
+<!--            <div style="display:flex; flex-direction:column; align-items:center;">-->
+<!--              <div style="-->
+<!--                width:15px;-->
+<!--                height:15px;-->
+<!--                background-color:${color};-->
+<!--                border:2px solid white;-->
+<!--                border-radius:50%;-->
+<!--                margin-bottom:2px;-->
+<!--              "></div>-->
+<!--              <span style="-->
+<!--                font-size:13px;-->
+<!--                font-weight:bold;-->
+<!--                padding:2px 4px;-->
+<!--                border-radius:4px;-->
+<!--              ">-->
+<!--                ${ac.상호명}-->
+<!--              </span>-->
+<!--            </div>-->
+<!--          `;-->
+<!--        } else {-->
+<!--          // 특정 과목 필터 적용 시 모든 학원이 동일한 색상으로 표시됨-->
+<!--          const color = categoryColors[selectedCategory];-->
+<!--          console.log(`개별 학원 마커 - ${ac.상호명}, 필터된 과목: ${selectedCategory}, 색상: ${color}`);-->
+<!--          markerContent = `-->
+<!--            <div style="display:flex; flex-direction:column; align-items:center;">-->
+<!--              <div style="-->
+<!--                width:15px;-->
+<!--                height:15px;-->
+<!--                background-color:${color};-->
+<!--                border:2px solid white;-->
+<!--                border-radius:50%;-->
+<!--                margin-bottom:2px;-->
+<!--              "></div>-->
+<!--              <span style="-->
+<!--                font-size:13px;-->
+<!--                font-weight:bold;-->
+<!--                padding:2px 4px;-->
+<!--                border-radius:4px;-->
+<!--              ">-->
+<!--                ${ac.상호명}-->
+<!--              </span>-->
+<!--            </div>-->
+<!--          `;-->
+<!--        }-->
+<!--        placeMarkerNoOverlap(ac.위도, ac.경도, markerContent, ac);-->
+<!--      });-->
+<!--    }-->
+<!--  }-->
+
+<!--  /**-->
+<!--   * 지도 좌표 → 화면 좌표 변환 후, 기존 마커와 겹치지 않도록 배치한 후-->
+<!--   * 다시 지도 좌표로 변환하여 마커 생성-->
+<!--   * dataObj는 개별 학원 객체이면 팝업 표시, 문자열이면(지역 클러스터) 줌 인 이벤트 처리-->
+<!--   */-->
+<!--  function placeMarkerNoOverlap(lat, lng, content, dataObj) {-->
+<!--    const proj = map.getProjection();-->
+<!--    let screenPt = proj.fromCoordToOffset(new naver.maps.LatLng(lat, lng));-->
+<!--    const markerW = 60, markerH = 24;-->
+<!--    let overlapped = true;-->
+<!--    const MAX_ATTEMPTS = 50;-->
+<!--    let attempts = 0;-->
+<!--    while (overlapped && attempts < MAX_ATTEMPTS) {-->
+<!--      overlapped = false;-->
+<!--      for (let b of markerBoxes) {-->
+<!--        if (Math.abs(screenPt.x - b.x) < markerW && Math.abs(screenPt.y - b.y) < markerH) {-->
+<!--          overlapped = true;-->
+<!--          screenPt.y += markerH + 2;-->
+<!--          break;-->
+<!--        }-->
+<!--      }-->
+<!--      attempts++;-->
+<!--    }-->
+<!--    const finalCoord = proj.fromOffsetToCoord(screenPt);-->
+<!--    const marker = new naver.maps.Marker({-->
+<!--      position: finalCoord,-->
+<!--      map: map,-->
+<!--      icon: {-->
+<!--        content: content,-->
+<!--        anchor: new naver.maps.Point(10, 10)-->
+<!--      },-->
+<!--      title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''-->
+<!--    });-->
+<!--    // 마커 클릭 이벤트 처리-->
+<!--    naver.maps.Event.addListener(marker, 'click', function() {-->
+<!--      if (typeof dataObj === 'object' && dataObj.id) {-->
+<!--        // 개별 학원: 팝업 열기-->
+<!--        showAcademyInfoPopup(dataObj);-->
+<!--      } else if (typeof dataObj === 'string') {-->
+<!--        // 지역 클러스터: 클릭 시 줌 인 처리-->
+<!--        console.log("Region cluster marker clicked for region: " + dataObj);-->
+<!--        // 예: 줌 레벨을 17로 설정하고 클러스터 중심으로 이동-->
+<!--        map.setZoom(17);-->
+<!--        map.setCenter(marker.getPosition());-->
+<!--      }-->
+<!--    });-->
+<!--    markers.push(marker);-->
+<!--    markerBoxes.push({-->
+<!--      x: screenPt.x,-->
+<!--      y: screenPt.y,-->
+<!--      w: markerW,-->
+<!--      h: markerH-->
+<!--    });-->
+<!--  }-->
+
+<!--  function showAcademyInfoPopup(academy) {-->
+<!--    const popup = document.getElementById('academyPopup');-->
+<!--    const popupContent = document.getElementById('popupContent');-->
+<!--    popupContent.innerHTML = `-->
+<!--      <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>-->
+<!--      <p><strong>전화번호:</strong> ${academy.전화번호 || '정보 없음'}</p>-->
+<!--      <p><strong>주소:</strong> ${academy.도로명주소 || '정보 없음'}</p>-->
+<!--    `;-->
+<!--    popup.classList.add('active');-->
+<!--  }-->
+
+<!--  function closePopup() {-->
+<!--    document.getElementById('academyPopup').classList.remove('active');-->
+<!--  }-->
+
+<!--  // 모든 마커 제거 및 markerBoxes 초기화-->
+<!--  function clearMarkers() {-->
+<!--    markers.forEach(m => m.setMap(null));-->
+<!--    markers = [];-->
+<!--    markerBoxes = [];-->
+<!--  }-->
+
+<!--  // 과목 필터 변경 – 버튼 클릭 시 호출 (예: '전체', '수학', '영어', '종합' 등)-->
+<!--  function filterMarkers(category) {-->
+<!--    selectedCategory = category;-->
+<!--    console.log('카테고리 필터 변경:', category);-->
+<!--    fetchAcademies();-->
+<!--  }-->
+
+<!--  function moveToCurrentLocation() {-->
+<!--    if (navigator.geolocation) {-->
+<!--      navigator.geolocation.getCurrentPosition(pos => {-->
+<!--        const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);-->
+<!--        map.setCenter(userLoc);-->
+<!--        map.setZoom(17);-->
+<!--        if (currentMarker) {-->
+<!--          currentMarker.setPosition(userLoc);-->
+<!--        } else {-->
+<!--          currentMarker = new naver.maps.Marker({-->
+<!--            position: userLoc,-->
+<!--            map: map,-->
+<!--            icon: {-->
+<!--              content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',-->
+<!--              anchor: new naver.maps.Point(7.5, 7.5)-->
+<!--            }-->
+<!--          });-->
+<!--        }-->
+<!--        console.log('내 위치로 이동:', pos.coords.latitude, pos.coords.longitude);-->
+<!--      }, () => {-->
+<!--        alert('위치 정보를 가져올 수 없습니다.');-->
+<!--      });-->
+<!--    } else {-->
+<!--      alert('이 브라우저는 위치 정보를 지원하지 않습니다.');-->
+<!--    }-->
+<!--  }-->
+
+<!--  function getCSRFToken() {-->
+<!--    const cookies = document.cookie.split(';');-->
+<!--    for (let i = 0; i < cookies.length; i++) {-->
+<!--      const cookie = cookies[i].trim();-->
+<!--      if (cookie.startsWith('csrftoken=')) {-->
+<!--        return cookie.substring('csrftoken='.length);-->
+<!--      }-->
+<!--    }-->
+<!--    return '';-->
+<!--  }-->
+
+<!--  // 지도 로드 후 initMap 실행-->
+<!--  naver.maps.onJSContentLoaded = initMap;-->
+<!--</script>-->
+
+
+
 
 {% endblock %}

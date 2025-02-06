@@ -511,22 +511,29 @@ a:hover {
       display: inline-flex;
       gap: 0.3rem;
     }
-    #category button {
-      flex: 0 0 auto;
-      padding: 0.2rem 0.35rem;
-      font-size: 0.85rem;
-      cursor: pointer;
-      border: 1px solid lightgray;
-      border-radius: 0.3rem;
-      background-color: #fff;
-      color: #008B8B;
-      white-space: nowrap;
-    }
-    #category button:hover,
-    #category button.active {
-      background-color: #008B8B;
-      color: #fff;
-    }
+#category button {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid lightgray;
+  border-radius: 0.3rem;
+  background-color: #fff;
+  color: #008B8B;
+  white-space: nowrap;
+}
+
+/* 마우스 오버 시 */
+#category button:hover {
+  background-color: #008B8B;
+  color: #fff;
+}
+
+/* active 클래스가 적용된 버튼 (예: 수학 버튼 선택 시) */
+#category button.active {
+  background-color: #008000;  /* 예: 초록색 */
+  color: #fff;
+}
 
 
     /* 내 위치 버튼 (오른쪽 하단) */
@@ -603,6 +610,35 @@ a:hover {
         font-size: 0.85rem;
       }
     }
+
+/* Toggle Panel 버튼 스타일 */
+#toggle-panel {
+  position: absolute;
+  left: 5%;
+  top: 18%;
+  width: 40px;               /* 원하는 크기로 조정 (예: 40px) */
+  height: 40px;              /* 원형이므로 width와 동일하게 */
+  border-radius: 50%;
+  background-color: #008B8B; /* 원하는 배경색 */
+  color: #fff;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 2000;             /* 지도 위에 보이도록 충분한 z-index */
+  transition: background-color 0.2s;
+}
+
+/* 패널 컨테이너 스타일 */
+#panel-container {
+  position: absolute;
+  top: 18%;                /* 버튼과 동일한 상단 위치로 지정 (원하는 위치로 조정 가능) */
+  left: 0;
+  width: 100%;
+  /* 높이는 JavaScript에서 버튼 높이와 동일하게 설정할 예정 */
+  background-color: rgba(0, 0, 0, 0.1); /* 임시 배경색 (나중에 내용 추가 시 수정 가능) */
+  z-index: 1500;
+  transition: height 0.2s ease-in-out;
+}
   </style>
 
 
