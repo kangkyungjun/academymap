@@ -1,12 +1,13 @@
 from django.shortcuts import render
-
+import json
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, F, Count
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
+from django.db.models.functions import Cast
+from django.db.models import FloatField, Min, Max, Q
 from django.core.paginator import Paginator
 import pandas as pd
 
@@ -47,13 +48,11 @@ def academy(request, pk):
     context = {'academy': academy}
     return render(request, 'main/academy.html', context)
 
-
-@csrf_exempt  # CSRF 예외 처리
 def academy_list(request):
     # 시도명 목록 (초기화)
     시도명_list = Data.objects.values_list('시도명', flat=True).distinct()
 
-    # 선택된 값 가져오기
+    # GET 파라미터로 필터 값 가져오기
     시도명 = request.GET.get('시도명', '')
     시군구명 = request.GET.get('시군구명', '')
     행정동명 = request.GET.get('행정동명', '')
@@ -70,10 +69,9 @@ def academy_list(request):
         '컴퓨터': '과목_컴퓨터',
         '논술': '과목_논술',
         '기타': '과목_기타',
-        '독서실 / 스터디카페': '과목_독서실스터디카페',
+        '독서실/스터디카페': '과목_독서실스터디카페',
     }
 
-    # 필터링 조건
     queryset = Data.objects.all()
     if 시도명:
         queryset = queryset.filter(시도명=시도명)
@@ -85,16 +83,38 @@ def academy_list(request):
         filter_field = {과목_mapping[과목]: True}
         queryset = queryset.filter(**filter_field)
 
-    # Paginator 적용 (페이지당 30개씩)
-    paginator = Paginator(queryset, 1000)
-    page = request.GET.get('page')  # 현재 페이지 번호
+    # 가격 범위 필터 적용 (GET 파라미터 'price_min', 'price_max')
+    price_min = request.GET.get('price_min', None)
+    price_max = request.GET.get('price_max', None)
+    queryset = queryset.annotate(수강료평균_float=Cast('수강료_평균', FloatField()))
+    if price_min:
+        try:
+            price_min_val = float(price_min)
+            queryset = queryset.filter(수강료평균_float__gte=price_min_val)
+        except ValueError:
+            pass
+    if price_max:
+        try:
+            price_max_val = float(price_max)
+            queryset = queryset.filter(수강료평균_float__lte=price_max_val)
+        except ValueError:
+            pass
 
+    # 페이지네이션 설정 (예, 한 페이지당 1000개)
+    paginator = Paginator(queryset, 1000)
+    page = request.GET.get('page')
     try:
         academylist = paginator.page(page)
     except PageNotAnInteger:
-        academylist = paginator.page(1)  # 페이지 번호가 없으면 1페이지
+        academylist = paginator.page(1)
     except EmptyPage:
-        academylist = paginator.page(paginator.num_pages)  # 페이지 범위를 벗어나면 마지막 페이지
+        academylist = paginator.page(paginator.num_pages)
+
+    # 현재 데이터의 최소/최대 수강료 값을 구함
+    price_range = Data.objects.aggregate(
+       min_price=Min(Cast('수강료_평균', FloatField())),
+       max_price=Max(Cast('수강료_평균', FloatField()))
+    )
 
     context = {
         '시도명_list': 시도명_list,
@@ -104,8 +124,13 @@ def academy_list(request):
         '과목_selected': 과목,
         'academylist': academylist,
         '과목_list': ['종합', '수학', '영어', '과학', '외국어', '예체능', '컴퓨터', '논술', '기타', '독서실/스터디카페'],
+        'min_price': price_range['min_price'] or 0,
+        'max_price': price_range['max_price'] or 100,
     }
     return render(request, 'main/academy_list.html', context)
+
+
+
 
 def get_regions(request):
     level = request.GET.get('level')
@@ -122,22 +147,27 @@ def get_regions(request):
 
 
 def map(request):
-    return render(request, 'main/map.html')
+    price_range = Data.objects.aggregate(
+       min_price=Min(Cast('수강료_평균', FloatField())),
+       max_price=Max(Cast('수강료_평균', FloatField()))
+    )
+    context = {
+       'min_price': price_range['min_price'] or 0,
+       'max_price': price_range['max_price'] or 100,
+    }
+    return render(request, 'main/map.html', context)
 
 # 동적으로 학원 데이터를 필터링하여 제공하는 API
+@csrf_exempt
 def filtered_academies(request):
-    import json
     body = json.loads(request.body)
-
-    # 지도 영역 좌표
     sw_lat = body.get('swLat')
     sw_lng = body.get('swLng')
     ne_lat = body.get('neLat')
     ne_lng = body.get('neLng')
-
-    # 과목 필터
     category = body.get('category', '')
 
+    # 과목 필드 매핑
     과목_mapping = {
         '종합': '과목_종합',
         '수학': '과목_수학',
@@ -151,7 +181,6 @@ def filtered_academies(request):
         '독서실/스터디카페': '과목_독서실스터디카페',
     }
 
-    # 위치 범위 필터
     queryset = Data.objects.filter(
         위도__gte=sw_lat,
         위도__lte=ne_lat,
@@ -159,12 +188,28 @@ def filtered_academies(request):
         경도__lte=ne_lng,
     )
 
-    # 과목 필터 (BooleanField)
+    # 과목 필터 적용 (전체가 아닐 경우)
     if category and category != '전체' and category in 과목_mapping:
         filter_field = {과목_mapping[category]: True}
         queryset = queryset.filter(**filter_field)
 
-    # 기존 필드 + '시군구명' 추가
+    # 가격 범위 필터 적용 (수강료_평균을 float으로 캐스팅)
+    priceMin = body.get('priceMin', None)
+    priceMax = body.get('priceMax', None)
+    queryset = queryset.annotate(수강료평균_float=Cast('수강료_평균', FloatField()))
+    if priceMin:
+        try:
+            priceMin_val = float(priceMin)
+            queryset = queryset.filter(수강료평균_float__gte=priceMin_val)
+        except ValueError:
+            pass
+    if priceMax:
+        try:
+            priceMax_val = float(priceMax)
+            queryset = queryset.filter(수강료평균_float__lte=priceMax_val)
+        except ValueError:
+            pass
+
     data = list(
         queryset.values(
             'id',
@@ -173,10 +218,9 @@ def filtered_academies(request):
             '경도',
             '도로명주소',
             '전화번호',
-            '시군구명',   # 시군구명 필드를 함께 반환
+            '시군구명',
         )
     )
-
     return JsonResponse(data, safe=False)
 
 
