@@ -1,193 +1,195 @@
 {% extends "templates/main/base.html" %}
-{% block contents %}
-
 {% load static %}
 {% load humanize %}
-
-
-<!-- 상단 20vh 영역 -->
+{% block contents %}
 <div class="top-bar-container">
-
-  <!-- 첫 줄: 뒤로가기, 아카데미맵, 오른쪽 -> search.html (POST /search) -->
   <div class="top-row">
     <a class="go-back-btn" href="javascript:history.back()">&lt;</a>
-    <div class="title-bar"> <a href="{% url 'map' %}">아카데미맵</a></div>
+    <div class="title-bar"><a href="{% url 'map' %}">아카데미맵</a></div>
     <div class="search-icon">
-    <a href="{% url 'search' %}"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></a>
+      <a href="{% url 'search' %}">
+        <span class="material-symbols-outlined" style="font-size:1.8rem;">search</span>
+      </a>
+    </div>
   </div>
-  </div>
-
-  <!-- 두 번째 줄: 필터 (시도,시군구,행정동,과목 + '검색'버튼) => GET /academy_list -->
-  <form action="{% url 'academy_list' %}" method="get" style="width:100%; margin:0; padding:0;" id="search_form">
+  <!-- 필터 폼: 시도/시군구/행정동/과목 + 수강료_평균 범위 슬라이더 -->
+  <form action="{% url 'academy_list' %}" method="get" id="search_form" style="width:100%; margin:0; padding:0;">
     <div class="filters-container">
       <div class="filters-inner">
-        <!-- 시도명 -->
         <div class="filter-select-wrap">
           <label for="시도명">시도명</label>
           <select name="시도명" id="시도명" class="filter-select">
             <option value="">-- 선택 --</option>
             {% for region in 시도명_list %}
-            <option value="{{ region }}" {% if region == 시도명_selected %}selected{% endif %}>
-              {{ region }}
-            </option>
+              <option value="{{ region }}" {% if region == 시도명_selected %}selected{% endif %}>{{ region }}</option>
             {% endfor %}
           </select>
         </div>
-
-        <!-- 시군구명 -->
         <div class="filter-select-wrap">
           <label for="시군구명">시군구명</label>
-          <select name="시군구명" id="시군구명" class="filter-select"
-                  {% if not 시도명_selected %}disabled{% endif %}>
+          <select name="시군구명" id="시군구명" class="filter-select" {% if not 시도명_selected %}disabled{% endif %}>
             <option value="">-- 선택 --</option>
             {% if 시군구명_selected %}
-            <option value="{{ 시군구명_selected }}" selected>{{ 시군구명_selected }}</option>
+              <option value="{{ 시군구명_selected }}" selected>{{ 시군구명_selected }}</option>
             {% endif %}
           </select>
         </div>
-
-        <!-- 행정동명 -->
         <div class="filter-select-wrap">
           <label for="행정동명">행정동명</label>
-          <select name="행정동명" id="행정동명" class="filter-select"
-                  {% if not 시군구명_selected %}disabled{% endif %}>
+          <select name="행정동명" id="행정동명" class="filter-select" {% if not 시군구명_selected %}disabled{% endif %}>
             <option value="">-- 선택 --</option>
             {% if 행정동명_selected %}
-            <option value="{{ 행정동명_selected }}" selected>{{ 행정동명_selected }}</option>
+              <option value="{{ 행정동명_selected }}" selected>{{ 행정동명_selected }}</option>
             {% endif %}
           </select>
         </div>
-
-        <!-- 과목 -->
         <div class="filter-select-wrap">
           <label for="과목">과목</label>
           <select name="과목" id="과목" class="filter-select">
             <option value="">전체</option>
             {% for subject in 과목_list %}
-            <option value="{{ subject }}" {% if subject == 과목_selected %}selected{% endif %}>
-              {{ subject }}
-            </option>
+              <option value="{{ subject }}" {% if subject == 과목_selected %}selected{% endif %}>{{ subject }}</option>
             {% endfor %}
           </select>
         </div>
-
-        <!-- 검색 버튼 -->
+        <!-- 수강료_평균 범위 슬라이더 -->
+        <div class="filter-select-wrap" style="width: 100%;">
+          <label for="price-slider">수강료_평균 범위</label>
+          <div id="price-slider"></div>
+          <div>
+            <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
+          </div>
+          <!-- 슬라이더 값이 폼 전송 시 GET 파라미터로 전달됨 -->
+          <input type="hidden" name="price_min" id="price_min" value="{{ request.GET.price_min|default:min_price }}">
+          <input type="hidden" name="price_max" id="price_max" value="{{ request.GET.price_max|default:max_price }}">
+        </div>
         <button type="submit" class="filter-btn">검색</button>
       </div>
     </div>
   </form>
 </div>
 
-<!-- 본문 컨텐츠 (80vh - 3rem 아래 페이지) -->
 <div class="content-area">
   {% if academylist %}
     {% for academy in academylist %}
-    <div class="academy-list-item">
-      <div class="academy-img-wrap">
-        {% if academy.학원사진 %}
-          <img src="{{ academy.학원사진.url }}" alt="{{ academy.상호명 }}" class="academy-img" />
-        {% else %}
-          <img src="{% static 'images/no_image.png' %}" alt="No Image" class="academy-img" />
-        {% endif %}
-      </div>
-      <div class="academy-info-wrap">
-        <a href="{% url 'academy' academy.id %}" class="academy-name">
-          {{ academy.상호명 }}
-        </a>
-        {% if academy.소개글 %}
-        <div class="academy-intro">{{ academy.소개글|linebreaksbr }}</div>
-        {% else %}
-        <div class="academy-intro">소개 정보가 없습니다.</div>
-        {% endif %}
-
-        {% if academy.별점 %}
-        <div class="academy-subinfo">별점: ★ {{ academy.별점 }}</div>
-        {% endif %}
-        <div class="academy-subinfo">지번주소: {{ academy.지번주소 }}</div>
-        <div class="academy-subinfo">도로명주소: {{ academy.도로명주소 }}</div>
-
-        <div class="academy-subinfo">
-          대상학년:
-          {% if academy.대상_유아 %}유아 {% endif %}
-          {% if academy.대상_초등 %}초등 {% endif %}
-          {% if academy.대상_중등 %}중등 {% endif %}
-          {% if academy.대상_고등 %}고등 {% endif %}
-          {% if academy.대상_특목고 %}특목고 {% endif %}
-          {% if academy.대상_일반 %}일반 {% endif %}
-          {% if academy.대상_기타 %}기타{% endif %}
+      <div class="academy-list-item">
+        <div class="academy-img-wrap">
+          {% if academy.학원사진 %}
+            <img src="{{ academy.학원사진.url }}" alt="{{ academy.상호명 }}" class="academy-img" />
+          {% else %}
+            <img src="{% static 'images/no_image.png' %}" alt="No Image" class="academy-img" />
+          {% endif %}
         </div>
-
-        <div class="academy-subinfo">
-          과목:
-          {% if academy.과목_종합 %}종합 {% endif %}
-          {% if academy.과목_수학 %}수학 {% endif %}
-          {% if academy.과목_영어 %}영어 {% endif %}
-          {% if academy.과목_과학 %}과학 {% endif %}
-          {% if academy.과목_외국어 %}외국어 {% endif %}
-          {% if academy.과목_예체능 %}예체능 {% endif %}
-          {% if academy.과목_컴퓨터 %}컴퓨터 {% endif %}
-          {% if academy.과목_논술 %}논술 {% endif %}
-          {% if academy.과목_기타 %}기타 {% endif %}
-          {% if academy.과목_독서실스터디카페 %}독서실/스터디카페{% endif %}
+        <div class="academy-info-wrap">
+          <a href="{% url 'academy' academy.id %}" class="academy-name">{{ academy.상호명 }}</a>
+          {% if academy.소개글 %}
+            <div class="academy-intro">{{ academy.소개글|linebreaksbr }}</div>
+          {% else %}
+            <div class="academy-intro">소개 정보가 없습니다.</div>
+          {% endif %}
+          {% if academy.별점 %}
+            <div class="academy-subinfo">별점: ★ {{ academy.별점 }}</div>
+          {% endif %}
+          <div class="academy-subinfo">지번주소: {{ academy.지번주소 }}</div>
+          <div class="academy-subinfo">도로명주소: {{ academy.도로명주소 }}</div>
+          <div class="academy-subinfo">
+            대상학년:
+            {% if academy.대상_유아 %}유아 {% endif %}
+            {% if academy.대상_초등 %}초등 {% endif %}
+            {% if academy.대상_중등 %}중등 {% endif %}
+            {% if academy.대상_고등 %}고등 {% endif %}
+            {% if academy.대상_특목고 %}특목고 {% endif %}
+            {% if academy.대상_일반 %}일반 {% endif %}
+            {% if academy.대상_기타 %}기타{% endif %}
+          </div>
+          <div class="academy-subinfo">
+            과목:
+            {% if academy.과목_종합 %}종합 {% endif %}
+            {% if academy.과목_수학 %}수학 {% endif %}
+            {% if academy.과목_영어 %}영어 {% endif %}
+            {% if academy.과목_과학 %}과학 {% endif %}
+            {% if academy.과목_외국어 %}외국어 {% endif %}
+            {% if academy.과목_예체능 %}예체능 {% endif %}
+            {% if academy.과목_컴퓨터 %}컴퓨터 {% endif %}
+            {% if academy.과목_논술 %}논술 {% endif %}
+            {% if academy.과목_기타 %}기타 {% endif %}
+            {% if academy.과목_독서실스터디카페 %}독서실/스터디카페{% endif %}
+          </div>
+          <div class="academy-subinfo">영업시간: {{ academy.영업시간 }}</div>
+          <div class="academy-subinfo">셔틀버스: {{ academy.셔틀버스 }}</div>
+          <div class="academy-subinfo">수강료: {{ academy.수강료 }}</div>
         </div>
-        <div class="academy-subinfo">영업시간: {{ academy.영업시간 }}</div>
-        <div class="academy-subinfo">셔틀버스: {{ academy.셔틀버스 }}</div>
-        <div class="academy-subinfo">수강료: {{ academy.수강료 }}</div>
       </div>
-    </div>
     {% endfor %}
   {% else %}
     <p>결과가 없습니다.</p>
   {% endif %}
 </div>
 
-<!-- 하단 페이지네이션 (이전, n/m, 다음, 마지막) -->
 <div class="pagination">
   {% if academylist.has_previous %}
-    <a href="?page=1
-      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
-      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
-      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
-      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
-      ">
+    <a href="?page=1{% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}{% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}{% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}{% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}{% if request.GET.price_min %}&amp;price_min={{ request.GET.price_min|urlencode }}{% endif %}{% if request.GET.price_max %}&amp;price_max={{ request.GET.price_max|urlencode }}{% endif %}">
       처음
     </a>
-
-    <a href="?page={{ academylist.previous_page_number }}
-      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
-      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
-      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
-      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
-      ">
+    <a href="?page={{ academylist.previous_page_number }}{% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}{% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}{% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}{% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}{% if request.GET.price_min %}&amp;price_min={{ request.GET.price_min|urlencode }}{% endif %}{% if request.GET.price_max %}&amp;price_max={{ request.GET.price_max|urlencode }}{% endif %}">
       이전
     </a>
   {% endif %}
-
   <span>{{ academylist.number }}/{{ academylist.paginator.num_pages }}</span>
-
   {% if academylist.has_next %}
-    <a href="?page={{ academylist.next_page_number }}
-      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
-      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
-      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
-      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
-      ">
+    <a href="?page={{ academylist.next_page_number }}{% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}{% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}{% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}{% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}{% if request.GET.price_min %}&amp;price_min={{ request.GET.price_min|urlencode }}{% endif %}{% if request.GET.price_max %}&amp;price_max={{ request.GET.price_max|urlencode }}{% endif %}">
       다음
     </a>
-
-    <a href="?page={{ academylist.paginator.num_pages }}
-      {% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}
-      {% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}
-      {% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}
-      {% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}
-      ">
+    <a href="?page={{ academylist.paginator.num_pages }}{% if 시도명_selected %}&amp;시도명={{ 시도명_selected|urlencode }}{% endif %}{% if 시군구명_selected %}&amp;시군구명={{ 시군구명_selected|urlencode }}{% endif %}{% if 행정동명_selected %}&amp;행정동명={{ 행정동명_selected|urlencode }}{% endif %}{% if 과목_selected %}&amp;과목={{ 과목_selected|urlencode }}{% endif %}{% if request.GET.price_min %}&amp;price_min={{ request.GET.price_min|urlencode }}{% endif %}{% if request.GET.price_max %}&amp;price_max={{ request.GET.price_max|urlencode }}{% endif %}">
       마지막
     </a>
   {% endif %}
 </div>
 
-<!-- AJAX: 시도명 -> 시군구명 -> 행정동명 -->
-<script type="text/javascript">
+<!-- noUiSlider CSS, JS (academy_list 슬라이더용) -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var slider = document.getElementById('price-slider');
+    var minPrice = parseFloat("{{ min_price|default:0 }}");
+    var maxPrice = parseFloat("{{ max_price|default:100 }}");
+    var initialMin = parseFloat(document.getElementById('price_min').value) || minPrice;
+    var initialMax = parseFloat(document.getElementById('price_max').value) || maxPrice;
+
+    noUiSlider.create(slider, {
+      start: [initialMin, initialMax],
+      connect: true,
+      range: {
+        'min': minPrice,
+        'max': maxPrice
+      },
+      tooltips: true,
+      format: {
+        to: function(value) {
+          // 슬라이더 툴팁에 표시 시 천 단위 구분 쉼표 적용
+          return Math.round(value).toLocaleString();
+        },
+        from: function(value) {
+          // 슬라이더에서 값을 읽을 때 쉼표 제거
+          return Number(value.toString().replace(/,/g, ''));
+        }
+      }
+    });
+
+    slider.noUiSlider.on('update', function(values, handle) {
+      // 표시 영역에 천 단위 구분 쉼표가 적용된 값 출력 + "원" 추가
+      document.getElementById('price-slider-min').innerText = values[0] + "원";
+      document.getElementById('price-slider-max').innerText = values[1] + "원";
+      // 폼 전송용 hidden input에는 쉼표 제거된 숫자 문자열 저장
+      document.getElementById('price_min').value = values[0].replace(/,/g, '');
+      document.getElementById('price_max').value = values[1].replace(/,/g, '');
+    });
+  });
+</script>
+
+<script>
   $(document).ready(function () {
     $("#시도명").change(function () {
       let 시도명 = $(this).val();
@@ -201,8 +203,7 @@
               options += `<option value="${region}">${region}</option>`;
             });
             $("#시군구명").html(options).prop("disabled", false);
-            $("#행정동명").html('<option value="">-- 선택 --</option>')
-                         .prop("disabled", true);
+            $("#행정동명").html('<option value="">-- 선택 --</option>').prop("disabled", true);
           }
         });
       } else {
@@ -231,5 +232,4 @@
     });
   });
 </script>
-
 {% endblock %}
