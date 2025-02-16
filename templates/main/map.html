@@ -3,14 +3,29 @@
 {% load humanize %}
 {% block contents %}
 
-<div id="navbar">
-  <!-- 검색 아이콘 (왼상단) -->
-  <div class="search-icon">
-    <a href="{% url 'academy_list' %}">
-      <span class="material-symbols-outlined" style="font-size:1.8rem;">search</span>
-    </a>
-  </div>
+<div class="navbar">
+  <button class="nav_item1" onclick="agetogglePanel()">연령</button>
+  <a href="{% url 'search' %}" class="nav_item2">
+    <div class="search_box">학원명/지역 검색</div>
+    <div class="search_icon_box"><span class="material-symbols-outlined">search</span></div>
+  </a>
+  <!-- Toggle Panel Button -->
+  <button class="nav_item3" id="toggle-panel" onclick="togglePanel()"><span class="material-symbols-outlined">payments</span></br>수강료</button>
 </div>
+
+<!-- 패널(콘텐츠 영역): 가격 범위 필터 (noUiSlider 적용) -->
+<div id="panel-container" style="display: none; padding: 1rem; background-color: #fff;">
+  <!-- 슬라이더 영역 -->
+  <div id="price-slider" style="margin: 1rem 0;"></div>
+  <div>
+    <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
+  </div>
+  <!-- 선택된 값 저장용 hidden input -->
+  <input type="hidden" id="price-min" value="{{ min_price }}">
+  <input type="hidden" id="price-max" value="{{ max_price }}">
+  <button onclick="applyPriceFilter()" style="margin-top: 10px;">적용</button>
+</div>
+
 
 <!-- 카테고리 버튼 (가로 스크롤) -->
 <div id="category-container">
@@ -44,34 +59,20 @@
   <button onclick="closePopup()">닫기</button>
 </div>
 
-<!-- Toggle Panel Button -->
-<button id="toggle-panel" onclick="togglePanel()">\</button>
 
-<!-- 패널(콘텐츠 영역): 가격 범위 필터 (noUiSlider 적용) -->
-<div id="panel-container" style="display: none; padding: 1rem; background-color: #fff;">
-  <h4>수강료_평균 필터</h4>
-  <!-- 슬라이더 영역 -->
-  <div id="price-slider" style="margin: 1rem 0;"></div>
-  <div>
-    <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
-  </div>
-  <!-- 선택된 값 저장용 hidden input -->
-  <input type="hidden" id="price-min" value="{{ min_price }}">
-  <input type="hidden" id="price-max" value="{{ max_price }}">
-  <button onclick="applyPriceFilter()" style="margin-top: 10px;">적용</button>
-</div>
 
 <!-- noUiSlider CSS, JS -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
 
 <script>
-  /* --------------------- 기존 전역 변수 및 함수 --------------------- */
+  // Block 1: Global Variables and Utility Functions
   let map, markers = [];
   let selectedCategory = '전체';
   let currentMarker = null;
   let allAcademyData = [];
   let markerBoxes = [];
+  let slider;  // 가격 필터용 슬라이더 인스턴스를 저장할 전역 변수
 
   const categoryColors = {
     '종합': '#000000',
@@ -129,11 +130,15 @@
     }
     requestAnimationFrame(animateZoom);
   }
+</script>
 
-  /* --------------------- 지도 및 학원 데이터 로드 --------------------- */
+
+<script>
+  // Block 2: Map Initialization and Custom Zoom Control
   function initMap() {
     navigator.geolocation.getCurrentPosition(pos => {
       const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+      // 기본 줌 컨트롤 비활성화 → 커스텀 컨트롤 사용
       map = new naver.maps.Map('map', {
         center: userLoc,
         zoom: 17,
@@ -150,6 +155,8 @@
       });
       fetchAcademies();
       naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+      // 커스텀 줌 컨트롤 생성 (세로 슬라이더 바 형태: 상단 "+" / 중앙 슬라이더 / 하단 "–")
+      createCustomZoomControl();
     }, err => {
       const defaultLoc = new naver.maps.LatLng(37.5665, 126.9780);
       map = new naver.maps.Map('map', {
@@ -159,9 +166,97 @@
         zoomControl: false
       });
       fetchAcademies();
+      createCustomZoomControl();
     });
   }
 
+  function createCustomZoomControl() {
+    const zoomControlContainer = document.createElement('div');
+    zoomControlContainer.style.position = 'absolute';
+    zoomControlContainer.style.bottom = '13rem';      // 원하는 위치 (픽셀 단위)
+    zoomControlContainer.style.right = '3rem';         // 원하는 위치 (픽셀 단위)
+    zoomControlContainer.style.display = 'flex';
+    zoomControlContainer.style.flexDirection = 'column'; // 세로 배치
+    zoomControlContainer.style.alignItems = 'center';
+    zoomControlContainer.style.backgroundColor = '#fff';
+    zoomControlContainer.style.border = '1px solid #ccc';
+    zoomControlContainer.style.borderRadius = '0.5rem';
+    zoomControlContainer.style.padding = '5px';
+    zoomControlContainer.style.zIndex = '1';
+
+    // "+" 버튼 (상단)
+    const zoomPlus = document.createElement('button');
+    zoomPlus.id = 'zoomPlus';
+    zoomPlus.innerText = '+';
+    zoomPlus.style.marginBottom = '5px';
+    zoomControlContainer.appendChild(zoomPlus);
+
+    // 슬라이더 요소 (중앙) - 세로 슬라이더: 높이와 좁은 너비 설정
+    const zoomSlider = document.createElement('div');
+    zoomSlider.id = 'zoom-slider';
+    zoomSlider.style.height = '150px'; // 슬라이더 높이
+    zoomSlider.style.width = '20px';   // 슬라이더 너비
+    zoomControlContainer.appendChild(zoomSlider);
+
+    // "–" 버튼 (하단)
+    const zoomMinus = document.createElement('button');
+    zoomMinus.id = 'zoomMinus';
+    zoomMinus.innerText = '–';
+    zoomMinus.style.marginTop = '5px';
+    zoomControlContainer.appendChild(zoomMinus);
+
+    document.getElementById('map').appendChild(zoomControlContainer);
+
+    // 줌 범위 설정 (맵의 최소/최대 줌; 기본 7~20)
+    const minZoom = map.getMinZoom ? map.getMinZoom() : 7;
+    const maxZoom = map.getMaxZoom ? map.getMaxZoom() : 20;
+    const currentZoom = map.getZoom();
+
+    noUiSlider.create(zoomSlider, {
+      start: [currentZoom],
+      connect: [true, false],
+      step: 1,
+      orientation: 'vertical', // 세로 슬라이더
+      direction: 'rtl',        // 'rtl' 옵션을 추가하면 슬라이더 방향이 반전되어, 아래에서 위로 올리면 값이 증가합니다.
+      range: {
+        'min': minZoom,
+        'max': maxZoom
+      },
+      tooltips: true,
+      format: {
+        to: function(value) { return Math.round(value).toString(); },
+        from: function(value) { return Number(value); }
+      }
+    });
+
+    zoomSlider.noUiSlider.on('update', function(values, handle) {
+      const newZoom = Number(values[handle]);
+      if (map.getZoom() !== newZoom) {
+        map.setZoom(newZoom);
+      }
+    });
+
+    zoomPlus.addEventListener('click', function() {
+      let currentVal = Number(zoomSlider.noUiSlider.get());
+      if (currentVal < maxZoom) {
+        zoomSlider.noUiSlider.set(currentVal + 1);
+      }
+    });
+
+    zoomMinus.addEventListener('click', function() {
+      let currentVal = Number(zoomSlider.noUiSlider.get());
+      if (currentVal > minZoom) {
+        zoomSlider.noUiSlider.set(currentVal - 1);
+      }
+    });
+  }
+
+  naver.maps.onJSContentLoaded = initMap;
+</script>
+
+
+<script>
+  // Block 3: Academy Data Fetching and Marker Rendering Functions
   function fetchAcademies() {
     const bounds = map.getBounds();
     const sw = bounds.getSW();
@@ -415,10 +510,10 @@
     }
     return '';
   }
+</script>
 
-  naver.maps.onJSContentLoaded = initMap;
-
-  /* --------------------- 패널 토글 및 가격 필터 적용 --------------------- */
+<script>
+  // Block 4: 수강료! Price Filter Slider Initialization and Panel Toggling
   function togglePanel() {
     var panel = document.getElementById("panel-container");
     if (panel.style.display === "none" || panel.style.display === "") {
@@ -429,12 +524,11 @@
   }
 
   function applyPriceFilter() {
-    // 패널을 숨기고 가격 필터 기준으로 학원 데이터 새로 요청
+    // 패널을 숨기고 가격 필터 기준으로 학원 데이터를 새로 요청
     document.getElementById("panel-container").style.display = "none";
     fetchAcademies();
   }
 
-  // noUiSlider 초기화
   document.addEventListener('DOMContentLoaded', function() {
     var slider = document.getElementById('price-slider');
     var minPrice = parseFloat("{{ min_price|default:0 }}");
@@ -445,25 +539,29 @@
     noUiSlider.create(slider, {
       start: [initialMin, initialMax],
       connect: true,
+      orientation: 'vertical',  // 세로 슬라이더로 전환
+      direction: 'rtl',         // 수직 슬라이더를 반전: 낮은 값은 아래, 높은 값은 위로
       range: {
         'min': minPrice,
         'max': maxPrice
       },
       tooltips: [true, true],
       format: {
-  to: function(value) { return Math.round(value).toLocaleString(); },
-  from: function(value) { return Number(value.toString().replace(/,/g, '')); }
-}
+        to: function(value) { return Math.round(value).toLocaleString(); },
+        from: function(value) { return Number(value.toString().replace(/,/g, '')); }
+      }
     });
 
     slider.noUiSlider.on('update', function(values, handle) {
-  document.getElementById('price-slider-min').innerText = values[0] + "원";
-  document.getElementById('price-slider-max').innerText = values[1] + "원";
-  // hidden input은 숫자형태의 문자열을 유지 (쉼표 제거)
-  document.getElementById('price-min').value = values[0].replace(/,/g, '');
-  document.getElementById('price-max').value = values[1].replace(/,/g, '');
-});
+      document.getElementById('price-slider-min').innerText = values[0] + "원";
+      document.getElementById('price-slider-max').innerText = values[1] + "원";
+      document.getElementById('price-min').value = values[0].replace(/,/g, '');
+      document.getElementById('price-max').value = values[1].replace(/,/g, '');
+    });
   });
 </script>
+
+
+
 
 {% endblock %}
