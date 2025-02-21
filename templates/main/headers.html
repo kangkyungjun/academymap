@@ -124,6 +124,7 @@ a {
     background-color: white;
   border: 1px solid lightgray;
     box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    padding: 0 0.7rem;
 }
 .nav_item2{
 display: flex;
@@ -152,9 +153,10 @@ display: flex;
 .nav_item3{
     height: 3rem;
     font-size:1.2rem;
+    padding: 0 0.7rem;
     border-radius: 0.5rem;
     background-color: white;
-      border: 1px solid lightgray;
+    border: 1px solid lightgray;
     box-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
 
@@ -167,13 +169,63 @@ display: flex;
 
 /* 패널 컨테이너 스타일 */
 #panel-container {
-  position: absolute;               /* 버튼과 동일한 상단 위치로 지정 (원하는 위치로 조정 가능) */
-  right: 1rem;
-  height: 40%;
-  width: 10%;
+  position: absolute;/* 버튼과 동일한 상단 위치로 지정 (원하는 위치로 조정 가능) */
   /* 높이는 JavaScript에서 버튼 높이와 동일하게 설정할 예정 */
   z-index: 2;
   transition: height 0.2s ease-in-out;
+  display: none;
+  top: 7vh;
+  right: 1rem;
+  width: 10%;
+  height: 70%;
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  border: 1px solid lightgray;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* 1. 슬라이더 전체 컨테이너의 크기와 위치를 결정합니다. */
+#price-slider {
+    height: 15rem;       /* 슬라이더 전체 높이 */
+    width: 100%;         /* 슬라이더 전체 너비 */
+    margin: 0 auto;      /* 가로 중앙 정렬 */
+}
+
+/* 2. 슬라이더의 배경 트랙 영역을 스타일링합니다.*/
+.noUi-target {
+    background: #e0e0e0;           /* 트랙 배경색 (연한 회색) */
+    border: 0.125rem solid #ccc;   /* 트랙 테두리 (얇은 회색) */
+    border-radius: 0.3rem;           /* 트랙 모서리 둥글기 */
+}
+
+/* 3. Connect Bar (.noUi-connect)
+   - 선택된 범위를 나타내는 채워진 영역(Connect bar)의 색상을 설정합니다.
+*/
+.noUi-connect {
+    background: brown;           /* 채워진 영역 색상 (예: 청록색) */
+}
+
+/* 4.사용자가 드래그하는 슬라이더 핸들의 크기, 테두리, 그림자, 배경색 등을 설정합니다. */
+.noUi-handle {
+    width: 1.5rem;                /* 핸들 너비 */
+    height: 1.5rem;               /* 핸들 높이 */
+    border: 0.125rem solid #007BFF; /* 핸들 테두리 (파란색) */
+    border-radius: 50%;           /* 핸들을 원형으로 만듭니다 */
+    background: #fff;             /* 핸들 배경색 (흰색) */
+    box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5); /* 핸들 그림자 효과 */
+}
+
+/* 5. Tooltip (.noUi-tooltip)
+   - 핸들을 움직일 때 나타나는 툴팁의 글씨 크기, 배경, 테두리, 여백 등을 설정합니다.
+*/
+.noUi-tooltip {
+    font-size: 1.1rem;            /* 툴팁 글씨 크기 */
+    background: #fff;             /* 툴팁 배경색 (흰색) */
+    color: #333;                  /* 툴팁 텍스트 색상 (어두운 회색) */
+    border: 0.0625rem solid #ccc;  /* 툴팁 테두리 (얇은 회색) */
+    border-radius: 0.5rem;        /* 툴팁 모서리 둥글기 */
+    padding: 0.2rem 0.5rem;        /* 툴팁 내부 여백 */
 }
 
     /* 카테고리 컨테이너 (가로 스크롤) */
