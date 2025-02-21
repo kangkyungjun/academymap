@@ -14,9 +14,9 @@
 </div>
 
 <!-- 패널(콘텐츠 영역): 가격 범위 필터 (noUiSlider 적용) -->
-<div id="panel-container" style="display: none; padding: 1rem; background-color: #fff;">
+<div id="panel-container">
   <!-- 슬라이더 영역 -->
-  <div id="price-slider" style="margin: 1rem 0;"></div>
+  <div id="price-slider"></div>
   <div>
     <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
   </div>
@@ -25,6 +25,7 @@
   <input type="hidden" id="price-max" value="{{ max_price }}">
   <button onclick="applyPriceFilter()" style="margin-top: 10px;">적용</button>
 </div>
+
 
 
 <!-- 카테고리 버튼 (가로 스크롤) -->
@@ -470,7 +471,7 @@ group.forEach((ac, index) => {
                 font-size: 1.2rem;
                 color: black;
                 padding: 1rem 1rem 0rem 1rem;
-                margin-bottom: 0.7rem;"
+                line-height: 1.4;"
          href="/academy/${ac.id}">
          ${ac.상호명}
       </a>
@@ -485,7 +486,9 @@ group.forEach((ac, index) => {
     const popup = document.getElementById('academyPopup');
     const popupContent = document.getElementById('popupContent');
     popupContent.innerHTML = `
-    <div style="padding-left: 1rem;">
+    <div style="padding-left: 1rem;
+                line-height: 1.5;
+                color: lightgray;">
       <h3><a style="text-decoration: none;
                     color: black;
                     font-size: 1.2rem;"
@@ -493,10 +496,19 @@ group.forEach((ac, index) => {
              ${academy.상호명}
           </a>
       </h3>
+      <div style="font-size: 1.5rem;
+                  color: yellow;
+                  background-color: brown;">${academy.별점 || '별점 정보 없음'}</br></div>
       전화번호: ${academy.전화번호 || '정보 없음'}</br>
       주소:${academy.도로명주소 || '정보 없음'}</br>
-      대상:<p><strong></strong> ${academy.대상_유아 || ''}</p>
-      <p><strong></strong> ${academy.대상_유아 || ''}</p>
+      대상:${academy.대상_유아 || ''}
+          ${academy.대상_초등 || ''}
+          ${academy.대상_고등 || ''}
+          ${academy.대상_특목고 || ''}
+          ${academy.대상_일반 || ''}
+          ${academy.대상_기타 || ''}</br>
+      영업시간:${academy.영업시간 || ''}</br>
+      셔틀버스:${academy.셔틀버스 || ''}</br>
     </div>
     `;
     popup.classList.add('active');
@@ -533,7 +545,7 @@ group.forEach((ac, index) => {
             position: userLoc,
             map: map,
             icon: {
-              content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',
+              content: '<div style="width:1.7rem;height:1.7rem;background-color:red;border-radius:50%;border:5px solid white;box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
               anchor: new naver.maps.Point(7.5, 7.5)
             }
           });
