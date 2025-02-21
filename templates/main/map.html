@@ -10,7 +10,7 @@
       <div class="search_icon_box"><span class="material-symbols-outlined">search</span></div>
     </a>
     <!-- Toggle Panel Button -->
-  <button class="nav_item3" id="toggle-panel" onclick="togglePanel()"><span class="material-symbols-outlined">payments</span></br>수강료</button>
+  <button class="nav_item3" id="toggle-panel" onclick="togglePanel()">수강료</button>
 </div>
 
 <!-- 패널(콘텐츠 영역): 가격 범위 필터 (noUiSlider 적용) -->
@@ -66,7 +66,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
 
 <script>
-  // Block 1: Global Variables and Utility Functions
+  // Block 1: 전역 변수 값 설정
   let map, markers = [];
   let selectedCategory = '전체';
   let currentMarker = null;
@@ -132,7 +132,6 @@
   }
 </script>
 
-
 <script>
   // Block 2: Map Initialization and Custom Zoom Control
   function initMap() {
@@ -149,13 +148,13 @@
         position: userLoc,
         map: map,
         icon: {
-          content: '<div style="width:18px;height:18px;background-color:red;border-radius:50%;border:3px solid white;"></div>',
+          content: '<div style="width:1.7rem;height:1.7rem;background-color:red;border-radius:50%;border:5px solid white;box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
           anchor: new naver.maps.Point(7.5, 7.5)
         }
       });
       fetchAcademies();
       naver.maps.Event.addListener(map, 'idle', fetchAcademies);
-      // 커스텀 줌 컨트롤 생성 (세로 슬라이더 바 형태: 상단 "+" / 중앙 슬라이더 / 하단 "–")
+      // 커스텀 줌 컨트롤 생성 (세로 배열: 상단 "+" / 하단 "–")
       createCustomZoomControl();
     }, err => {
       const defaultLoc = new naver.maps.LatLng(37.5665, 126.9780);
@@ -172,81 +171,65 @@
 
   function createCustomZoomControl() {
     const zoomControlContainer = document.createElement('div');
+    // 원하는 위치 설정
     zoomControlContainer.style.position = 'absolute';
-    zoomControlContainer.style.bottom = '13rem';      // 원하는 위치 (픽셀 단위)
-    zoomControlContainer.style.right = '3rem';         // 원하는 위치 (픽셀 단위)
+    zoomControlContainer.style.bottom = '23rem';
+    zoomControlContainer.style.right = '0.85rem';
     zoomControlContainer.style.display = 'flex';
-    zoomControlContainer.style.flexDirection = 'column'; // 세로 배치
+    zoomControlContainer.style.flexDirection = 'column'; // 세로 배열
     zoomControlContainer.style.alignItems = 'center';
-    zoomControlContainer.style.backgroundColor = '#fff';
-    zoomControlContainer.style.border = '1px solid #ccc';
     zoomControlContainer.style.borderRadius = '0.5rem';
-    zoomControlContainer.style.padding = '5px';
+    zoomControlContainer.style.padding = '0.4rem';
+    zoomControlContainer.style.width = '3.3rem';
+    zoomControlContainer.style.height = '4.5rem';
     zoomControlContainer.style.zIndex = '1';
 
-    // "+" 버튼 (상단)
+    // "+" 버튼 (위쪽)
     const zoomPlus = document.createElement('button');
     zoomPlus.id = 'zoomPlus';
     zoomPlus.innerText = '+';
-    zoomPlus.style.marginBottom = '5px';
+    zoomPlus.style.marginBottom = '0.1rem';
+    zoomPlus.style.width = '3rem';
+    zoomPlus.style.height = '3rem';
+    zoomPlus.style.fontSize = '2rem';
+    zoomPlus.style.border = '1px solid lightgray';
+    zoomPlus.style.boxShadow = '0 0 5px rgba(0,0,0,0.5)';
+    zoomPlus.style.backgroundColor = 'white';
+    zoomPlus.style.borderRadius = '0.5rem';
     zoomControlContainer.appendChild(zoomPlus);
 
-    // 슬라이더 요소 (중앙) - 세로 슬라이더: 높이와 좁은 너비 설정
-    const zoomSlider = document.createElement('div');
-    zoomSlider.id = 'zoom-slider';
-    zoomSlider.style.height = '150px'; // 슬라이더 높이
-    zoomSlider.style.width = '20px';   // 슬라이더 너비
-    zoomControlContainer.appendChild(zoomSlider);
-
-    // "–" 버튼 (하단)
+    // "–" 버튼 (아래쪽)
     const zoomMinus = document.createElement('button');
     zoomMinus.id = 'zoomMinus';
     zoomMinus.innerText = '–';
-    zoomMinus.style.marginTop = '5px';
+    zoomMinus.style.width = '3rem';
+    zoomMinus.style.height = '2.5rem';
+    zoomMinus.style.fontSize = '2.5rem';
+    zoomMinus.style.border = '1px solid lightgray';
+    zoomMinus.style.boxShadow = '0 0 5px rgba(0,0,0,0.5)';
+    zoomMinus.style.backgroundColor = 'white';
+    zoomMinus.style.borderRadius = '0.5rem';
     zoomControlContainer.appendChild(zoomMinus);
 
     document.getElementById('map').appendChild(zoomControlContainer);
 
-    // 줌 범위 설정 (맵의 최소/최대 줌; 기본 7~20)
+    // 줌 범위 설정 (맵의 최소/최대 줌; 기본값: 7 ~ 20)
     const minZoom = map.getMinZoom ? map.getMinZoom() : 7;
     const maxZoom = map.getMaxZoom ? map.getMaxZoom() : 20;
-    const currentZoom = map.getZoom();
 
-    noUiSlider.create(zoomSlider, {
-      start: [currentZoom],
-      connect: [true, false],
-      step: 1,
-      orientation: 'vertical', // 세로 슬라이더
-      direction: 'rtl',        // 'rtl' 옵션을 추가하면 슬라이더 방향이 반전되어, 아래에서 위로 올리면 값이 증가합니다.
-      range: {
-        'min': minZoom,
-        'max': maxZoom
-      },
-      tooltips: true,
-      format: {
-        to: function(value) { return Math.round(value).toString(); },
-        from: function(value) { return Number(value); }
-      }
-    });
-
-    zoomSlider.noUiSlider.on('update', function(values, handle) {
-      const newZoom = Number(values[handle]);
-      if (map.getZoom() !== newZoom) {
-        map.setZoom(newZoom);
-      }
-    });
-
+    // "+" 버튼 클릭: 줌 인
     zoomPlus.addEventListener('click', function() {
-      let currentVal = Number(zoomSlider.noUiSlider.get());
-      if (currentVal < maxZoom) {
-        zoomSlider.noUiSlider.set(currentVal + 1);
+      let currentZoom = map.getZoom();
+      if (currentZoom < maxZoom) {
+        map.setZoom(currentZoom + 1);
       }
     });
 
+    // "–" 버튼 클릭: 줌 아웃
     zoomMinus.addEventListener('click', function() {
-      let currentVal = Number(zoomSlider.noUiSlider.get());
-      if (currentVal > minZoom) {
-        zoomSlider.noUiSlider.set(currentVal - 1);
+      let currentZoom = map.getZoom();
+      if (currentZoom > minZoom) {
+        map.setZoom(currentZoom - 1);
       }
     });
   }
@@ -254,9 +237,8 @@
   naver.maps.onJSContentLoaded = initMap;
 </script>
 
-
 <script>
-  // Block 3: Academy Data Fetching and Marker Rendering Functions
+  // Block 3: 학원 자료 불러오기와 화면 표시 디자인
   function fetchAcademies() {
     const bounds = map.getBounds();
     const sw = bounds.getSW();
@@ -305,7 +287,14 @@
         if (arr.length === 0) continue;
         const rep = arr[0];
         const markerContent = `
-          <div style="min-width:60px; padding:3px 5px; background-color:#333; color:#fff; border-radius:4px; font-size:20px; font-weight:bold; text-align:center;">
+          <div style="min-width:5rem;
+                      padding:0.5rem 0.6rem;
+                      background-color:#333;
+                      color:#fff;
+                      border-radius:0.8rem;
+                      font-size:1.8rem;
+                      font-weight:bold;
+                      text-align:center;">
             ${region} (${arr.length})
           </div>
         `;
@@ -405,16 +394,24 @@
       const color = categoryColors[academyType] || 'blue';
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
-          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>
-          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>
+          <div style="width:1.4rem; height:1.4rem; background-color:${color}; border:0.25rem solid white; border-radius:50%; margin-bottom:0.25rem;"></div>
+          <span style="font-size:1.1rem;
+                      color: #333;
+                      text-shadow: 0.125rem 0.125rem 0.25rem lightgray;
+                      padding:0.25rem 0.5rem;
+                      border-radius:0.5rem;">${ac.상호명}</span>
         </div>
       `;
     } else {
       const color = categoryColors[selectedCategory];
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
-          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>
-          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>
+          <div style="width:1.4rem; height:1.4rem; background-color:${color}; border:0.25rem solid white; border-radius:50%; margin-bottom:0.25rem;"></div>
+          <span style="font-size:1.1rem;
+                      text-shadow: 0.125rem 0.125rem 0.25rem lightgray;
+                      color: #333;
+                      padding: 0.25rem 0.5rem;
+                      border-radius:0.5rem;">${ac.상호명}</span>
         </div>
       `;
     }
@@ -427,11 +424,24 @@
     let color = categoryColors[repType] || "#ff5733";
     let content = `
       <div style="position: relative; display: inline-block;">
-        <div style="background-color: ${color}; color: white; border-radius: 10px; padding: 5px 10px; font-size: 12px; text-align: center;">
-          ${shortAddress}<br/>(${count}개 학원)
+        <div style="background-color: ${color}D9;
+                    color: #fff;
+                    border-radius: 0.5rem;
+                    padding: 0.6rem;
+                    font-size: 1.25rem;
+                    text-align: center;
+                    box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);">
+          ${count}개 학원<br/>
+          <div style="font-size: 0.8rem;
+                      color: lightgray;">${shortAddress}
+          </div>
         </div>
-        <div style="position: absolute; left: 50%; transform: translateX(-50%); top: 100%;">
-          <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid ${color};"></div>
+        <div style="position: absolute; left: -10%; transform: rotate(120deg); top: 0%;">
+          <div style="width: 0;
+                    height: 0;
+                    border-left: 6px solid transparent;
+                    border-right: 6px solid transparent;
+                    border-top: 6px solid ${color};"></div>
         </div>
       </div>
     `;
@@ -442,8 +452,30 @@
     const popup = document.getElementById('academyPopup');
     const popupContent = document.getElementById('popupContent');
     let shortAddress = getShortAddress(group[0].도로명주소);
-    let content = `<h3>${shortAddress} (${group.length}개 학원)</h3><ul>`;
-    group.forEach(ac => { content += `<li><a href="/academy/${ac.id}">${ac.상호명}</a></li>`; });
+    let content = `<div style="font-size: 0.9rem;
+                                padding-bottom: 0.5rem;
+                                padding-left: 1rem;">${shortAddress}
+                      <span style="font-size: 0.8rem;
+                                    color: lightgray;
+                                    padding-left: 2rem;">|  총 ${group.length}개 학원
+                      </span>
+                   </div><ul>`;
+group.forEach((ac, index) => {
+  // 마지막 항목이 아니면 지정한 스타일을 추가합니다.
+  const borderStyle = (index < group.length - 1)
+    ? 'border-bottom: 1px solid #fff; padding-top: 0.3rem; padding-bottom: 0.3rem; width: 80%;'
+    : '';
+  content += `<li style="${borderStyle}">
+      <a style="text-decoration: none;
+                font-size: 1.2rem;
+                color: black;
+                padding: 1rem 1rem 0rem 1rem;
+                margin-bottom: 0.7rem;"
+         href="/academy/${ac.id}">
+         ${ac.상호명}
+      </a>
+    </li>`;
+});
     content += `</ul>`;
     popupContent.innerHTML = content;
     popup.classList.add('active');
@@ -453,9 +485,19 @@
     const popup = document.getElementById('academyPopup');
     const popupContent = document.getElementById('popupContent');
     popupContent.innerHTML = `
-      <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>
-      <p><strong>전화번호:</strong> ${academy.전화번호 || '정보 없음'}</p>
-      <p><strong>주소:</strong> ${academy.도로명주소 || '정보 없음'}</p>
+    <div style="padding-left: 1rem;">
+      <h3><a style="text-decoration: none;
+                    color: black;
+                    font-size: 1.2rem;"
+             href="/academy/${academy.id}">
+             ${academy.상호명}
+          </a>
+      </h3>
+      전화번호: ${academy.전화번호 || '정보 없음'}</br>
+      주소:${academy.도로명주소 || '정보 없음'}</br>
+      대상:<p><strong></strong> ${academy.대상_유아 || ''}</p>
+      <p><strong></strong> ${academy.대상_유아 || ''}</p>
+    </div>
     `;
     popup.classList.add('active');
   }
@@ -561,6 +603,266 @@
   });
 </script>
 
+
+
+
+
+<!--<script>-->
+<!--  // Block 3: Academy Data Fetching and Marker Rendering Functions-->
+<!--  function fetchAcademies() {-->
+<!--    const bounds = map.getBounds();-->
+<!--    const sw = bounds.getSW();-->
+<!--    const ne = bounds.getNE();-->
+
+<!--    // 가격 범위 필터 값 가져오기-->
+<!--    let priceMin = document.getElementById('price-min') ? document.getElementById('price-min').value : "";-->
+<!--    let priceMax = document.getElementById('price-max') ? document.getElementById('price-max').value : "";-->
+
+<!--    fetch('/api/filtered_academies', {-->
+<!--      method: 'POST',-->
+<!--      headers: {-->
+<!--        'Content-Type': 'application/json',-->
+<!--        'X-CSRFToken': getCSRFToken()-->
+<!--      },-->
+<!--      body: JSON.stringify({-->
+<!--        swLat: sw._lat,-->
+<!--        swLng: sw._lng,-->
+<!--        neLat: ne._lat,-->
+<!--        neLng: ne._lng,-->
+<!--        category: selectedCategory,-->
+<!--        priceMin: priceMin,-->
+<!--        priceMax: priceMax-->
+<!--      })-->
+<!--    })-->
+<!--    .then(res => res.json())-->
+<!--    .then(data => {-->
+<!--      allAcademyData = data;-->
+<!--      renderMarkers();-->
+<!--    })-->
+<!--    .catch(error => console.error('학원 데이터 요청 에러:', error));-->
+<!--  }-->
+
+<!--  function renderMarkers() {-->
+<!--    clearMarkers();-->
+<!--    const zoomLevel = map.getZoom();-->
+<!--    if (zoomLevel < 16) {-->
+<!--      const grouped = {};-->
+<!--      allAcademyData.forEach(ac => {-->
+<!--        const regionKey = ac.시군구명 || '기타';-->
+<!--        if (!grouped[regionKey]) grouped[regionKey] = [];-->
+<!--        grouped[regionKey].push(ac);-->
+<!--      });-->
+<!--      for (const region in grouped) {-->
+<!--        const arr = grouped[region];-->
+<!--        if (arr.length === 0) continue;-->
+<!--        const rep = arr[0];-->
+<!--        const markerContent = `-->
+<!--          <div style="min-width:60px; padding:3px 5px; background-color:#333; color:#fff; border-radius:4px; font-size:20px; font-weight:bold; text-align:center;">-->
+<!--            ${region} (${arr.length})-->
+<!--          </div>-->
+<!--        `;-->
+<!--        placeMarkerNoOverlap(rep.위도, rep.경도, markerContent, region);-->
+<!--      }-->
+<!--    } else {-->
+<!--      let groupedByAddress = {};-->
+<!--      allAcademyData.forEach(ac => {-->
+<!--        const address = ac.도로명주소 || "unknown";-->
+<!--        if (!groupedByAddress[address]) {-->
+<!--          groupedByAddress[address] = [];-->
+<!--        }-->
+<!--        groupedByAddress[address].push(ac);-->
+<!--      });-->
+<!--      for (let address in groupedByAddress) {-->
+<!--        let group = groupedByAddress[address];-->
+<!--        if (group.length === 1) {-->
+<!--          let ac = group[0];-->
+<!--          let markerContent = generateAcademyMarkerContent(ac);-->
+<!--          placeMarkerAt(ac.위도, ac.경도, markerContent, ac);-->
+<!--        } else {-->
+<!--          let representative = group[0];-->
+<!--          let bubbleContent = generateBubbleMarkerContent(group);-->
+<!--          placeBubbleMarker(representative.위도, representative.경도, bubbleContent, group);-->
+<!--        }-->
+<!--      }-->
+<!--    }-->
+<!--  }-->
+
+<!--  function placeMarkerAt(lat, lng, content, dataObj) {-->
+<!--    let marker = new naver.maps.Marker({-->
+<!--      position: new naver.maps.LatLng(lat, lng),-->
+<!--      map: map,-->
+<!--      icon: { content: content, anchor: new naver.maps.Point(10, 10) },-->
+<!--      title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''-->
+<!--    });-->
+<!--    naver.maps.Event.addListener(marker, 'click', function(){-->
+<!--      showAcademyInfoPopup(dataObj);-->
+<!--    });-->
+<!--    markers.push(marker);-->
+<!--  }-->
+
+<!--  function placeBubbleMarker(lat, lng, content, group) {-->
+<!--    let marker = new naver.maps.Marker({-->
+<!--      position: new naver.maps.LatLng(lat, lng),-->
+<!--      map: map,-->
+<!--      icon: { content: content, anchor: new naver.maps.Point(10, 10) },-->
+<!--      title: group.length + "개 학원"-->
+<!--    });-->
+<!--    naver.maps.Event.addListener(marker, 'click', function(){-->
+<!--      showGroupPopup(group, marker.getPosition());-->
+<!--    });-->
+<!--    markers.push(marker);-->
+<!--  }-->
+
+<!--  function placeMarkerNoOverlap(lat, lng, content, dataObj) {-->
+<!--    const proj = map.getProjection();-->
+<!--    let screenPt = proj.fromCoordToOffset(new naver.maps.LatLng(lat, lng));-->
+<!--    const markerW = 60, markerH = 24;-->
+<!--    let overlapped = true;-->
+<!--    const MAX_ATTEMPTS = 50;-->
+<!--    let attempts = 0;-->
+<!--    while (overlapped && attempts < MAX_ATTEMPTS) {-->
+<!--      overlapped = false;-->
+<!--      for (let b of markerBoxes) {-->
+<!--        if (Math.abs(screenPt.x - b.x) < markerW && Math.abs(screenPt.y - b.y) < markerH) {-->
+<!--          overlapped = true;-->
+<!--          screenPt.y += markerH + 2;-->
+<!--          break;-->
+<!--        }-->
+<!--      }-->
+<!--      attempts++;-->
+<!--    }-->
+<!--    const finalCoord = proj.fromOffsetToCoord(screenPt);-->
+<!--    const marker = new naver.maps.Marker({-->
+<!--      position: finalCoord,-->
+<!--      map: map,-->
+<!--      icon: { content: content, anchor: new naver.maps.Point(10, 10) },-->
+<!--      title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''-->
+<!--    });-->
+<!--    naver.maps.Event.addListener(marker, 'click', function() {-->
+<!--      if (typeof dataObj === 'object' && dataObj.id) {-->
+<!--        showAcademyInfoPopup(dataObj);-->
+<!--      } else if (typeof dataObj === 'string') {-->
+<!--        let targetZoom = map.getZoom() + 1;-->
+<!--        map.panTo(marker.getPosition(), { duration: 500 });-->
+<!--        smoothZoom(targetZoom, 500);-->
+<!--      }-->
+<!--    });-->
+<!--    markers.push(marker);-->
+<!--    markerBoxes.push({ x: screenPt.x, y: screenPt.y, w: markerW, h: markerH });-->
+<!--  }-->
+
+<!--  function generateAcademyMarkerContent(ac) {-->
+<!--    if (selectedCategory === '전체') {-->
+<!--      const academyType = getAcademyType(ac);-->
+<!--      const color = categoryColors[academyType] || 'blue';-->
+<!--      return `-->
+<!--        <div style="display:flex; flex-direction:column; align-items:center;">-->
+<!--          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>-->
+<!--          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>-->
+<!--        </div>-->
+<!--      `;-->
+<!--    } else {-->
+<!--      const color = categoryColors[selectedCategory];-->
+<!--      return `-->
+<!--        <div style="display:flex; flex-direction:column; align-items:center;">-->
+<!--          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>-->
+<!--          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>-->
+<!--        </div>-->
+<!--      `;-->
+<!--    }-->
+<!--  }-->
+
+<!--  function generateBubbleMarkerContent(group) {-->
+<!--    let count = group.length;-->
+<!--    let shortAddress = getShortAddress(group[0].도로명주소);-->
+<!--    let repType = getAcademyType(group[0]);-->
+<!--    let color = categoryColors[repType] || "#ff5733";-->
+<!--    let content = `-->
+<!--      <div style="position: relative; display: inline-block;">-->
+<!--        <div style="background-color: ${color}; color: white; border-radius: 10px; padding: 5px 10px; font-size: 12px; text-align: center;">-->
+<!--          ${shortAddress}<br/>(${count}개 학원)-->
+<!--        </div>-->
+<!--        <div style="position: absolute; left: 50%; transform: translateX(-50%); top: 100%;">-->
+<!--          <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid ${color};"></div>-->
+<!--        </div>-->
+<!--      </div>-->
+<!--    `;-->
+<!--    return content;-->
+<!--  }-->
+
+<!--  function showGroupPopup(group, position) {-->
+<!--    const popup = document.getElementById('academyPopup');-->
+<!--    const popupContent = document.getElementById('popupContent');-->
+<!--    let shortAddress = getShortAddress(group[0].도로명주소);-->
+<!--    let content = `<h3>${shortAddress} (${group.length}개 학원)</h3><ul>`;-->
+<!--    group.forEach(ac => { content += `<li><a href="/academy/${ac.id}">${ac.상호명}</a></li>`; });-->
+<!--    content += `</ul>`;-->
+<!--    popupContent.innerHTML = content;-->
+<!--    popup.classList.add('active');-->
+<!--  }-->
+
+<!--  function showAcademyInfoPopup(academy) {-->
+<!--    const popup = document.getElementById('academyPopup');-->
+<!--    const popupContent = document.getElementById('popupContent');-->
+<!--    popupContent.innerHTML = `-->
+<!--      <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>-->
+<!--      <p><strong>전화번호:</strong> ${academy.전화번호 || '정보 없음'}</p>-->
+<!--      <p><strong>주소:</strong> ${academy.도로명주소 || '정보 없음'}</p>-->
+<!--    `;-->
+<!--    popup.classList.add('active');-->
+<!--  }-->
+
+<!--  function closePopup() {-->
+<!--    document.getElementById('academyPopup').classList.remove('active');-->
+<!--  }-->
+
+<!--  function clearMarkers() {-->
+<!--    markers.forEach(m => m.setMap(null));-->
+<!--    markers = [];-->
+<!--    markerBoxes = [];-->
+<!--  }-->
+
+<!--  function filterMarkers(btn, category) {-->
+<!--    selectedCategory = category;-->
+<!--    const buttons = document.querySelectorAll('#category button');-->
+<!--    buttons.forEach(button => button.classList.remove('active'));-->
+<!--    btn.classList.add('active');-->
+<!--    fetchAcademies();-->
+<!--  }-->
+
+<!--  function moveToCurrentLocation() {-->
+<!--    if (navigator.geolocation) {-->
+<!--      navigator.geolocation.getCurrentPosition(pos => {-->
+<!--        const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);-->
+<!--        map.setCenter(userLoc);-->
+<!--        map.setZoom(17);-->
+<!--        if (currentMarker) {-->
+<!--          currentMarker.setPosition(userLoc);-->
+<!--        } else {-->
+<!--          currentMarker = new naver.maps.Marker({-->
+<!--            position: userLoc,-->
+<!--            map: map,-->
+<!--            icon: {-->
+<!--              content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',-->
+<!--              anchor: new naver.maps.Point(7.5, 7.5)-->
+<!--            }-->
+<!--          });-->
+<!--        }-->
+<!--      }, () => { alert('위치 정보를 가져올 수 없습니다.'); });-->
+<!--    } else { alert('이 브라우저는 위치 정보를 지원하지 않습니다.'); }-->
+<!--  }-->
+
+<!--  function getCSRFToken() {-->
+<!--    const cookies = document.cookie.split(';');-->
+<!--    for (let i = 0; i < cookies.length; i++) {-->
+<!--      const cookie = cookies[i].trim();-->
+<!--      if (cookie.startsWith('csrftoken=')) {-->
+<!--        return cookie.substring('csrftoken='.length);-->
+<!--      }-->
+<!--    }-->
+<!--    return '';-->
+<!--  }-->
+<!--</script>-->
 
 
 
