@@ -4,23 +4,21 @@
 {% load humanize %}
 
 
-<!-- 상단 바 -->
-<div class="top-bar-container">
-  <div class="top-row">
-    <!-- 뒤로가기 버튼 -->
-    <a href="javascript:history.back()" class="go-back-btn">&lt;</a>
-    <!-- 중앙 제목 -->
-    <div class="title-bar"><a href="{% url 'map' %}">아카데미맵</a></div>
-    <!-- 오른쪽 빈 공간 (필요 시 추가) -->
-    <div></div>
-  </div>
-  <!-- 검색 폼 -->
-  <form class="search-form" method="POST" action="{% url 'search' %}">
-    {% csrf_token %}
-    <input class="search-input" type="search" placeholder="학원명/동 검색" name="searched">
-    <button class="search-button" type="submit"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></button>
-  </form>
+
+<div class="navbar">
+  <button class="nav_item1" onclick="window.location.href='javascript:history.back()'"><span class="material-symbols-outlined">arrow_back_ios</span></button>
+    <form class="search-form" method="POST" action="{% url 'search' %}">
+      {% csrf_token %}
+      <input class="search-input" type="search" placeholder="학원명/지역 검색" name="searched">
+      <button class="search-button" type="submit"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></button>
+    </form>
+
+  <a href="{% url 'map' %}">
+      <div class="search_icon_box"><span class="material-symbols-outlined">location_on</span></div>
+  </a>
+
 </div>
+
 
 <!-- 내용 영역(검색 결과) -->
 <div class="content-area">

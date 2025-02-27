@@ -151,13 +151,15 @@ def map(request):
        min_price=Min(Cast('수강료_평균', FloatField())),
        max_price=Max(Cast('수강료_평균', FloatField()))
     )
+    # 모델에 정의된 대상 학년 옵션 (모두 True/False 필드이므로, 필터링 옵션으로 고정된 목록 사용)
+    target_age_groups = ['유아', '초등', '중등', '고등', '특목고', '일반', '기타']
     context = {
        'min_price': price_range['min_price'] or 0,
        'max_price': price_range['max_price'] or 100,
+       'target_age_groups': target_age_groups,
     }
     return render(request, 'main/map.html', context)
 
-# 동적으로 학원 데이터를 필터링하여 제공하는 API
 @csrf_exempt
 def filtered_academies(request):
     body = json.loads(request.body)
@@ -167,7 +169,15 @@ def filtered_academies(request):
     ne_lng = body.get('neLng')
     category = body.get('category', '')
 
-    # 과목 필드 매핑
+    # 지도 범위 내의 학원들 필터링
+    queryset = Data.objects.filter(
+        위도__gte=sw_lat,
+        위도__lte=ne_lat,
+        경도__gte=sw_lng,
+        경도__lte=ne_lng,
+    )
+
+    # 과목(카테고리) 필터 적용
     과목_mapping = {
         '종합': '과목_종합',
         '수학': '과목_수학',
@@ -180,15 +190,6 @@ def filtered_academies(request):
         '기타': '과목_기타',
         '독서실/스터디카페': '과목_독서실스터디카페',
     }
-
-    queryset = Data.objects.filter(
-        위도__gte=sw_lat,
-        위도__lte=ne_lat,
-        경도__gte=sw_lng,
-        경도__lte=ne_lng,
-    )
-
-    # 과목 필터 적용 (전체가 아닐 경우)
     if category and category != '전체' and category in 과목_mapping:
         filter_field = {과목_mapping[category]: True}
         queryset = queryset.filter(**filter_field)
@@ -210,19 +211,42 @@ def filtered_academies(request):
         except ValueError:
             pass
 
-    data = list(
-        queryset.values(
-            'id',
-            '상호명',
-            '위도',
-            '경도',
-            '도로명주소',
-            '전화번호',
-            '시군구명',
-        )
-    )
-    return JsonResponse(data, safe=False)
+    # 연령 필터 적용 (여러 그룹이 OR 조건으로 적용됨)
+    ageGroups = body.get('ageGroups', [])
+    if ageGroups:
+        q_age = Q()
+        for group in ageGroups:
+            if group == '유아':
+                q_age |= Q(대상_유아=True)
+            elif group == '초등':
+                q_age |= Q(대상_초등=True)
+            elif group == '중등':
+                q_age |= Q(대상_중등=True)
+            elif group == '고등':
+                q_age |= Q(대상_고등=True)
+            elif group == '특목고':
+                q_age |= Q(대상_특목고=True)
+            elif group == '일반':
+                q_age |= Q(대상_일반=True)
+            elif group == '기타':
+                q_age |= Q(대상_기타=True)
+        queryset = queryset.filter(q_age)
 
+    # 셔틀버스 필터 적용: shuttleFilter가 true이면 셔틀버스 필드가 "true" (대소문자 무시)인 학원만 선택
+    shuttleFilter = body.get('shuttleFilter', False)
+    if shuttleFilter:
+        queryset = queryset.filter(셔틀버스__iexact="true")
+
+    data = list(queryset.values(
+        'id',
+        '상호명',
+        '위도',
+        '경도',
+        '도로명주소',
+        '전화번호',
+        '시군구명',
+    ))
+    return JsonResponse(data, safe=False)
 
 
 
@@ -291,7 +315,6 @@ def delete_academy(request, pk):
         academy.delete()
         return redirect('manage')
     return render(request, 'main/delete_academy.html', {'academy': academy})
-
 
 
 def data_update(request):
