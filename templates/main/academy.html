@@ -9,11 +9,11 @@
   <!-- 첫 줄: 뒤로가기, 타이틀(아카데미맵), 검색 아이콘 -->
   <div class="top-row">
     <!-- 왼쪽: 뒤로가기 버튼 -->
-    <a class="go-back-btn" href="javascript:history.back()">&lt;</a>
+    <a class="go-back-btn" href="javascript:history.back()"><span class="material-symbols-outlined">arrow_back_ios</span></a>
 
     <!-- 중앙: 아카데미맵 -->
     <div class="title-bar">
-      <a href="{% url 'map' %}">{{ academy.상호명 }}</a>
+      <div>{{ academy.상호명 }}</div>
     </div>
 
     <!-- 오른쪽: 검색 아이콘 (academy_list로 이동) -->

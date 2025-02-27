@@ -4,29 +4,18 @@
 {% block contents %}
 
 <div class="navbar">
-  <button class="nav_item1" onclick="agetogglePanel()">연령</button>
+  <button class="nav_item1" onclick="window.location.href='javascript:history.back()'"><span class="material-symbols-outlined">arrow_back_ios</span></button>
     <a href="{% url 'search' %}" class="nav_item2">
       <div class="search_box">학원명/지역 검색</div>
       <div class="search_icon_box"><span class="material-symbols-outlined">search</span></div>
     </a>
     <!-- Toggle Panel Button -->
-  <button class="nav_item3" id="toggle-panel" onclick="togglePanel()">수강료</button>
-</div>
-
-<!-- 패널(콘텐츠 영역): 가격 범위 필터 (noUiSlider 적용) -->
-<div id="panel-container">
-  <!-- 슬라이더 영역 -->
-  <div id="price-slider"></div>
-  <div>
-    <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
-  </div>
-  <!-- 선택된 값 저장용 hidden input -->
-  <input type="hidden" id="price-min" value="{{ min_price }}">
-  <input type="hidden" id="price-max" value="{{ max_price }}">
-  <button onclick="applyPriceFilter()" style="margin-top: 10px;">적용</button>
+  <button class="nav_item3" ><span class="material-symbols-outlined">person</span></button>
 </div>
 
 
+<!-- 패널(콘텐츠 영역): 필터 (noUiSlider 적용) -->
+<button class="filterButton" id="toggle-panel" onclick="togglePanel()"><span class="material-symbols-outlined">tune</span></button>
 
 <!-- 카테고리 버튼 (가로 스크롤) -->
 <div id="category-container">
@@ -43,6 +32,47 @@
     <button onclick="filterMarkers(this, '독서실/스터디카페')">독서실/스터디카페</button>
   </div>
 </div>
+
+<div id="panel-container">
+  <div class="panel-subject-title">과목</div>
+    <div id="panel-category">
+    <button onclick="filterMarkers(this, '전체')">전체</button>
+    <button onclick="filterMarkers(this, '수학')">수학</button>
+    <button onclick="filterMarkers(this, '영어')">영어</button>
+    <button onclick="filterMarkers(this, '과학')">과학</button>
+    <button onclick="filterMarkers(this, '외국어')">외국어</button>
+    <button onclick="filterMarkers(this, '예체능')">예체능</button>
+    <button onclick="filterMarkers(this, '컴퓨터')">컴퓨터</button>
+    <button onclick="filterMarkers(this, '논술')">논술</button>
+    <button onclick="filterMarkers(this, '기타')">기타</button>
+    <button onclick="filterMarkers(this, '독서실/스터디카페')">독서실/스터디카페</button>
+  </div>
+  <!-- 가격 필터: 슬라이더 영역 -->
+  <div>
+    수강료 <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
+  </div>
+  <div id="price-slider"></div>
+  <!-- 선택된 값 저장용 hidden input -->
+  <input type="hidden" id="price-min" value="{{ min_price }}">
+  <input type="hidden" id="price-max" value="{{ max_price }}">
+  <div class="panel-age-title">연령</div>
+    <!-- 연령 필터 버튼 (다중 선택 가능) -->
+  <div class="panel-age-filters">
+    <button class="age-filter" onclick="toggleAgeFilter('유아', this)">유아</button>
+    <button class="age-filter" onclick="toggleAgeFilter('초등', this)">초등</button>
+    <button class="age-filter" onclick="toggleAgeFilter('중등', this)">중등</button>
+    <button class="age-filter" onclick="toggleAgeFilter('고등', this)">고등</button>
+    <button class="age-filter" onclick="toggleAgeFilter('특목고', this)">특목고</button>
+    <button class="age-filter" onclick="toggleAgeFilter('일반', this)">일반</button>
+    <button class="age-filter" onclick="toggleAgeFilter('기타', this)">기타</button>
+  </div>
+    <!-- 패널 컨테이너 내부, 연령 필터 아래에 추가 -->
+  <div class="panel-suttle-title">셔틀</div>
+  <div class="panel-suttle-filters">
+    <button class="suttle-filter" onclick="toggleShuttleFilter(this)">셔틀버스</button>
+  </div>
+</div>
+
 
 <!-- 지도 영역 -->
 <div id="map"></div>
@@ -568,56 +598,189 @@ group.forEach((ac, index) => {
 
 <script>
   // Block 4: 수강료! Price Filter Slider Initialization and Panel Toggling
-  function togglePanel() {
-    var panel = document.getElementById("panel-container");
-    if (panel.style.display === "none" || panel.style.display === "") {
-      panel.style.display = "block";
-    } else {
-      panel.style.display = "none";
-    }
-  }
-
-  function applyPriceFilter() {
-    // 패널을 숨기고 가격 필터 기준으로 학원 데이터를 새로 요청
-    document.getElementById("panel-container").style.display = "none";
-    fetchAcademies();
-  }
-
   document.addEventListener('DOMContentLoaded', function() {
+    // 전역 togglePanel 함수 정의 (HTML의 onclick에서 호출됨)
+    window.togglePanel = function() {
+      var panel = document.getElementById("panel-container");
+      if (panel.style.display === "none" || panel.style.display === "") {
+        panel.style.display = "block";
+      } else {
+        panel.style.display = "none";
+      }
+    };
+
+    // 가격 슬라이더 초기화
+    // 범위는 0 ~ 2,000,000원 (즉, 200만원)
     var slider = document.getElementById('price-slider');
-    var minPrice = parseFloat("{{ min_price|default:0 }}");
-    var maxPrice = parseFloat("{{ max_price|default:100 }}");
+    var minPrice = 0;
+    var maxPrice = 2000000; // 2백만원
+    // 초기값: hidden input에 값이 있으면 사용, 없으면 범위의 끝값 사용
     var initialMin = parseFloat(document.getElementById('price-min').value) || minPrice;
     var initialMax = parseFloat(document.getElementById('price-max').value) || maxPrice;
 
     noUiSlider.create(slider, {
       start: [initialMin, initialMax],
       connect: true,
-      orientation: 'vertical',  // 세로 슬라이더로 전환
-      direction: 'rtl',         // 수직 슬라이더를 반전: 낮은 값은 아래, 높은 값은 위로
+      orientation: 'horizontal',  // 가로 슬라이더
+      direction: 'ltr',           // 낮은 값은 왼쪽, 높은 값은 오른쪽
       range: {
         'min': minPrice,
         'max': maxPrice
       },
       tooltips: [true, true],
       format: {
-        to: function(value) { return Math.round(value).toLocaleString(); },
-        from: function(value) { return Number(value.toString().replace(/,/g, '')); }
+        to: function(value) {
+          var rounded = Math.round(value);
+          if (rounded >= maxPrice) {
+            return Math.round(maxPrice).toLocaleString() + " 이상";
+          }
+          return rounded.toLocaleString();
+        },
+        from: function(value) {
+          // 만약 value에 "이상"이 포함되어 있으면 최대값을 반환
+          if (typeof value === 'string' && value.indexOf("이상") !== -1) {
+            return maxPrice;
+          }
+          return Number(value.toString().replace(/,/g, ''));
+        }
       }
     });
 
+    // 슬라이더 업데이트 시 즉시 필터 적용 및 표시값(hidden input, 툴팁) 업데이트
     slider.noUiSlider.on('update', function(values, handle) {
-      document.getElementById('price-slider-min').innerText = values[0] + "원";
-      document.getElementById('price-slider-max').innerText = values[1] + "원";
-      document.getElementById('price-min').value = values[0].replace(/,/g, '');
-      document.getElementById('price-max').value = values[1].replace(/,/g, '');
+      // values는 format.to()가 적용된 문자열이므로, 숫자만 추출합니다.
+      var currentMin = Number(values[0].replace(/[^\d]/g, ''));
+      var currentMax = Number(values[1].replace(/[^\d]/g, ''));
+
+      document.getElementById('price-slider-min').innerText = "최소 " + currentMin.toLocaleString() + "원";
+      if (currentMax >= maxPrice) {
+        document.getElementById('price-slider-max').innerText = "최대 " + Math.round(maxPrice).toLocaleString() + " 이상";
+        // 최대값에 도달하면 hidden input에 매우 큰 값을 할당하여 2,000,000원 이상의 학원도 포함되게 함
+        document.getElementById('price-max').value = 999999999;
+      } else {
+        document.getElementById('price-slider-max').innerText = "최대 " + values[1] + "원";
+        document.getElementById('price-max').value = currentMax;
+      }
+      document.getElementById('price-min').value = currentMin;
+
+      // 슬라이더를 움직일 때마다 바로 필터 적용
+      fetchAcademies();
     });
   });
 </script>
 
 
 
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 전역 연령 필터 배열: 선택된 연령 그룹 값을 저장합니다.
+    window.selectedAgeGroups = [];
 
+    // 연령 필터 토글 함수: 버튼을 클릭할 때 active 클래스를 토글하고 스타일을 변경합니다.
+    window.toggleAgeFilter = function(filterName, buttonElement) {
+      if (buttonElement.classList.contains('active')) {
+        // 버튼이 이미 활성 상태이면 -> 비활성화: 배경 white, 글씨 black
+        buttonElement.classList.remove('active');
+        buttonElement.style.backgroundColor = "white";
+        buttonElement.style.color = "black";
+        window.selectedAgeGroups = window.selectedAgeGroups.filter(function(value) {
+          return value !== filterName;
+        });
+      } else {
+        // 버튼이 비활성 상태이면 -> 활성화: 배경 green, 글씨 white
+        buttonElement.classList.add('active');
+        buttonElement.style.backgroundColor = "green";
+        buttonElement.style.color = "white";
+        window.selectedAgeGroups.push(filterName);
+      }
+      // 연령 필터가 변경될 때마다 바로 필터 적용
+      fetchAcademies();
+    };
+  });
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 전역 셔틀버스 필터: 기본은 false (필터 미적용)
+    window.shuttleFilter = false;
+
+    // 셔틀버스 필터 토글 함수: 버튼 클릭 시 상태 및 스타일 토글
+    window.toggleShuttleFilter = function(buttonElement) {
+      if (buttonElement.classList.contains('active')) {
+        buttonElement.classList.remove('active');
+        buttonElement.style.backgroundColor = "white";
+        buttonElement.style.color = "black";
+        window.shuttleFilter = false;
+      } else {
+        buttonElement.classList.add('active');
+        buttonElement.style.backgroundColor = "green";
+        buttonElement.style.color = "white";
+        window.shuttleFilter = true;
+      }
+      // 셔틀버스 필터 변경 시 바로 필터 적용
+      fetchAcademies();
+    };
+  });
+</script>
+
+<!-- fetchAcademies() 함수 (Price, Age, Shuttle 필터 모두 전달) -->
+<script>
+  function fetchAcademies() {
+    const bounds = map.getBounds();
+    const sw = bounds.getSW();
+    const ne = bounds.getNE();
+
+    // 가격 범위 필터 값
+    let priceMin = document.getElementById('price-min') ? document.getElementById('price-min').value : "";
+    let priceMax = document.getElementById('price-max') ? document.getElementById('price-max').value : "";
+
+    // API 호출 시 연령과 셔틀버스 필터 값도 포함
+    fetch('/api/filtered_academies', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({
+        swLat: sw._lat,
+        swLng: sw._lng,
+        neLat: ne._lat,
+        neLng: ne._lng,
+        category: selectedCategory,
+        priceMin: priceMin,
+        priceMax: priceMax,
+        ageGroups: window.selectedAgeGroups, // 연령 필터
+        shuttleFilter: window.shuttleFilter    // 셔틀버스 필터 (true/false)
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      allAcademyData = data;
+      renderMarkers();
+    })
+    .catch(error => console.error('학원 데이터 요청 에러:', error));
+  }
+</script>
+
+<script>
+  function filterMarkers(btn, category) {
+    selectedCategory = category;
+    // #category와 #panel-category 두 컨테이너 안의 버튼들을 모두 선택합니다.
+    const buttons = document.querySelectorAll('#category button, #panel-category button');
+    buttons.forEach(button => {
+      button.classList.remove('active');
+      // 인라인 스타일로 초기화 (필요하면)
+      button.style.backgroundColor = "";
+      button.style.color = "";
+    });
+    // 클릭한 버튼에 active 스타일 적용 (배경: green, 글씨: white)
+    btn.classList.add('active');
+    btn.style.backgroundColor = "green";
+    btn.style.color = "white";
+
+    // 필터 적용 함수 호출
+    fetchAcademies();
+  }
+</script>
 
 <!--<script>-->
 <!--  // Block 3: Academy Data Fetching and Marker Rendering Functions-->
