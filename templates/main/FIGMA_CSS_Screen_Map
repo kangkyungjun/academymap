@@ -1,4 +1,4 @@
-.screen-map,
+.screen-map, /* 메인 화면 */
 .screen-map * {
   box-sizing: border-box;
 }
@@ -11,7 +11,7 @@
   position: relative;
   overflow: hidden;
 }
-.component-5 {
+.component-5 { /* 초등,중등,고등,성인 */
   width: 33px;
   height: 137px;
   position: absolute;
@@ -74,7 +74,7 @@
   top: 74.45%;
   box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
 }
-.div {
+.div { /* 초등 */
   color: #070707;
   text-align: left;
   font-family: "Inter-Regular", sans-serif;
@@ -89,7 +89,7 @@
   height: 12.41%;
   -webkit-text-stroke: 1px #ffffff;
 }
-.div2 {
+.div2 { /* 중등 */
   color: #070707;
   text-align: left;
   font-family: "Inter-Regular", sans-serif;
@@ -104,7 +104,7 @@
   height: 12.41%;
   -webkit-text-stroke: 1px #ffffff;
 }
-.div3 {
+.div3 { /* 고등 */
   color: #070707;
   text-align: left;
   font-family: "Inter-Regular", sans-serif;
@@ -119,7 +119,7 @@
   height: 12.41%;
   -webkit-text-stroke: 1px #ffffff;
 }
-.div4 {
+.div4 { /* 성인 */
   color: #070707;
   text-align: left;
   font-family: "Inter-Regular", sans-serif;
@@ -134,7 +134,7 @@
   height: 12.41%;
   -webkit-text-stroke: 1px #ffffff;
 }
-.component-4 {
+.component-4 { /* 비용 박스 */
   width: 33px;
   height: 208px;
   position: absolute;
@@ -530,7 +530,7 @@
   top: 69.71%;
   height: 5.77%;
 }
-.component-6 {
+.component-6 { /* 지도 중심 박스 */
   width: 33px;
   height: 33px;
   position: absolute;
@@ -538,7 +538,7 @@
   top: 191px;
   overflow: visible;
 }
-.component-8 {
+.component-8 { /* + 박스 */
   width: 33px;
   height: 33px;
   position: absolute;
@@ -559,21 +559,21 @@
   top: 0%;
   box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
 }
-.component-9 {
+.component-9 { /* - 박스 */
   width: 33px;
   height: 33px;
   position: absolute;
   left: 12px;
   top: 266px;
 }
-.component-7 {
+.component-7 { /* 영어,수학 등 박스 */
   width: 351px;
   height: 30px;
   position: absolute;
   left: 21px;
   top: 126px;
 }
-.rectangle-15 {
+.rectangle-15 { /* 영어 */
   background: #ffffff;
   border-radius: 10px;
   border-style: solid;
@@ -588,7 +588,7 @@
   top: 0%;
   box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
 }
-.rectangle-35 {
+.rectangle-35 { /* 수학 */
   background: #ffffff;
   border-radius: 10px;
   border-style: solid;
@@ -776,7 +776,7 @@
   top: 20%;
   height: 56.67%;
 }
-.component-10 {
+.component-10 { /* 건물 아이콘 */
   width: 40px;
   height: 65.75px;
   position: absolute;
@@ -793,7 +793,7 @@
   top: 48.67%;
   overflow: visible;
 }
-.component-2 {
+.component-2 { /* 건물 기발 */
   width: 100%;
   height: 80.61%;
   position: absolute;
@@ -803,14 +803,14 @@
   top: 0%;
   overflow: visible;
 }
-.component-3 {
+.component-3 { /* 메인 상단 서치 박스 */
   width: 351px;
   height: 63px;
   position: absolute;
   left: 21px;
   top: 58px;
 }
-.rectangle-1 {
+.rectangle-1 { /* 학원을 찾으시나요 박스 외각 사각형 */
   background: #ffffff;
   border-radius: 10px;
   border-style: solid;
@@ -825,7 +825,7 @@
   top: 0%;
   box-shadow: 0px 2px 3px 0px rgba(40, 40, 40, 0.25);
 }
-.search-01 {
+.search-01 { /* 돋보기 아이콘 */
   width: 11.4%;
   height: 63.49%;
   position: absolute;
@@ -835,7 +835,7 @@
   top: 20.63%;
   overflow: hidden;
 }
-.icon {
+.icon { /* 돋보기 박스 */
   width: 83.33%;
   height: 83.33%;
   position: absolute;
@@ -845,7 +845,7 @@
   top: 8.33%;
   overflow: visible;
 }
-.ellipse-1 {
+.ellipse-1 { /* 돋보기 원 */
   background: #ffffff;
   border-radius: 50%;
   border-style: solid;
@@ -859,7 +859,7 @@
   bottom: 17.46%;
   top: 19.05%;
 }
-.div12 {
+.div12 { /* 학원을 찾으시나요? */
   color: #a8a8a8;
   text-align: left;
   font-family: "Inter-Regular", sans-serif;
@@ -873,7 +873,7 @@
   top: 26.98%;
   height: 46.03%;
 }
-.shopicons-light-menu {
+.shopicons-light-menu { /* 없어도 되는 박스 */
   width: 9.12%;
   height: 49.21%;
   position: absolute;
@@ -883,7 +883,7 @@
   top: 19.05%;
   overflow: visible;
 }
-.line-19 {
+.line-19 { /* 상단 3선 의 1번쟤 가로선 */
   margin-top: -1px;
   border-style: solid;
   border-color: #000000;
@@ -896,7 +896,7 @@
   bottom: 58.73%;
   top: 41.27%;
 }
-.line-20 {
+.line-20 { /* 상단 3선 의 2번쟤 가로선 */
   margin-top: -1px;
   border-style: solid;
   border-color: #000000;
@@ -909,7 +909,7 @@
   bottom: 47.62%;
   top: 52.38%;
 }
-.line-21 {
+.line-21 { /* 상단 3선 의 3번쟤 가로선 */
   margin-top: -1px;
   border-style: solid;
   border-color: #000000;
@@ -922,7 +922,7 @@
   bottom: 34.92%;
   top: 65.08%;
 }
-.line-26 {
+.line-26 { /* + 의 가로선 */
   margin-top: -1px;
   border-style: solid;
   border-color: #5d5d5d;
@@ -933,7 +933,7 @@
   left: 18px;
   top: 251px;
 }
-.line-28 {
+.line-28 { /* - 의 가로선 */
   margin-top: -1px;
   border-style: solid;
   border-color: #5d5d5d;
@@ -944,7 +944,7 @@
   left: 18px;
   top: 284px;
 }
-.line-27 {
+.line-27 { /* + 의 세로선 */
   margin-top: -1px;
   border-style: solid;
   border-color: #5d5d5d;
