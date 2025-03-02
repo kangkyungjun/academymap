@@ -1,5 +1,5 @@
 <div class="screen-map">
-  <div class="component-5">
+  <div class="component-5"> <!-- 초등,중등,고등,성인 박스 -->
     <div class="rectangle-23"></div>
     <div class="rectangle-25"></div>
     <div class="rectangle-26"></div>
@@ -9,7 +9,7 @@
     <div class="div3">고등</div>
     <div class="div4">성인</div>
   </div>
-  <div class="component-4">
+  <div class="component-4"> <!-- 금액 박스 -->
     <div class="rectangle-24"></div>
     <div class="line-1"></div>
     <div class="line-8"></div>
@@ -39,14 +39,8 @@
     <div class="_70">70</div>
     <div class="_90">90</div>
   </div>
-  <img class="component-6" src="component-60.svg" />
-  <div class="component-8">
-    <div class="rectangle-34"></div>
-  </div>
-  <div class="component-9">
-    <div class="rectangle-34"></div>
-  </div>
-  <div class="component-7">
+  <img class="component-6" src="component-60.svg" /> <!-- 지도 중심 박스 -->
+  <div class="component-7"> <!-- 영어,수학 등 박스 -->
     <div class="rectangle-15"></div>
     <div class="rectangle-35"></div>
     <div class="rectangle-36"></div>
@@ -62,11 +56,11 @@
     <div class="div10">미술</div>
     <div class="div11">기타</div>
   </div>
-  <div class="component-10">
+  <div class="component-10"> <!-- 건물모양 상자 -->
     <img class="group-1" src="group-10.svg" />
     <img class="component-2" src="component-20.svg" />
   </div>
-  <div class="component-3">
+  <div class="component-3"> <!-- 상단 탐색 박스 -->
     <div class="rectangle-1"></div>
     <div class="search-01">
       <img class="icon" src="icon0.svg" />
@@ -78,7 +72,15 @@
     <div class="line-20"></div>
     <div class="line-21"></div>
   </div>
-  <div class="line-26"></div>
-  <div class="line-28"></div>
-  <div class="line-27"></div>
+  <div class="component-11"> <!-- +/- 박스 -->
+    <div class="component-8">
+      <div class="rectangle-34"></div>
+    </div>
+    <div class="component-9">
+      <div class="rectangle-34"></div>
+    </div>
+    <div class="line-26"></div>
+    <div class="line-28"></div>
+    <div class="line-27"></div>
+  </div>
 </div>
