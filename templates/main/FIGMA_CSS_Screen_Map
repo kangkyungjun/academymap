@@ -1,0 +1,959 @@
+.screen-map, /* 메인 화면 */
+.screen-map * {
+  box-sizing: border-box;
+}
+.screen-map {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px;
+  height: 852px;
+  position: relative;
+  overflow: hidden;
+}
+.component-5 { /* 초등,중등,고등,성인 */
+  width: 33px;
+  height: 137px;
+  position: absolute;
+  left: 344px;
+  top: 191px;
+}
+.rectangle-23 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #aaaaaa;
+  border-width: 1px;
+  width: 100%;
+  height: 25.55%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 74.45%;
+  top: 0%;
+  box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-25 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #aaaaaa;
+  border-width: 1px;
+  width: 100%;
+  height: 25.55%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 49.64%;
+  top: 24.82%;
+  box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-26 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #aaaaaa;
+  border-width: 1px;
+  width: 100%;
+  height: 25.55%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 24.82%;
+  top: 49.64%;
+  box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-27 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #aaaaaa;
+  border-width: 1px;
+  width: 100%;
+  height: 25.55%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 0%;
+  top: 74.45%;
+  box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
+}
+.div { /* 초등 */
+  color: #070707;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 9.09%;
+  left: 12.12%;
+  width: 78.79%;
+  bottom: 81.02%;
+  top: 6.57%;
+  height: 12.41%;
+  -webkit-text-stroke: 1px #ffffff;
+}
+.div2 { /* 중등 */
+  color: #070707;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 9.09%;
+  left: 12.12%;
+  width: 78.79%;
+  bottom: 56.2%;
+  top: 31.39%;
+  height: 12.41%;
+  -webkit-text-stroke: 1px #ffffff;
+}
+.div3 { /* 고등 */
+  color: #070707;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 9.09%;
+  left: 12.12%;
+  width: 78.79%;
+  bottom: 31.39%;
+  top: 56.2%;
+  height: 12.41%;
+  -webkit-text-stroke: 1px #ffffff;
+}
+.div4 { /* 성인 */
+  color: #070707;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 9.09%;
+  left: 12.12%;
+  width: 78.79%;
+  bottom: 6.57%;
+  top: 81.02%;
+  height: 12.41%;
+  -webkit-text-stroke: 1px #ffffff;
+}
+.component-4 { /* 비용 박스 */
+  width: 33px;
+  height: 208px;
+  position: absolute;
+  left: 344px;
+  top: 341px;
+}
+.rectangle-24 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #b5b5b5;
+  border-width: 1px;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
+}
+.line-1 {
+  margin-top: -2px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 2px 0 0 0;
+  width: 96.97%;
+  height: 0%;
+  position: absolute;
+  right: -42.42%;
+  left: 45.45%;
+  bottom: 88.46%;
+  top: 11.54%;
+  transform-origin: 0 0;
+  transform: rotate(90deg) scale(1, 1);
+}
+.line-8 {
+  margin-top: -2px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 2px 0 0 0;
+  width: 93.94%;
+  height: 0%;
+  position: absolute;
+  right: -39.39%;
+  left: 45.45%;
+  bottom: 73.08%;
+  top: 26.92%;
+  transform-origin: 0 0;
+  transform: rotate(90deg) scale(1, 1);
+}
+.line-9 {
+  margin-top: -2px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 2px 0 0 0;
+  width: 96.97%;
+  height: 0%;
+  position: absolute;
+  right: -42.42%;
+  left: 45.45%;
+  bottom: 57.69%;
+  top: 42.31%;
+  transform-origin: 0 0;
+  transform: rotate(90deg) scale(1, 1);
+}
+.line-10 {
+  margin-top: -2px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 2px 0 0 0;
+  width: 96.97%;
+  height: 0%;
+  position: absolute;
+  right: -42.42%;
+  left: 45.45%;
+  bottom: 42.31%;
+  top: 57.69%;
+  transform-origin: 0 0;
+  transform: rotate(90deg) scale(1, 1);
+}
+.line-11 {
+  margin-top: -2px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 2px 0 0 0;
+  width: 96.97%;
+  height: 0%;
+  position: absolute;
+  right: -42.42%;
+  left: 45.45%;
+  bottom: 26.92%;
+  top: 73.08%;
+  transform-origin: 0 0;
+  transform: rotate(90deg) scale(1, 1);
+}
+.line-2 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 63.64%;
+  height: 0%;
+  position: absolute;
+  right: 18.18%;
+  left: 18.18%;
+  bottom: 88.46%;
+  top: 11.54%;
+}
+.line-4 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 63.64%;
+  height: 0%;
+  position: absolute;
+  right: 18.18%;
+  left: 18.18%;
+  bottom: 73.08%;
+  top: 26.92%;
+}
+.line-5 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 63.64%;
+  height: 0%;
+  position: absolute;
+  right: 18.18%;
+  left: 18.18%;
+  bottom: 57.69%;
+  top: 42.31%;
+}
+.line-3 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 63.64%;
+  height: 0%;
+  position: absolute;
+  right: 18.18%;
+  left: 18.18%;
+  bottom: 42.31%;
+  top: 57.69%;
+}
+.line-7 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 63.64%;
+  height: 0%;
+  position: absolute;
+  right: 18.18%;
+  left: 18.18%;
+  bottom: 26.92%;
+  top: 73.08%;
+}
+.line-6 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 63.64%;
+  height: 0%;
+  position: absolute;
+  right: 15.15%;
+  left: 21.21%;
+  bottom: 11.54%;
+  top: 88.46%;
+}
+._0 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 42.42%;
+  left: 30.3%;
+  width: 27.27%;
+  bottom: 90.38%;
+  top: 1.44%;
+  height: 8.17%;
+}
+._200 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  position: absolute;
+  right: 0%;
+  left: 6.06%;
+  width: 93.94%;
+  bottom: 3.37%;
+  top: 90.38%;
+  height: 6.25%;
+}
+.rectangle-28 {
+  background: #fafeff;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px;
+  width: 27.27%;
+  height: 4.81%;
+  position: absolute;
+  right: 39.39%;
+  left: 33.33%;
+  bottom: 85.58%;
+  top: 9.62%;
+}
+.rectangle-29 {
+  background: #fafeff;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px;
+  width: 27.27%;
+  height: 4.81%;
+  position: absolute;
+  right: 36.36%;
+  left: 36.36%;
+  bottom: 9.62%;
+  top: 85.58%;
+}
+.line-12 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 9.09%;
+  height: 0%;
+  position: absolute;
+  right: 45.45%;
+  left: 45.45%;
+  bottom: 12.5%;
+  top: 87.5%;
+  transform-origin: 0 0;
+  transform: rotate(0deg) scale(1, 1);
+}
+.line-13 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 9.09%;
+  height: 0%;
+  position: absolute;
+  right: 45.45%;
+  left: 45.45%;
+  bottom: 11.06%;
+  top: 88.94%;
+  transform-origin: 0 0;
+  transform: rotate(0deg) scale(1, 1);
+}
+.line-14 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 9.09%;
+  height: 0%;
+  position: absolute;
+  right: 48.48%;
+  left: 42.42%;
+  bottom: 88.46%;
+  top: 11.54%;
+  transform-origin: 0 0;
+  transform: rotate(0deg) scale(1, 1);
+}
+.line-15 {
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 9.09%;
+  height: 0%;
+  position: absolute;
+  right: 48.48%;
+  left: 42.42%;
+  bottom: 87.02%;
+  top: 12.98%;
+  transform-origin: 0 0;
+  transform: rotate(0deg) scale(1, 1);
+}
+.rectangle-30 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 0.5px;
+  width: 42.42%;
+  height: 5.29%;
+  position: absolute;
+  right: 30.3%;
+  left: 27.27%;
+  bottom: 70.67%;
+  top: 24.04%;
+}
+.rectangle-31 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 0.5px;
+  width: 42.42%;
+  height: 5.29%;
+  position: absolute;
+  right: 30.3%;
+  left: 27.27%;
+  bottom: 55.29%;
+  top: 39.42%;
+}
+.rectangle-32 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 0.5px;
+  width: 42.42%;
+  height: 5.29%;
+  position: absolute;
+  right: 30.3%;
+  left: 27.27%;
+  bottom: 39.9%;
+  top: 54.81%;
+}
+.rectangle-33 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 0.5px;
+  width: 42.42%;
+  height: 5.29%;
+  position: absolute;
+  right: 30.3%;
+  left: 27.27%;
+  bottom: 24.52%;
+  top: 70.19%;
+}
+._30 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  position: absolute;
+  right: 30.3%;
+  left: 30.3%;
+  width: 39.39%;
+  bottom: 70.67%;
+  top: 23.56%;
+  height: 5.77%;
+}
+._50 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  position: absolute;
+  right: 30.3%;
+  left: 30.3%;
+  width: 39.39%;
+  bottom: 55.29%;
+  top: 38.94%;
+  height: 5.77%;
+}
+._70 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  position: absolute;
+  right: 30.3%;
+  left: 33.33%;
+  width: 36.36%;
+  bottom: 39.9%;
+  top: 54.33%;
+  height: 5.77%;
+}
+._90 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  position: absolute;
+  right: 27.27%;
+  left: 33.33%;
+  width: 39.39%;
+  bottom: 24.52%;
+  top: 69.71%;
+  height: 5.77%;
+}
+.component-6 { /* 지도 중심 박스 */
+  width: 33px;
+  height: 33px;
+  position: absolute;
+  left: 12px;
+  top: 191px;
+  overflow: visible;
+}
+.component-8 { /* + 박스 */
+  width: 33px;
+  height: 33px;
+  position: absolute;
+  left: 12px;
+  top: 234px;
+}
+.rectangle-34 {
+  background: #ffffff;
+  border-style: solid;
+  border-color: #b5b5b5;
+  border-width: 1px;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 3px 0px rgba(40, 40, 40, 0.25);
+}
+.component-9 { /* - 박스 */
+  width: 33px;
+  height: 33px;
+  position: absolute;
+  left: 12px;
+  top: 266px;
+}
+.component-7 { /* 영어,수학 등 박스 */
+  width: 351px;
+  height: 30px;
+  position: absolute;
+  left: 21px;
+  top: 126px;
+}
+.rectangle-15 { /* 영어 */
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 12.82%;
+  height: 100%;
+  position: absolute;
+  right: 87.18%;
+  left: 0%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-35 { /* 수학 */
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 12.82%;
+  height: 100%;
+  position: absolute;
+  right: 72.65%;
+  left: 14.53%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-36 {
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 12.82%;
+  height: 100%;
+  position: absolute;
+  right: 58.12%;
+  left: 29.06%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-37 {
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 12.82%;
+  height: 100%;
+  position: absolute;
+  right: 43.59%;
+  left: 43.59%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-38 {
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 12.82%;
+  height: 100%;
+  position: absolute;
+  right: 29.06%;
+  left: 58.12%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-39 {
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 12.82%;
+  height: 100%;
+  position: absolute;
+  right: 14.53%;
+  left: 72.65%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
+}
+.rectangle-41 {
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 12.82%;
+  height: 100%;
+  position: absolute;
+  right: 0%;
+  left: 87.18%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 1px 2px 0px rgba(40, 40, 40, 0.25);
+}
+.div5 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 89.74%;
+  left: 2.85%;
+  width: 7.41%;
+  bottom: 23.33%;
+  top: 20%;
+  height: 56.67%;
+}
+.div6 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 75.21%;
+  left: 17.38%;
+  width: 7.41%;
+  bottom: 23.33%;
+  top: 20%;
+  height: 56.67%;
+}
+.div7 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 60.68%;
+  left: 31.91%;
+  width: 7.41%;
+  bottom: 23.33%;
+  top: 20%;
+  height: 56.67%;
+}
+.div8 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 46.15%;
+  left: 46.44%;
+  width: 7.41%;
+  bottom: 23.33%;
+  top: 20%;
+  height: 56.67%;
+}
+.div9 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 31.62%;
+  left: 60.97%;
+  width: 7.41%;
+  bottom: 23.33%;
+  top: 20%;
+  height: 56.67%;
+}
+.div10 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 17.09%;
+  left: 75.5%;
+  width: 7.41%;
+  bottom: 23.33%;
+  top: 20%;
+  height: 56.67%;
+}
+.div11 {
+  color: #000000;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  position: absolute;
+  right: 2.56%;
+  left: 90.03%;
+  width: 7.41%;
+  bottom: 23.33%;
+  top: 20%;
+  height: 56.67%;
+}
+.component-10 { /* 건물 아이콘 */
+  width: 40px;
+  height: 65.75px;
+  position: absolute;
+  left: 168px;
+  top: 211px;
+}
+.group-1 {
+  width: 75%;
+  height: 51.33%;
+  position: absolute;
+  right: 22.5%;
+  left: 2.5%;
+  bottom: 0%;
+  top: 48.67%;
+  overflow: visible;
+}
+.component-2 { /* 건물 기발 */
+  width: 100%;
+  height: 80.61%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 19.39%;
+  top: 0%;
+  overflow: visible;
+}
+.component-3 { /* 메인 상단 서치 박스 */
+  width: 351px;
+  height: 63px;
+  position: absolute;
+  left: 21px;
+  top: 58px;
+}
+.rectangle-1 { /* 학원을 찾으시나요 박스 외각 사각형 */
+  background: #ffffff;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #8d8d8d;
+  border-width: 1px;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  right: 0%;
+  left: 0%;
+  bottom: 0%;
+  top: 0%;
+  box-shadow: 0px 2px 3px 0px rgba(40, 40, 40, 0.25);
+}
+.search-01 { /* 돋보기 아이콘 */
+  width: 11.4%;
+  height: 63.49%;
+  position: absolute;
+  right: 86.61%;
+  left: 1.99%;
+  bottom: 15.87%;
+  top: 20.63%;
+  overflow: hidden;
+}
+.icon { /* 돋보기 박스 */
+  width: 83.33%;
+  height: 83.33%;
+  position: absolute;
+  right: 8.33%;
+  left: 8.33%;
+  bottom: 8.33%;
+  top: 8.33%;
+  overflow: visible;
+}
+.ellipse-1 { /* 돋보기 원 */
+  background: #ffffff;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: #040404;
+  border-width: 1px;
+  width: 11.4%;
+  height: 63.49%;
+  position: absolute;
+  right: 2.56%;
+  left: 86.04%;
+  bottom: 17.46%;
+  top: 19.05%;
+}
+.div12 { /* 학원을 찾으시나요? */
+  color: #a8a8a8;
+  text-align: left;
+  font-family: "Inter-Regular", sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  position: absolute;
+  right: 29.63%;
+  left: 14.53%;
+  width: 55.84%;
+  bottom: 26.98%;
+  top: 26.98%;
+  height: 46.03%;
+}
+.shopicons-light-menu { /* 없어도 되는 박스 */
+  width: 9.12%;
+  height: 49.21%;
+  position: absolute;
+  right: 3.7%;
+  left: 87.18%;
+  bottom: 31.75%;
+  top: 19.05%;
+  overflow: visible;
+}
+.line-19 { /* 상단 3선 의 1번쟤 가로선 */
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 6.27%;
+  height: 0%;
+  position: absolute;
+  right: 5.13%;
+  left: 88.6%;
+  bottom: 58.73%;
+  top: 41.27%;
+}
+.line-20 { /* 상단 3선 의 2번쟤 가로선 */
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 6.27%;
+  height: 0%;
+  position: absolute;
+  right: 5.13%;
+  left: 88.6%;
+  bottom: 47.62%;
+  top: 52.38%;
+}
+.line-21 { /* 상단 3선 의 3번쟤 가로선 */
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #000000;
+  border-width: 1px 0 0 0;
+  width: 6.27%;
+  height: 0%;
+  position: absolute;
+  right: 5.13%;
+  left: 88.6%;
+  bottom: 34.92%;
+  top: 65.08%;
+}
+.line-26 { /* + 의 가로선 */
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #5d5d5d;
+  border-width: 1px 0 0 0;
+  width: 21px;
+  height: 0px;
+  position: absolute;
+  left: 18px;
+  top: 251px;
+}
+.line-28 { /* - 의 가로선 */
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #5d5d5d;
+  border-width: 1px 0 0 0;
+  width: 21px;
+  height: 0px;
+  position: absolute;
+  left: 18px;
+  top: 284px;
+}
+.line-27 { /* + 의 세로선 */
+  margin-top: -1px;
+  border-style: solid;
+  border-color: #5d5d5d;
+  border-width: 1px 0 0 0;
+  width: 21px;
+  height: 0px;
+  position: absolute;
+  left: 28px;
+  top: 240px;
+  transform-origin: 0 0;
+  transform: rotate(90deg) scale(1, 1);
+}
