@@ -1,22 +1,16 @@
-from django.shortcuts import render
 import json
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, F, Count
-from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models.functions import Cast
 from django.db.models import FloatField, Min, Max, Q
 from django.core.paginator import Paginator
 import pandas as pd
 
-from main.models import Data
-
-from .models import Data  # Data 모델 import
-
+from django.db.models import Avg, FloatField
+from django.db.models.functions import Cast
 from django.core.cache import cache
-from django.utils.timezone import now
 from django.db import models
 
 from .models import Data
@@ -43,10 +37,79 @@ def search(request):
     else:
         return render(request, 'main/search.html')
 
+import json
+from django.shortcuts import get_object_or_404, render
+from django.db.models import Avg, FloatField
+from django.db.models.functions import Cast
+from main.models import Data
+
+
+
+import json
+from django.shortcuts import get_object_or_404, render
+from django.db.models import Avg, FloatField, Q
+from django.db.models.functions import Cast
+from main.models import Data
+
 def academy(request, pk):
     academy = get_object_or_404(Data, pk=pk)
-    context = {'academy': academy}
+
+    # 현재 학원의 수강료_평균 (문자열을 float로 변환)
+    try:
+        current_tuition = float(academy.수강료_평균)
+    except (TypeError, ValueError):
+        current_tuition = 0
+
+    # 각 그룹별 평균 계산 (0, None, 'false' 인 값 제외)
+    legal_avg = Data.objects.filter(법정동명=academy.법정동명)\
+        .exclude(수강료_평균__iexact='false')\
+        .annotate(tuition=Cast('수강료_평균', FloatField()))\
+        .filter(tuition__gt=0)\
+        .aggregate(avg=Avg('tuition'))['avg'] or 0
+
+    admin_avg = Data.objects.filter(행정동명=academy.행정동명)\
+        .exclude(수강료_평균__iexact='false')\
+        .annotate(tuition=Cast('수강료_평균', FloatField()))\
+        .filter(tuition__gt=0)\
+        .aggregate(avg=Avg('tuition'))['avg'] or 0
+
+    district_avg = Data.objects.filter(시군구명=academy.시군구명)\
+        .exclude(수강료_평균__iexact='false')\
+        .annotate(tuition=Cast('수강료_평균', FloatField()))\
+        .filter(tuition__gt=0)\
+        .aggregate(avg=Avg('tuition'))['avg'] or 0
+
+    province_avg = Data.objects.filter(시도명=academy.시도명)\
+        .exclude(수강료_평균__iexact='false')\
+        .annotate(tuition=Cast('수강료_평균', FloatField()))\
+        .filter(tuition__gt=0)\
+        .aggregate(avg=Avg('tuition'))['avg'] or 0
+
+    overall_avg = Data.objects.exclude(수강료_평균__iexact='false')\
+        .annotate(tuition=Cast('수강료_평균', FloatField()))\
+        .filter(tuition__gt=0)\
+        .aggregate(avg=Avg('tuition'))['avg'] or 0
+
+    # 레이블은 "현재", "법정동", "행정동", "시군구", "시도", "전국" (원하는대로 수정)
+    chart_labels = [
+        academy.상호명,
+        academy.법정동명,
+        academy.행정동명,
+        academy.시군구명,
+        academy.시도명,
+        "전국"
+    ]
+    chart_data = [current_tuition, legal_avg, admin_avg, district_avg, province_avg, overall_avg]
+
+    context = {
+        'academy': academy,
+        'chart_labels': json.dumps(chart_labels),
+        'chart_data': json.dumps(chart_data),
+    }
     return render(request, 'main/academy.html', context)
+
+
+
 
 def academy_list(request):
     # 시도명 목록 (초기화)

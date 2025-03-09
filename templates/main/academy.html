@@ -13,57 +13,125 @@
 
 <!-- 학원 정보 -->
 <div class="academy_content">
-  <div class="academy_detail_logo">
+  <div class="academy_detail_logo {% if not academy.학원사진 %}no-image{% endif %}">
     {% if academy.학원사진 %}
-      <img src="{{ academy.학원사진.url }}" alt="{{ academy.상호명 }}">
-    {% else %}
-      <img src="{% static 'images/no_image.png' %}" alt="No Image">
+      <img src="{{ academy.학원사진 }}" alt="{{ academy.상호명 }}">
     {% endif %}
   </div>
 
-  <div class="academy_introduce">
-    소개글{{ academy.소개글|linebreaksbr }}
-  </div>
   <div>
-    {{ academy.영업시간 }}
+    {{ academy.상권업종소분류명 }}
   </div>
+
   <div class="academy_detail_name">
-    별점 ★★★☆☆{{ academy.별점 }}
-    <a href="#">리뷰 작성</a>
-  </div>
-  <div>
-    {% if academy.전화번호 %}
-      전화번호{{ academy.전화번호 }}
-      <a href="tel:{{ academy.전화번호 }}">전화 걸기</a>
-    {% endif %}
-  </div>
-  <div>
-    {{ academy.수강료_평균 }}
+    별점 {{ academy.별점 }}
+    <a href="#"><span class="material-symbols-outlined">edit_square</span></a>
   </div>
 
-
-  상권업종소분류명  {{ academy.상권업종소분류명 }}
-
-지번주소{{ academy.지번주소 }}
-  도로명주소{ academy.도로명주소 }}
-
-대표원장{ academy.대표원장 }}
-  레벨테스트{{ academy.레벨테스트 }}
-  강사{ academy.강사 }}
-  셔틀버스{ academy.셔틀버스 }}
-  과목{ academy.과목_종합 }} {{ academy.과목_수학 }}{{ academy.과목_영어 }}{{ academy.과목_과학 }}{{ academy.과목_외국어 }}{{ academy.과목_예체능 }}{{ academy.과목_컴퓨터 }}{{ academy.과목_논술 }}{{ academy.과목_기타 }}{{ academy.과목_독서실스터디카페 }}
-  대상{{ academy.대상_유아 }}{{ academy.대상_초등 }}{{ academy.대상_중등 }}{{ academy.대상_고등 }}{{ academy.대상_특목고 }}{{ academy.대상_일반 }}{{ academy.대상_기타 }}
-  인증_명문대{{ academy.인증_명문대 }}
-  인증_경력{ academy.인증_경력 }}
+<div class="academy_introduce">
+  {% if academy.소개글 %}
+    {{ academy.소개글|linebreaksbr }}
+  {% else %}
+    학원 소개가 없습니다.
+  {% endif %}
 </div>
 
 
-  <!-- 추가 설명 문구들 -->
+  <div>광고영역</div>
+
+<div class="academy_mid_container">
+  <table class="academy_mid_table">
+    <tr>
+      <td>
+        <div class="label">수강료(평균)</div>
+        <div class="value" id="academy_fee_st">{{ academy.수강료_평균|intcomma }}</div>
+      </td>
+      <td>
+        <div class="label">영업시간</div>
+        <div class="value">{{ academy.영업시간 }}</div>
+      </td>
+      <td>
+        <div class="label">전화번호</div>
+        <div class="value">
+          <a href="tel:{{ academy.전화번호 }}">{{ academy.전화번호 }}</a>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+  <div>
+    <div>지번주소{{ academy.지번주소 }}</div>
+    <div>도로명주소{{ academy.도로명주소 }}</div>
+  </div>
+
+<div>
+  {% if academy.과목_종합 or academy.과목_수학 or academy.과목_영어 or academy.과목_과학 or academy.과목_외국어 or academy.과목_예체능 or academy.과목_컴퓨터 or academy.과목_논술 or academy.과목_기타 or academy.과목_독서실스터디카페 %}
+    과목:
+    {% if academy.과목_종합 %} 종합 {% endif %}
+    {% if academy.과목_수학 %} 수학 {% endif %}
+    {% if academy.과목_영어 %} 영어 {% endif %}
+    {% if academy.과목_과학 %} 과학 {% endif %}
+    {% if academy.과목_외국어 %} 외국어 {% endif %}
+    {% if academy.과목_예체능 %} 예체능 {% endif %}
+    {% if academy.과목_컴퓨터 %} 컴퓨터 {% endif %}
+    {% if academy.과목_논술 %} 논술 {% endif %}
+    {% if academy.과목_기타 %} 기타 {% endif %}
+    {% if academy.과목_독서실스터디카페 %} 독서실/스터디카페 {% endif %}
+  {% else %}
+    과목 정보 없음
+  {% endif %}
+</div>
+
+<div>
+  {% if academy.대상_유아 or academy.대상_초등 or academy.대상_중등 or academy.대상_고등 or academy.대상_특목고 or academy.대상_일반 or academy.대상_기타 %}
+    대상:
+    {% if academy.대상_유아 %} 유아 {% endif %}
+    {% if academy.대상_초등 %} 초등 {% endif %}
+    {% if academy.대상_중등 %} 중등 {% endif %}
+    {% if academy.대상_고등 %} 고등 {% endif %}
+    {% if academy.대상_특목고 %} 특목고 {% endif %}
+    {% if academy.대상_일반 %} 일반 {% endif %}
+    {% if academy.대상_기타 %} 기타 {% endif %}
+  {% else %}
+    대상 정보 없음
+  {% endif %}
+</div>
+
+
+
+
+
+대표원장{{ academy.대표원장 }}
+  레벨테스트{{ academy.레벨테스트 }}
+  강사{{ academy.강사 }}
+  셔틀버스{{ academy.셔틀버스 }}
+  인증_명문대{{ academy.인증_명문대 }}
+  인증_경력{{ academy.인증_경력 }}
+</div>
+
+
   <div>본 학원은 ... 입니다.</div>
   <div>전체 학비 평균 대비 000원 낮/높습니다.</div>
-  <div>리뷰 내용 _ 작성하기</div>
+
+
+<!-- 막대 그래프 영역 -->
+{% if academy.수강료_평균|default:"0"|floatformat:0 == "0" %}
+<div class="chart-container">
+  <p style="text-align: center; font-size: 1.5rem; padding: 2rem 0;">
+    "수강료 정보가 없습니다"
+  </p>
+</div>
+{% else %}
+  <div class="chart-container">
+    <canvas id="tuitionChart" width="600" height="400"></canvas>
+  </div>
+{% endif %}
+
+
 
 {% endif %}
+
 
 
 {% endblock %}
