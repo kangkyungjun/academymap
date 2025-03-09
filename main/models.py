@@ -22,7 +22,7 @@ class Data(models.Model):
     위도 = models.FloatField(null=True, blank=True)
 
     # 추가 필드
-    학원사진 = models.ImageField(upload_to='academy_photos/', null=True, blank=True)
+    학원사진 = models.URLField(max_length=500, null=True, blank=True)
     대표원장 = models.CharField(max_length=255, null=True, blank=True)
     레벨테스트 = models.CharField(max_length=255, null=True, blank=True)
     강사 = models.CharField(max_length=255, null=True, blank=True)
