@@ -51,6 +51,25 @@ from django.db.models import Avg, FloatField, Q
 from django.db.models.functions import Cast
 from main.models import Data
 
+from django.shortcuts import get_object_or_404, render
+from django.db.models import Avg, FloatField, Q
+from django.db.models.functions import Cast
+import json
+from main.models import Data
+
+from django.shortcuts import get_object_or_404, render
+from django.db.models import Avg, FloatField
+from django.db.models.functions import Cast
+import json
+
+from django.shortcuts import get_object_or_404, render
+from django.db.models import Avg, FloatField
+from django.db.models.functions import Cast
+import json
+
+from django.db.models import Avg, FloatField
+from django.db.models.functions import Cast
+
 def academy(request, pk):
     academy = get_object_or_404(Data, pk=pk)
 
@@ -60,54 +79,119 @@ def academy(request, pk):
     except (TypeError, ValueError):
         current_tuition = 0
 
-    # 각 그룹별 평균 계산 (0, None, 'false' 인 값 제외)
-    legal_avg = Data.objects.filter(법정동명=academy.법정동명)\
-        .exclude(수강료_평균__iexact='false')\
-        .annotate(tuition=Cast('수강료_평균', FloatField()))\
-        .filter(tuition__gt=0)\
-        .aggregate(avg=Avg('tuition'))['avg'] or 0
-
-    admin_avg = Data.objects.filter(행정동명=academy.행정동명)\
-        .exclude(수강료_평균__iexact='false')\
-        .annotate(tuition=Cast('수강료_평균', FloatField()))\
-        .filter(tuition__gt=0)\
-        .aggregate(avg=Avg('tuition'))['avg'] or 0
-
-    district_avg = Data.objects.filter(시군구명=academy.시군구명)\
-        .exclude(수강료_평균__iexact='false')\
-        .annotate(tuition=Cast('수강료_평균', FloatField()))\
-        .filter(tuition__gt=0)\
-        .aggregate(avg=Avg('tuition'))['avg'] or 0
-
-    province_avg = Data.objects.filter(시도명=academy.시도명)\
-        .exclude(수강료_평균__iexact='false')\
-        .annotate(tuition=Cast('수강료_평균', FloatField()))\
-        .filter(tuition__gt=0)\
-        .aggregate(avg=Avg('tuition'))['avg'] or 0
-
-    overall_avg = Data.objects.exclude(수강료_평균__iexact='false')\
-        .annotate(tuition=Cast('수강료_평균', FloatField()))\
-        .filter(tuition__gt=0)\
-        .aggregate(avg=Avg('tuition'))['avg'] or 0
-
-    # 레이블은 "현재", "법정동", "행정동", "시군구", "시도", "전국" (원하는대로 수정)
-    chart_labels = [
-        academy.상호명,
-        academy.법정동명,
-        academy.행정동명,
-        academy.시군구명,
-        academy.시도명,
-        "전국"
+    # 과목 분류 우선순위 목록 (순서대로 첫 True인 필드 선택)
+    subject_fields = [
+        ('과목_종합', '종합'),
+        ('과목_수학', '수학'),
+        ('과목_영어', '영어'),
+        ('과목_과학', '과학'),
+        ('과목_외국어', '외국어'),
+        ('과목_예체능', '예체능'),
+        ('과목_컴퓨터', '컴퓨터'),
+        ('과목_논술', '논술'),
+        ('과목_기타', '기타'),
+        ('과목_독서실스터디카페', '독서실/스터디카페'),
     ]
-    chart_data = [current_tuition, legal_avg, admin_avg, district_avg, province_avg, overall_avg]
+    subject_field = None
+    subject_label = None
+    for field, label in subject_fields:
+        if getattr(academy, field):
+            subject_field = field
+            subject_label = label
+            break
+
+    # 동일 과목에 해당하는 학원들만 대상으로 평균 계산 (0, None, 'false' 값 제외)
+    if subject_field:
+        base_queryset = Data.objects.filter(**{subject_field: True})\
+            .exclude(수강료_평균__iexact='false')\
+            .annotate(tuition=Cast('수강료_평균', FloatField()))\
+            .filter(tuition__gt=0)
+        district_avg = base_queryset.filter(시군구명=academy.시군구명)\
+            .aggregate(avg=Avg('tuition'))['avg'] or 0
+        province_avg = base_queryset.filter(시도명=academy.시도명)\
+            .aggregate(avg=Avg('tuition'))['avg'] or 0
+        overall_avg = base_queryset.aggregate(avg=Avg('tuition'))['avg'] or 0
+    else:
+        district_avg = province_avg = overall_avg = 0
+
+    # 전국 통계 계산
+    if overall_avg == 0 or current_tuition == 0:
+        tuition_stat_nation = "수강료 정보가 없습니다."
+        diff_nation_abs = 0
+        percentage_nation = 0
+    else:
+        diff_nation = current_tuition - overall_avg
+        diff_nation_abs = round(abs(diff_nation), 0)
+        percentage_nation = round(((current_tuition / overall_avg) - 1) * 100, 1)
+        if diff_nation > 0:
+            tuition_stat_nation = f"전국 평균보다 {percentage_nation}% 높으며, {diff_nation_abs:,.0f}원 높습니다."
+        elif diff_nation < 0:
+            tuition_stat_nation = f"전국 평균보다 {abs(percentage_nation)}% 낮으며, {diff_nation_abs:,.0f}원 낮습니다."
+        else:
+            tuition_stat_nation = "전국 평균과 동일합니다."
+
+    # 시도(도) 통계 계산
+    if province_avg == 0 or current_tuition == 0:
+        tuition_stat_province = f"수강료 정보가 없습니다."
+        diff_province_abs = 0
+        percentage_province = 0
+    else:
+        diff_province = current_tuition - province_avg
+        diff_province_abs = round(abs(diff_province), 0)
+        percentage_province = round(((current_tuition / province_avg) - 1) * 100, 1)
+        if diff_province > 0:
+            tuition_stat_province = f"{academy.시도명} 평균보다 {percentage_province}% 높으며, {diff_province_abs:,.0f}원 높습니다."
+        elif diff_province < 0:
+            tuition_stat_province = f"{academy.시도명} 평균보다 {abs(percentage_province)}% 낮으며, {diff_province_abs:,.0f}원 낮습니다."
+        else:
+            tuition_stat_province = f"{academy.시도명} 평균과 동일합니다."
+
+    # 시군구 통계 계산
+    if district_avg == 0 or current_tuition == 0:
+        tuition_stat_district = f"수강료 정보가 없습니다."
+        diff_district_abs = 0
+        percentage_district = 0
+    else:
+        diff_district = current_tuition - district_avg
+        diff_district_abs = round(abs(diff_district), 0)
+        percentage_district = round(((current_tuition / district_avg) - 1) * 100, 1)
+        if diff_district > 0:
+            tuition_stat_district = f"{academy.시군구명} 평균보다 {percentage_district}% 높으며, {diff_district_abs:,.0f}원 높습니다."
+        elif diff_district < 0:
+            tuition_stat_district = f"{academy.시군구명} 평균보다 {abs(percentage_district)}% 낮으며, {diff_district_abs:,.0f}원 낮습니다."
+        else:
+            tuition_stat_district = f"{academy.시군구명} 평균과 동일합니다."
+
+    # 차트용 데이터 (여기서는 행정동, 법정동은 계산하지 않았으므로 0 처리)
+    chart_labels = [
+        academy.상호명,       # 현재 학원
+        academy.법정동명,       # 법정동 평균 (여기서는 미계산 → 0)
+        academy.행정동명,       # 행정동 평균 (미계산 → 0)
+        academy.시군구명,       # 시군구 평균
+        academy.시도명,         # 시도 평균
+        "전국"                # 전국 평균
+    ]
+    chart_data = [current_tuition, 0, 0, district_avg, province_avg, overall_avg]
+    is_tuition_empty = (overall_avg == 0)
 
     context = {
         'academy': academy,
         'chart_labels': json.dumps(chart_labels),
         'chart_data': json.dumps(chart_data),
+        'is_tuition_empty': is_tuition_empty,
+        'tuition_stat_nation': tuition_stat_nation,
+        'tuition_stat_province': tuition_stat_province,
+        'tuition_stat_district': tuition_stat_district,
+        'subject_label': subject_label,
+        # 별도로 각 통계의 차이 및 비율 값도 context에 포함 (원할 경우)
+        'diff_nation_abs': diff_nation_abs,
+        'percentage_nation': percentage_nation,
+        'diff_province_abs': diff_province_abs,
+        'percentage_province': percentage_province,
+        'diff_district_abs': diff_district_abs,
+        'percentage_district': percentage_district,
     }
     return render(request, 'main/academy.html', context)
-
 
 
 

@@ -17,22 +17,36 @@
 
 </html>
 
-
 {% block extra_js %}
 <!-- Chart.js 및 DataLabels 플러그인 로드 (CDN 사용) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
   const ctx = document.getElementById('tuitionChart').getContext('2d');
+
+  // 뷰에서 전달한 JSON 데이터를 사용 (예: ["A학원", "법정동", "행정동", "시군구", "시도", "전국"])
+  const labels = {{ chart_labels|safe }};
+  const dataValues = {{ chart_data|safe }};
+
+  // 첫 번째 막대(현재 학원)는 #1aff66, 나머지는 기본 색상
+  const backgroundColors = dataValues.map((val, index) => {
+    return index === 0 ? "#1aff66" : "rgba(75, 192, 192, 0.2)";
+  });
+
+  const borderColors = dataValues.map((val, index) => {
+    return index === 0 ? "#e6ffee" : "rgba(75, 192, 192, 1)";
+  });
+
   const tuitionChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: {{ chart_labels|safe }},  // 예: ["현재", "법정동", "행정동", "시군구", "시도", "전국"]
+      labels: labels,
       datasets: [{
         label: '수강료 평균',
-        data: {{ chart_data|safe }},
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        borderColor: 'rgba(75, 192, 192, 1)',
+        data: dataValues,
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
         borderWidth: 1
       }]
     },
@@ -42,7 +56,6 @@
           beginAtZero: true,
           ticks: {
             callback: function(value) {
-              // 소수점 이하를 없애고 정수형태로 출력 (예: 1234567 → "1,234,567")
               return Math.round(value).toLocaleString();
             }
           }
@@ -56,7 +69,6 @@
           anchor: 'end',
           align: 'end',
           formatter: function(value) {
-            // 데이터 레이블도 정수로 반올림하여 출력
             return Math.round(value).toLocaleString();
           },
           font: {
@@ -67,7 +79,8 @@
     },
     plugins: [ChartDataLabels]
   });
+});
 </script>
-
-
 {% endblock %}
+
+

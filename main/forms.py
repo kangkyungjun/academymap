@@ -12,5 +12,5 @@ class AcademyForm(forms.ModelForm):
             '수강료', '수강료_평균', '별점', '학원사진'
         ]
         widgets = {
-            '학원사진': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            '학원사진': forms.URLInput(attrs={'class': 'form-control'}),
         }
