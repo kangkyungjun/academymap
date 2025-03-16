@@ -23,10 +23,15 @@
     {{ academy.상권업종소분류명 }}
   </div>
 
-  <div class="academy_detail_name">
-    별점 {{ academy.별점 }}
-    <a href="#"><span class="material-symbols-outlined">edit_square</span></a>
-  </div>
+<div class="academy_detail_name">
+  {% if academy.별점 %}
+    평점 {{ academy.별점 }}({{ academy.review_count|default:"0" }})
+  {% else %}
+    별점 정보 없음
+  {% endif %}
+  <a href="#"><span class="material-symbols-outlined" style="vertical-align: middle;">edit_square</span></a>
+</div>
+
 
 <div class="academy_introduce">
   {% if academy.소개글 %}
@@ -44,30 +49,69 @@
     <tr>
       <td>
         <div class="label">수강료(평균)</div>
-        <div class="value" id="academy_fee_st">{{ academy.수강료_평균|intcomma }}</div>
+        <div class="value" id="academy_fee_st">
+          {% if academy.수강료_평균 %}
+            {{ academy.수강료_평균|intcomma }}
+          {% else %}
+            정보없음
+          {% endif %}
+        </div>
       </td>
       <td>
         <div class="label">영업시간</div>
-        <div class="value">{{ academy.영업시간 }}</div>
+        <div class="value">
+          {% if academy.영업시간 %}
+            {{ academy.영업시간 }}
+          {% else %}
+            정보없음
+          {% endif %}
+        </div>
       </td>
       <td>
         <div class="label">전화번호</div>
         <div class="value">
-          <a href="tel:{{ academy.전화번호 }}">{{ academy.전화번호 }}</a>
+          {% if academy.전화번호 %}
+            <a href="tel:{{ academy.전화번호 }}">{{ academy.전화번호 }}</a>
+          {% else %}
+            정보없음
+          {% endif %}
         </div>
       </td>
     </tr>
   </table>
 </div>
 
+
+
+<a href="javascript:togglePop()">
   <div>
-    <div>지번주소{{ academy.지번주소 }}</div>
-    <div>도로명주소{{ academy.도로명주소 }}</div>
+    <span class="title_s2">주소</span> {{ academy.도로명주소 }} <span id="arrow_icon" class="material-symbols-outlined" style="vertical-align: middle;">keyboard_arrow_down</span>
   </div>
+</a>
+
+<!-- 팝업 레이어(초기에는 display: none; 으로 숨김) -->
+<div class="popup_layer" id="popup_layer" style="display: none;">
+  <div class="popup_box">
+    <!-- 팝업 컨텐츠 영역 -->
+    <div class="popup_cont">
+        <span class="title_s2">지번</span> {{ academy.지번주소 }}
+        <button onclick="copyToClipboard('{{ academy.지번주소|escapejs }}')" style="border: 1px solid #e6ffee; color: #002db3; background-color: #e6ffee;">복사</button>
+</br>
+        <span class="title_s2">도로명</span> {{ academy.도로명주소 }}
+        <button onclick="copyToClipboard('{{ academy.도로명주소|escapejs }}')" style="border: 1px solid #e6ffee; color: #002db3; background-color: #e6ffee;">복사</button>
+
+    </div>
+    <!-- (필요 시 팝업 닫기 버튼 추가 가능) -->
+  </div>
+</div>
+
+    <hr>
+
 
 <div>
+  <span class="title_s1">과목</span>
   {% if academy.과목_종합 or academy.과목_수학 or academy.과목_영어 or academy.과목_과학 or academy.과목_외국어 or academy.과목_예체능 or academy.과목_컴퓨터 or academy.과목_논술 or academy.과목_기타 or academy.과목_독서실스터디카페 %}
-    과목:
+  <div class="contents_c1">
     {% if academy.과목_종합 %} 종합 {% endif %}
     {% if academy.과목_수학 %} 수학 {% endif %}
     {% if academy.과목_영어 %} 영어 {% endif %}
@@ -78,14 +122,20 @@
     {% if academy.과목_논술 %} 논술 {% endif %}
     {% if academy.과목_기타 %} 기타 {% endif %}
     {% if academy.과목_독서실스터디카페 %} 독서실/스터디카페 {% endif %}
+  </div>
   {% else %}
+  <div class="contents_c1">
     과목 정보 없음
+  </div>
   {% endif %}
 </div>
 
+  <hr>
+
 <div>
+  <span class="title_s1">수강생</span>
   {% if academy.대상_유아 or academy.대상_초등 or academy.대상_중등 or academy.대상_고등 or academy.대상_특목고 or academy.대상_일반 or academy.대상_기타 %}
-    대상:
+  <div class="contents_c1">
     {% if academy.대상_유아 %} 유아 {% endif %}
     {% if academy.대상_초등 %} 초등 {% endif %}
     {% if academy.대상_중등 %} 중등 {% endif %}
@@ -93,45 +143,180 @@
     {% if academy.대상_특목고 %} 특목고 {% endif %}
     {% if academy.대상_일반 %} 일반 {% endif %}
     {% if academy.대상_기타 %} 기타 {% endif %}
+  </div>
   {% else %}
-    대상 정보 없음
+  <div class="contents_c1">
+    정보 없음
+    </div>
   {% endif %}
 </div>
 
+  <hr>
 
+<div class="academy_mid_container">
+  <table class="academy_mid_table_2">
+    <tr>
+      <td>
+        <div class="label">셔틀버스</div>
+          {% if academy.셔틀버스 %}
+          <div class="value_y">
+            ○, 운행
+          </div>
+          {% else %}
+          <div class="value_n">
+            X, 셔틀버스 없음
+          </div>
+          {% endif %}
 
+      </td>
+      <td>
+        <div class="label">레벨테스트</div>
+          {% if academy.레벨테스트 %}
+           <div class="value_y">
+            테스트 ○
+           </div>
+          {% else %}
+            <div class="value_n">
+            X, 테스트 없음
+           </div>
+          {% endif %}
 
-
-대표원장{{ academy.대표원장 }}
-  레벨테스트{{ academy.레벨테스트 }}
-  강사{{ academy.강사 }}
-  셔틀버스{{ academy.셔틀버스 }}
-  인증_명문대{{ academy.인증_명문대 }}
-  인증_경력{{ academy.인증_경력 }}
+      </td>
+    </tr>
+  </table>
 </div>
 
+  <hr>
 
-  <div>본 학원은 ... 입니다.</div>
-  <div>전체 학비 평균 대비 000원 낮/높습니다.</div>
-
-
-<!-- 막대 그래프 영역 -->
-{% if academy.수강료_평균|default:"0"|floatformat:0 == "0" %}
-<div class="chart-container">
-  <p style="text-align: center; font-size: 1.5rem; padding: 2rem 0;">
-    "수강료 정보가 없습니다"
-  </p>
-</div>
-{% else %}
-  <div class="chart-container">
-    <canvas id="tuitionChart" width="600" height="400"></canvas>
+  <div>
+  <span class="title_s1">수강료</span>
+  {% if is_tuition_empty %}
+    <div class="chart-container">
+      <p style="text-align: center; font-size: 1.5rem; padding: 2rem 0;">
+        {{ academy.상호명 }}은 <br>수강료 정보가 없습니다.
+      </p>
+    </div>
+  {% else %}
+    <div class="chart-container" style="width:100%; max-width:600px; margin: 2rem auto;">
+      <canvas id="tuitionChart" width="600" height="400"></canvas>
+    </div>
+  {% endif %}
   </div>
+
+<div class="tuition_stats">
+  <div class="title_s2">{{ academy.시군구명 }}</div>
+          {{ diff_district_abs|floatformat:"0"|intcomma }}
+        {{ percentage_district }}
+  <p>{{ tuition_stat_district }}</p>
+
+  <div class="title_s2">{{ academy.시도명 }}</div>
+       {{ diff_province_abs|floatformat:"0"|intcomma }}
+      {{  percentage_province}}
+  <p>{{ tuition_stat_province }}</p>
+
+  <div class="title_s2">전국</div>
+      {{ diff_nation_abs|floatformat:"0"|intcomma }}
+      {{ percentage_nation}}
+  <p>{{ tuition_stat_nation }}</p>
+</div>
+
+  <div>
+    <span class="title_s1">인증 내역</span>
+    {% if academy.인증_명문대 or academy.인증_경력 %}
+      <div class="contents_c1">
+        {% if academy.인증_명문대 %} 인증_명문대 {% endif %}
+        {% if academy.인증_경력 %} 인증_경력 {% endif %}
+      </div>
+    {% else %}
+      <div class="contents_c1">
+        인증 정보가 없습니다
+      </div>
+    {% endif %}
+  </div>
+
+
+</div>
+
+<div>
+  <div>{{ academy.상호명 }}</div>
+  <div>{{ academy.대표원장 }}</div>
+  <div>{{ academy.강사 }}</div>
+</div>
+
 {% endif %}
 
 
+<script>
+  function togglePop() {
+    var popup = document.getElementById("popup_layer");
+    var arrow = document.getElementById("arrow_icon");
+    if (popup.style.display === "block") {
+      popup.style.display = "none";
+      arrow.innerHTML = "keyboard_arrow_down";
+    } else {
+      popup.style.display = "block";
+      arrow.innerHTML = "keyboard_arrow_up";
+    }
+  }
+</script>
 
-{% endif %}
+<script>
+  function copyToClipboard(text) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text)
+        .then(function() {
+          showCopyPopup();
+        })
+        .catch(function(err) {
+          alert("복사 실패: " + err);
+        });
+    } else {
+      // Clipboard API를 지원하지 않는 경우의 fallback 처리
+      var tempInput = document.createElement("input");
+      tempInput.value = text;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand("copy");
+        showCopyPopup();
+      } catch (err) {
+        alert("복사 실패: " + err);
+      }
+      document.body.removeChild(tempInput);
+    }
+  }
 
+  function showCopyPopup() {
+    var popup = document.createElement("div");
+    popup.innerText = "주소가 복사되었습니다.";
+    // 기본 스타일 설정
+    popup.style.position = "fixed";
+    popup.style.bottom = "20px";
+    popup.style.left = "50%";
+    popup.style.transform = "translateX(-50%)";
+    popup.style.fontSize = "1.2rem";
+    popup.style.backgroundColor = "darkgray";
+    popup.style.color = "#fff";
+    popup.style.borderRadius = "0.7rem";
+    popup.style.padding = "0.5rem 1rem";
+    popup.style.zIndex = "10000";
+    // fade-out 효과를 위한 opacity 및 transition 설정
+    popup.style.opacity = "1";
+    popup.style.transition = "opacity 1s ease";
+
+    document.body.appendChild(popup);
+
+    // 0.5초 후에 서서히 투명하게 만듭니다.
+    setTimeout(function() {
+      popup.style.opacity = "0";
+    }, 500);
+
+    // 1.5초 후에 팝업을 DOM에서 제거합니다.
+    setTimeout(function() {
+      popup.parentNode.removeChild(popup);
+    }, 1500);
+  }
+</script>
 
 
 {% endblock %}
