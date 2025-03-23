@@ -2,20 +2,23 @@
 {% load static %}
 {% load humanize %}
 {% block contents %}
-
-<div class="navbar">
+<style>
+  html, body {
+    overflow: hidden;
+  }
+</style>
+<div class="navbar" style="padding-right: 0;">
   <button class="nav_item1" onclick="window.location.href='javascript:history.back()'"><span class="material-symbols-outlined">arrow_back_ios</span></button>
     <a href="{% url 'search' %}" class="nav_item2">
       <div class="search_box">학원명/지역 검색</div>
       <div class="search_icon_box"><span class="material-symbols-outlined">search</span></div>
     </a>
     <!-- Toggle Panel Button -->
-  <button class="nav_item3" ><span class="material-symbols-outlined">person</span></button>
+  <div class="nav_item3">
+    <button class="account"><span class="material-symbols-outlined">person</span></button>
+    <button class="filterButton" id="toggle-panel" onclick="togglePanel()"><span class="material-symbols-outlined">tune</span></button>
+  </div>
 </div>
-
-
-<!-- 패널(콘텐츠 영역): 필터 (noUiSlider 적용) -->
-<button class="filterButton" id="toggle-panel" onclick="togglePanel()"><span class="material-symbols-outlined">tune</span></button>
 
 <!-- 카테고리 버튼 (가로 스크롤) -->
 <div id="category-container">
@@ -35,7 +38,7 @@
 
 <div id="panel-container">
   <div class="panel-subject-title">과목</div>
-    <div id="panel-category">
+  <div id="panel-category">
     <button onclick="filterMarkers(this, '전체')">전체</button>
     <button onclick="filterMarkers(this, '수학')">수학</button>
     <button onclick="filterMarkers(this, '영어')">영어</button>
@@ -47,14 +50,24 @@
     <button onclick="filterMarkers(this, '기타')">기타</button>
     <button onclick="filterMarkers(this, '독서실/스터디카페')">독서실/스터디카페</button>
   </div>
+
+  <hr>
+
   <!-- 가격 필터: 슬라이더 영역 -->
   <div>
-    수강료 <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
+    수강료
+    <div class="price-part">
+      <span id="price-slider-min"></span>  -  <span id="price-slider-max"></span>
+    </div>
+
   </div>
   <div id="price-slider"></div>
   <!-- 선택된 값 저장용 hidden input -->
   <input type="hidden" id="price-min" value="{{ min_price }}">
   <input type="hidden" id="price-max" value="{{ max_price }}">
+
+   <hr>
+
   <div class="panel-age-title">연령</div>
     <!-- 연령 필터 버튼 (다중 선택 가능) -->
   <div class="panel-age-filters">
@@ -66,6 +79,9 @@
     <button class="age-filter" onclick="toggleAgeFilter('일반', this)">일반</button>
     <button class="age-filter" onclick="toggleAgeFilter('기타', this)">기타</button>
   </div>
+
+   <hr>
+
     <!-- 패널 컨테이너 내부, 연령 필터 아래에 추가 -->
   <div class="panel-suttle-title">셔틀</div>
   <div class="panel-suttle-filters">
@@ -652,15 +668,16 @@ group.forEach((ac, index) => {
       var currentMin = Number(values[0].replace(/[^\d]/g, ''));
       var currentMax = Number(values[1].replace(/[^\d]/g, ''));
 
-      document.getElementById('price-slider-min').innerText = "최소 " + currentMin.toLocaleString() + "원";
-      if (currentMax >= maxPrice) {
-        document.getElementById('price-slider-max').innerText = "최대 " + Math.round(maxPrice).toLocaleString() + " 이상";
-        // 최대값에 도달하면 hidden input에 매우 큰 값을 할당하여 2,000,000원 이상의 학원도 포함되게 함
-        document.getElementById('price-max').value = 999999999;
-      } else {
-        document.getElementById('price-slider-max').innerText = "최대 " + values[1] + "원";
-        document.getElementById('price-max').value = currentMax;
-      }
+document.getElementById('price-slider-min').innerHTML = "최소 <span class='price-value-min'>" + currentMin.toLocaleString() + "</span>원";
+if (currentMax >= maxPrice) {
+  document.getElementById('price-slider-max').innerHTML = "최대 <span class='price-value-max'>" + Math.round(maxPrice).toLocaleString() + " </span>이상";
+  // 최대값에 도달하면 hidden input에 매우 큰 값을 할당
+  document.getElementById('price-max').value = 999999999;
+} else {
+  document.getElementById('price-slider-max').innerHTML = "최대 <span class='price-value-max'>" + values[1] + "</span>원";
+  document.getElementById('price-max').value = currentMax;
+}
+
       document.getElementById('price-min').value = currentMin;
 
       // 슬라이더를 움직일 때마다 바로 필터 적용
@@ -762,283 +779,29 @@ group.forEach((ac, index) => {
 </script>
 
 <script>
-  function filterMarkers(btn, category) {
-    selectedCategory = category;
-    // #category와 #panel-category 두 컨테이너 안의 버튼들을 모두 선택합니다.
-    const buttons = document.querySelectorAll('#category button, #panel-category button');
-    buttons.forEach(button => {
-      button.classList.remove('active');
-      // 인라인 스타일로 초기화 (필요하면)
-      button.style.backgroundColor = "";
-      button.style.color = "";
-    });
-    // 클릭한 버튼에 active 스타일 적용 (배경: green, 글씨: white)
-    btn.classList.add('active');
+function filterMarkers(btn, category) {
+  selectedCategory = category;
+  // #category와 #panel-category 두 컨테이너 안의 버튼들을 모두 선택합니다.
+  const buttons = document.querySelectorAll('#category button, #panel-category button');
+  buttons.forEach(button => {
+    button.classList.remove('active');
+    // 인라인 스타일 초기화
+    button.style.backgroundColor = "";
+    button.style.color = "";
+  });
+  // 클릭한 버튼에 active 클래스 추가
+  btn.classList.add('active');
+
+  // 만약 클릭한 버튼이 #panel-category에 속하지 않으면 인라인 스타일을 적용합니다.
+  if (btn.parentNode.id !== "panel-category") {
     btn.style.backgroundColor = "green";
     btn.style.color = "white";
-
-    // 필터 적용 함수 호출
-    fetchAcademies();
   }
+
+  // 필터 적용 함수 호출
+  fetchAcademies();
+}
+
 </script>
-
-<!--<script>-->
-<!--  // Block 3: Academy Data Fetching and Marker Rendering Functions-->
-<!--  function fetchAcademies() {-->
-<!--    const bounds = map.getBounds();-->
-<!--    const sw = bounds.getSW();-->
-<!--    const ne = bounds.getNE();-->
-
-<!--    // 가격 범위 필터 값 가져오기-->
-<!--    let priceMin = document.getElementById('price-min') ? document.getElementById('price-min').value : "";-->
-<!--    let priceMax = document.getElementById('price-max') ? document.getElementById('price-max').value : "";-->
-
-<!--    fetch('/api/filtered_academies', {-->
-<!--      method: 'POST',-->
-<!--      headers: {-->
-<!--        'Content-Type': 'application/json',-->
-<!--        'X-CSRFToken': getCSRFToken()-->
-<!--      },-->
-<!--      body: JSON.stringify({-->
-<!--        swLat: sw._lat,-->
-<!--        swLng: sw._lng,-->
-<!--        neLat: ne._lat,-->
-<!--        neLng: ne._lng,-->
-<!--        category: selectedCategory,-->
-<!--        priceMin: priceMin,-->
-<!--        priceMax: priceMax-->
-<!--      })-->
-<!--    })-->
-<!--    .then(res => res.json())-->
-<!--    .then(data => {-->
-<!--      allAcademyData = data;-->
-<!--      renderMarkers();-->
-<!--    })-->
-<!--    .catch(error => console.error('학원 데이터 요청 에러:', error));-->
-<!--  }-->
-
-<!--  function renderMarkers() {-->
-<!--    clearMarkers();-->
-<!--    const zoomLevel = map.getZoom();-->
-<!--    if (zoomLevel < 16) {-->
-<!--      const grouped = {};-->
-<!--      allAcademyData.forEach(ac => {-->
-<!--        const regionKey = ac.시군구명 || '기타';-->
-<!--        if (!grouped[regionKey]) grouped[regionKey] = [];-->
-<!--        grouped[regionKey].push(ac);-->
-<!--      });-->
-<!--      for (const region in grouped) {-->
-<!--        const arr = grouped[region];-->
-<!--        if (arr.length === 0) continue;-->
-<!--        const rep = arr[0];-->
-<!--        const markerContent = `-->
-<!--          <div style="min-width:60px; padding:3px 5px; background-color:#333; color:#fff; border-radius:4px; font-size:20px; font-weight:bold; text-align:center;">-->
-<!--            ${region} (${arr.length})-->
-<!--          </div>-->
-<!--        `;-->
-<!--        placeMarkerNoOverlap(rep.위도, rep.경도, markerContent, region);-->
-<!--      }-->
-<!--    } else {-->
-<!--      let groupedByAddress = {};-->
-<!--      allAcademyData.forEach(ac => {-->
-<!--        const address = ac.도로명주소 || "unknown";-->
-<!--        if (!groupedByAddress[address]) {-->
-<!--          groupedByAddress[address] = [];-->
-<!--        }-->
-<!--        groupedByAddress[address].push(ac);-->
-<!--      });-->
-<!--      for (let address in groupedByAddress) {-->
-<!--        let group = groupedByAddress[address];-->
-<!--        if (group.length === 1) {-->
-<!--          let ac = group[0];-->
-<!--          let markerContent = generateAcademyMarkerContent(ac);-->
-<!--          placeMarkerAt(ac.위도, ac.경도, markerContent, ac);-->
-<!--        } else {-->
-<!--          let representative = group[0];-->
-<!--          let bubbleContent = generateBubbleMarkerContent(group);-->
-<!--          placeBubbleMarker(representative.위도, representative.경도, bubbleContent, group);-->
-<!--        }-->
-<!--      }-->
-<!--    }-->
-<!--  }-->
-
-<!--  function placeMarkerAt(lat, lng, content, dataObj) {-->
-<!--    let marker = new naver.maps.Marker({-->
-<!--      position: new naver.maps.LatLng(lat, lng),-->
-<!--      map: map,-->
-<!--      icon: { content: content, anchor: new naver.maps.Point(10, 10) },-->
-<!--      title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''-->
-<!--    });-->
-<!--    naver.maps.Event.addListener(marker, 'click', function(){-->
-<!--      showAcademyInfoPopup(dataObj);-->
-<!--    });-->
-<!--    markers.push(marker);-->
-<!--  }-->
-
-<!--  function placeBubbleMarker(lat, lng, content, group) {-->
-<!--    let marker = new naver.maps.Marker({-->
-<!--      position: new naver.maps.LatLng(lat, lng),-->
-<!--      map: map,-->
-<!--      icon: { content: content, anchor: new naver.maps.Point(10, 10) },-->
-<!--      title: group.length + "개 학원"-->
-<!--    });-->
-<!--    naver.maps.Event.addListener(marker, 'click', function(){-->
-<!--      showGroupPopup(group, marker.getPosition());-->
-<!--    });-->
-<!--    markers.push(marker);-->
-<!--  }-->
-
-<!--  function placeMarkerNoOverlap(lat, lng, content, dataObj) {-->
-<!--    const proj = map.getProjection();-->
-<!--    let screenPt = proj.fromCoordToOffset(new naver.maps.LatLng(lat, lng));-->
-<!--    const markerW = 60, markerH = 24;-->
-<!--    let overlapped = true;-->
-<!--    const MAX_ATTEMPTS = 50;-->
-<!--    let attempts = 0;-->
-<!--    while (overlapped && attempts < MAX_ATTEMPTS) {-->
-<!--      overlapped = false;-->
-<!--      for (let b of markerBoxes) {-->
-<!--        if (Math.abs(screenPt.x - b.x) < markerW && Math.abs(screenPt.y - b.y) < markerH) {-->
-<!--          overlapped = true;-->
-<!--          screenPt.y += markerH + 2;-->
-<!--          break;-->
-<!--        }-->
-<!--      }-->
-<!--      attempts++;-->
-<!--    }-->
-<!--    const finalCoord = proj.fromOffsetToCoord(screenPt);-->
-<!--    const marker = new naver.maps.Marker({-->
-<!--      position: finalCoord,-->
-<!--      map: map,-->
-<!--      icon: { content: content, anchor: new naver.maps.Point(10, 10) },-->
-<!--      title: (typeof dataObj === 'object' && dataObj.상호명) ? dataObj.상호명 : ''-->
-<!--    });-->
-<!--    naver.maps.Event.addListener(marker, 'click', function() {-->
-<!--      if (typeof dataObj === 'object' && dataObj.id) {-->
-<!--        showAcademyInfoPopup(dataObj);-->
-<!--      } else if (typeof dataObj === 'string') {-->
-<!--        let targetZoom = map.getZoom() + 1;-->
-<!--        map.panTo(marker.getPosition(), { duration: 500 });-->
-<!--        smoothZoom(targetZoom, 500);-->
-<!--      }-->
-<!--    });-->
-<!--    markers.push(marker);-->
-<!--    markerBoxes.push({ x: screenPt.x, y: screenPt.y, w: markerW, h: markerH });-->
-<!--  }-->
-
-<!--  function generateAcademyMarkerContent(ac) {-->
-<!--    if (selectedCategory === '전체') {-->
-<!--      const academyType = getAcademyType(ac);-->
-<!--      const color = categoryColors[academyType] || 'blue';-->
-<!--      return `-->
-<!--        <div style="display:flex; flex-direction:column; align-items:center;">-->
-<!--          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>-->
-<!--          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>-->
-<!--        </div>-->
-<!--      `;-->
-<!--    } else {-->
-<!--      const color = categoryColors[selectedCategory];-->
-<!--      return `-->
-<!--        <div style="display:flex; flex-direction:column; align-items:center;">-->
-<!--          <div style="width:15px; height:15px; background-color:${color}; border:2px solid white; border-radius:50%; margin-bottom:2px;"></div>-->
-<!--          <span style="font-size:13px; font-weight:bold; padding:2px 4px; border-radius:4px;">${ac.상호명}</span>-->
-<!--        </div>-->
-<!--      `;-->
-<!--    }-->
-<!--  }-->
-
-<!--  function generateBubbleMarkerContent(group) {-->
-<!--    let count = group.length;-->
-<!--    let shortAddress = getShortAddress(group[0].도로명주소);-->
-<!--    let repType = getAcademyType(group[0]);-->
-<!--    let color = categoryColors[repType] || "#ff5733";-->
-<!--    let content = `-->
-<!--      <div style="position: relative; display: inline-block;">-->
-<!--        <div style="background-color: ${color}; color: white; border-radius: 10px; padding: 5px 10px; font-size: 12px; text-align: center;">-->
-<!--          ${shortAddress}<br/>(${count}개 학원)-->
-<!--        </div>-->
-<!--        <div style="position: absolute; left: 50%; transform: translateX(-50%); top: 100%;">-->
-<!--          <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid ${color};"></div>-->
-<!--        </div>-->
-<!--      </div>-->
-<!--    `;-->
-<!--    return content;-->
-<!--  }-->
-
-<!--  function showGroupPopup(group, position) {-->
-<!--    const popup = document.getElementById('academyPopup');-->
-<!--    const popupContent = document.getElementById('popupContent');-->
-<!--    let shortAddress = getShortAddress(group[0].도로명주소);-->
-<!--    let content = `<h3>${shortAddress} (${group.length}개 학원)</h3><ul>`;-->
-<!--    group.forEach(ac => { content += `<li><a href="/academy/${ac.id}">${ac.상호명}</a></li>`; });-->
-<!--    content += `</ul>`;-->
-<!--    popupContent.innerHTML = content;-->
-<!--    popup.classList.add('active');-->
-<!--  }-->
-
-<!--  function showAcademyInfoPopup(academy) {-->
-<!--    const popup = document.getElementById('academyPopup');-->
-<!--    const popupContent = document.getElementById('popupContent');-->
-<!--    popupContent.innerHTML = `-->
-<!--      <h3><a href="/academy/${academy.id}">${academy.상호명}</a></h3>-->
-<!--      <p><strong>전화번호:</strong> ${academy.전화번호 || '정보 없음'}</p>-->
-<!--      <p><strong>주소:</strong> ${academy.도로명주소 || '정보 없음'}</p>-->
-<!--    `;-->
-<!--    popup.classList.add('active');-->
-<!--  }-->
-
-<!--  function closePopup() {-->
-<!--    document.getElementById('academyPopup').classList.remove('active');-->
-<!--  }-->
-
-<!--  function clearMarkers() {-->
-<!--    markers.forEach(m => m.setMap(null));-->
-<!--    markers = [];-->
-<!--    markerBoxes = [];-->
-<!--  }-->
-
-<!--  function filterMarkers(btn, category) {-->
-<!--    selectedCategory = category;-->
-<!--    const buttons = document.querySelectorAll('#category button');-->
-<!--    buttons.forEach(button => button.classList.remove('active'));-->
-<!--    btn.classList.add('active');-->
-<!--    fetchAcademies();-->
-<!--  }-->
-
-<!--  function moveToCurrentLocation() {-->
-<!--    if (navigator.geolocation) {-->
-<!--      navigator.geolocation.getCurrentPosition(pos => {-->
-<!--        const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);-->
-<!--        map.setCenter(userLoc);-->
-<!--        map.setZoom(17);-->
-<!--        if (currentMarker) {-->
-<!--          currentMarker.setPosition(userLoc);-->
-<!--        } else {-->
-<!--          currentMarker = new naver.maps.Marker({-->
-<!--            position: userLoc,-->
-<!--            map: map,-->
-<!--            icon: {-->
-<!--              content: '<div style="width:15px;height:15px;background-color:red;border-radius:50%;border:2px solid white;"></div>',-->
-<!--              anchor: new naver.maps.Point(7.5, 7.5)-->
-<!--            }-->
-<!--          });-->
-<!--        }-->
-<!--      }, () => { alert('위치 정보를 가져올 수 없습니다.'); });-->
-<!--    } else { alert('이 브라우저는 위치 정보를 지원하지 않습니다.'); }-->
-<!--  }-->
-
-<!--  function getCSRFToken() {-->
-<!--    const cookies = document.cookie.split(';');-->
-<!--    for (let i = 0; i < cookies.length; i++) {-->
-<!--      const cookie = cookies[i].trim();-->
-<!--      if (cookie.startsWith('csrftoken=')) {-->
-<!--        return cookie.substring('csrftoken='.length);-->
-<!--      }-->
-<!--    }-->
-<!--    return '';-->
-<!--  }-->
-<!--</script>-->
-
-
 
 {% endblock %}

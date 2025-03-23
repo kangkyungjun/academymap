@@ -124,9 +124,9 @@ def academy(request, pk):
         diff_nation_abs = round(abs(diff_nation), 0)
         percentage_nation = round(((current_tuition / overall_avg) - 1) * 100, 1)
         if diff_nation > 0:
-            tuition_stat_nation = f"전국 평균보다 {percentage_nation}% 높으며, {diff_nation_abs:,.0f}원 높습니다."
+            tuition_stat_nation = f"전국 평균보다 {percentage_nation}%, {diff_nation_abs:,.0f}원 높습니다."
         elif diff_nation < 0:
-            tuition_stat_nation = f"전국 평균보다 {abs(percentage_nation)}% 낮으며, {diff_nation_abs:,.0f}원 낮습니다."
+            tuition_stat_nation = f"전국 평균보다 {abs(percentage_nation)}%, {diff_nation_abs:,.0f}원 낮습니다."
         else:
             tuition_stat_nation = "전국 평균과 동일합니다."
 
@@ -140,9 +140,9 @@ def academy(request, pk):
         diff_province_abs = round(abs(diff_province), 0)
         percentage_province = round(((current_tuition / province_avg) - 1) * 100, 1)
         if diff_province > 0:
-            tuition_stat_province = f"{academy.시도명} 평균보다 {percentage_province}% 높으며, {diff_province_abs:,.0f}원 높습니다."
+            tuition_stat_province = f"{academy.시도명} 평균보다 {percentage_province}%, {diff_province_abs:,.0f}원 높습니다."
         elif diff_province < 0:
-            tuition_stat_province = f"{academy.시도명} 평균보다 {abs(percentage_province)}% 낮으며, {diff_province_abs:,.0f}원 낮습니다."
+            tuition_stat_province = f"{academy.시도명} 평균보다 {abs(percentage_province)}%, {diff_province_abs:,.0f}원 낮습니다."
         else:
             tuition_stat_province = f"{academy.시도명} 평균과 동일합니다."
 
@@ -156,15 +156,15 @@ def academy(request, pk):
         diff_district_abs = round(abs(diff_district), 0)
         percentage_district = round(((current_tuition / district_avg) - 1) * 100, 1)
         if diff_district > 0:
-            tuition_stat_district = f"{academy.시군구명} 평균보다 {percentage_district}% 높으며, {diff_district_abs:,.0f}원 높습니다."
+            tuition_stat_district = f"{academy.시군구명} 평균보다 {percentage_district}%, {diff_district_abs:,.0f}원 높습니다."
         elif diff_district < 0:
-            tuition_stat_district = f"{academy.시군구명} 평균보다 {abs(percentage_district)}% 낮으며, {diff_district_abs:,.0f}원 낮습니다."
+            tuition_stat_district = f"{academy.시군구명} 평균보다 {abs(percentage_district)}%, {diff_district_abs:,.0f}원 낮습니다."
         else:
             tuition_stat_district = f"{academy.시군구명} 평균과 동일합니다."
 
     # 차트용 데이터 (여기서는 행정동, 법정동은 계산하지 않았으므로 0 처리)
     chart_labels = [
-        academy.상호명,       # 현재 학원
+        "현재 학원",       # 현재 학원
         academy.법정동명,       # 법정동 평균 (여기서는 미계산 → 0)
         academy.행정동명,       # 행정동 평균 (미계산 → 0)
         academy.시군구명,       # 시군구 평균
