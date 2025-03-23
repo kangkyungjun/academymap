@@ -25,15 +25,14 @@
 document.addEventListener('DOMContentLoaded', function() {
   const ctx = document.getElementById('tuitionChart').getContext('2d');
 
-  // 뷰에서 전달한 JSON 데이터를 사용 (예: ["A학원", "법정동", "행정동", "시군구", "시도", "전국"])
+  // 뷰에서 전달한 JSON 데이터를 사용
   const labels = {{ chart_labels|safe }};
   const dataValues = {{ chart_data|safe }};
 
-  // 첫 번째 막대(현재 학원)는 #1aff66, 나머지는 기본 색상
+  // 첫 번째 막대는 다른 색상 적용 (예: #1aff66)
   const backgroundColors = dataValues.map((val, index) => {
     return index === 0 ? "#1aff66" : "rgba(75, 192, 192, 0.2)";
   });
-
   const borderColors = dataValues.map((val, index) => {
     return index === 0 ? "#e6ffee" : "rgba(75, 192, 192, 1)";
   });
@@ -72,7 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return Math.round(value).toLocaleString();
           },
           font: {
-            weight: 'bold'
+            // index가 0일 때는 bold, 그 외는 normal
+            weight: function(context) {
+              return context.dataIndex === 0 ? 'bold' : 'normal';
+            }
           }
         }
       }
@@ -81,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
 {% endblock %}
 
 

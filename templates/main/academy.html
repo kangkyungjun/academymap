@@ -95,10 +95,10 @@
     <!-- 팝업 컨텐츠 영역 -->
     <div class="popup_cont">
         <span class="title_s2">지번</span> {{ academy.지번주소 }}
-        <button onclick="copyToClipboard('{{ academy.지번주소|escapejs }}')" style="border: 1px solid #e6ffee; color: #002db3; background-color: #e6ffee;">복사</button>
+        <button onclick="copyToClipboard('{{ academy.지번주소|escapejs }}')" style="color: #002db3;">복사</button>
 </br>
         <span class="title_s2">도로명</span> {{ academy.도로명주소 }}
-        <button onclick="copyToClipboard('{{ academy.도로명주소|escapejs }}')" style="border: 1px solid #e6ffee; color: #002db3; background-color: #e6ffee;">복사</button>
+        <button onclick="copyToClipboard('{{ academy.도로명주소|escapejs }}')" style=" color: #002db3;">복사</button>
 
     </div>
     <!-- (필요 시 팝업 닫기 버튼 추가 가능) -->
@@ -204,21 +204,57 @@
   </div>
 
 <div class="tuition_stats">
+  <!-- 시군구 -->
   <div class="title_s2">{{ academy.시군구명 }}</div>
-          {{ diff_district_abs|floatformat:"0"|intcomma }}
-        {{ percentage_district }}
-  <p>{{ tuition_stat_district }}</p>
+  {% if percentage_district > 0 %}
+    <div class="fee_container">
+      <span class="fee_plus_idx">높은 금액</span> <span class="percentage_plus">{{ percentage_district }}% </span>
+      <span class="fee_plus">{{ diff_district_abs|floatformat:"0"|intcomma }}원</span>
+    </div>
+    <p>{{ tuition_stat_district }}</p>
+  {% else %}
+    <div class="fee_container">
+      <span class="fee_minus_idx">낮은 금액</span> <span class="percentage_minus">{{ percentage_district }}% </span>
+      <span class="fee_minus">{{ diff_district_abs|floatformat:"0"|intcomma }}원</span>
+    </div>
+    <p>{{ tuition_stat_district }}</p>
+  {% endif %}
 
+  <!-- 시도 -->
   <div class="title_s2">{{ academy.시도명 }}</div>
-       {{ diff_province_abs|floatformat:"0"|intcomma }}
-      {{  percentage_province}}
-  <p>{{ tuition_stat_province }}</p>
+  {% if percentage_province > 0 %}
+    <div class="fee_container">
+      <span class="fee_plus_idx">높은 금액</span> <span class="percentage_plus">{{ percentage_province }}% </span>
+      <span class="fee_plus">{{ diff_province_abs|floatformat:"0"|intcomma }}원</span>
+    </div>
+    <p>{{ tuition_stat_province }}</p>
+  {% else %}
+    <div class="fee_container">
+      <span class="fee_minus_idx">낮은 금액</span> <span class="percentage_minus">{{ percentage_province }}% </span>
+      <span class="fee_minus">{{ diff_province_abs|floatformat:"0"|intcomma }}원</span>
+    </div>
+    <p>{{ tuition_stat_province }}</p>
+  {% endif %}
 
+  <!-- 전국 -->
   <div class="title_s2">전국</div>
-      {{ diff_nation_abs|floatformat:"0"|intcomma }}
-      {{ percentage_nation}}
-  <p>{{ tuition_stat_nation }}</p>
+  {% if percentage_nation > 0 %}
+    <div class="fee_container">
+      <span class="fee_plus_idx">높은 금액</span> <span class="percentage_plus">{{ percentage_nation }}% </span>
+      <span class="fee_plus">{{ diff_nation_abs|floatformat:"0"|intcomma }}원</span>
+    </div>
+    <p>{{ tuition_stat_nation }}</p>
+  {% else %}
+    <div class="fee_container">
+      <span class="fee_minus_idx">낮은 금액</span> <span class="percentage_minus">{{ percentage_nation }}% </span>
+      <span class="fee_minus">{{ diff_nation_abs|floatformat:"0"|intcomma }}원</span>
+    </div>
+    <p>{{ tuition_stat_nation }}</p>
+  {% endif %}
 </div>
+
+
+  <hr>
 
   <div>
     <span class="title_s1">인증 내역</span>
@@ -234,14 +270,41 @@
     {% endif %}
   </div>
 
-
 </div>
 
-<div>
-  <div>{{ academy.상호명 }}</div>
-  <div>{{ academy.대표원장 }}</div>
-  <div>{{ academy.강사 }}</div>
-</div>
+<hr>
+
+<div class="nav_bottom">
+  <div>
+    업체명:
+    {% if academy.상호명 %}
+      {{ academy.상호명 }}
+    {% else %}
+      정보 없음
+    {% endif %}
+  </div>
+  <div>
+    대표원장:
+    {% if academy.대표원장 %}
+      {{ academy.대표원장 }}
+    {% else %}
+      정보 없음
+    {% endif %}
+  </div>
+  <div>
+    강사:
+    {% if academy.강사 %}
+      {{ academy.강사|floatformat:"0" }}명
+    {% else %}
+      정보 없음
+    {% endif %}
+  </div>
+  <div>학원시대는 정보 및 서비스 중개자로서 서비스 제공 당사자가 아닙니다.</br>
+  정보 및 실질적 서비스 제공 의무와 책임은 각 학원에 있습니다.</div>
+  <div>
+
+
+
 
 {% endif %}
 
