@@ -1,22 +1,18 @@
 import json
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q, F, Count
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import FloatField, Min, Max, Q
-from django.core.paginator import Paginator
 import pandas as pd
 
-from django.db.models import Avg, FloatField
-from django.db.models.functions import Cast
-from django.core.cache import cache
-from django.db import models
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
+from django.db.models import Q, F, Count, FloatField, Min, Max, Avg
+from django.db.models.functions import Cast, Sqrt, Power
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import Data
 from .forms import AcademyForm
+from django.db.models import Q, FloatField
 
-from django.views.decorators.csrf import csrf_exempt
+
 
 # Create your views here.
 
@@ -24,51 +20,82 @@ def main(request):
 
     return render(request, 'main/main.html')
 
-
 def search(request):
-    if request.method == 'POST':
-        searched = request.POST.get('searched', '')
-        data = Data.objects.filter(
-            Q(상호명__icontains=searched) | Q(법정동명__icontains=searched)
-        )
-        context = {'searched': searched, 'data': data}
-        # ⬇⬇ 여기서 'search.html' 템플릿으로 렌더링하도록 변경
-        return render(request, 'main/search.html', context)
-    else:
-        return render(request, 'main/search.html')
+    searched = request.GET.get('searched', '').strip()
+    price_min = int(request.GET.get('price_min', '0'))
+    price_max = int(request.GET.get('price_max', '2000000'))
+    category = request.GET.get('category', '전체')
+    age_groups = request.GET.getlist('ageGroups[]')
+    shuttle = request.GET.get('shuttleFilter') == 'true'
 
-import json
-from django.shortcuts import get_object_or_404, render
-from django.db.models import Avg, FloatField
-from django.db.models.functions import Cast
-from main.models import Data
+    academies = Data.objects.all()
+
+    if searched:
+        search_terms = searched.split()
+        search_filter = Q()
+        category_mapping = {
+            '수학': '과목_수학', '영어': '과목_영어', '과학': '과목_과학',
+            '외국어': '과목_외국어', '예체능': '과목_예체능',
+            '컴퓨터': '과목_컴퓨터', '논술': '과목_논술',
+            '기타': '과목_기타', '독서실': '과목_독서실스터디카페',
+            '스터디카페': '과목_독서실스터디카페', '종합': '과목_종합',
+            '태권도': '과목_예체능', '피아노': '과목_예체능', '미술': '과목_예체능'
+        }
+
+        for term in search_terms:
+            term_filter = (
+                Q(상호명__icontains=term) |
+                Q(도로명주소__icontains=term) |
+                Q(시도명__icontains=term) |
+                Q(시군구명__icontains=term) |
+                Q(행정동명__icontains=term) |
+                Q(법정동명__icontains=term)
+            )
+            if term in category_mapping:
+                term_filter |= Q(**{category_mapping[term]: True})
+
+            search_filter &= term_filter
+
+        academies = academies.filter(search_filter)
+
+    # 수강료 평균 필터링
+    academies = academies.annotate(
+        수강료_평균_float=Cast('수강료_평균', FloatField())
+    ).filter(
+        수강료_평균_float__gte=price_min,
+        수강료_평균_float__lte=price_max
+    )
+
+    if category != '전체':
+        academies = academies.filter(**{f'과목_{category}': True})
+
+    if age_groups:
+        age_filter = Q()
+        for age in age_groups:
+            age_filter |= Q(**{f'대상_{age}': True})
+        academies = academies.filter(age_filter)
+
+    # 셔틀버스는 true일 때만 필터링하고 false일 때는 모든 결과를 유지합니다.
+    if shuttle:
+        academies = academies.filter(Q(셔틀버스__iexact='true') | Q(셔틀버스__icontains='있음'))
+
+    academies = academies.distinct()[:1000]
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, 'main/search_results_partial.html', {'academies': academies})
+
+    context = {
+        'searched': searched,
+        'initial_results': academies,
+        'min_price': price_min,
+        'max_price': price_max,
+        '과목_list': ['전체', '수학', '영어', '과학', '외국어', '예체능', '컴퓨터', '논술', '기타', '독서실스터디카페'],
+        'target_age_groups': ['유아', '초등', '중등', '고등', '특목고', '일반', '기타'],
+    }
+
+    return render(request, 'main/search.html', context)
 
 
-
-import json
-from django.shortcuts import get_object_or_404, render
-from django.db.models import Avg, FloatField, Q
-from django.db.models.functions import Cast
-from main.models import Data
-
-from django.shortcuts import get_object_or_404, render
-from django.db.models import Avg, FloatField, Q
-from django.db.models.functions import Cast
-import json
-from main.models import Data
-
-from django.shortcuts import get_object_or_404, render
-from django.db.models import Avg, FloatField
-from django.db.models.functions import Cast
-import json
-
-from django.shortcuts import get_object_or_404, render
-from django.db.models import Avg, FloatField
-from django.db.models.functions import Cast
-import json
-
-from django.db.models import Avg, FloatField
-from django.db.models.functions import Cast
 
 def academy(request, pk):
     academy = get_object_or_404(Data, pk=pk)
@@ -194,91 +221,6 @@ def academy(request, pk):
     return render(request, 'main/academy.html', context)
 
 
-
-def academy_list(request):
-    # 시도명 목록 (초기화)
-    시도명_list = Data.objects.values_list('시도명', flat=True).distinct()
-
-    # GET 파라미터로 필터 값 가져오기
-    시도명 = request.GET.get('시도명', '')
-    시군구명 = request.GET.get('시군구명', '')
-    행정동명 = request.GET.get('행정동명', '')
-    과목 = request.GET.get('과목', '')
-
-    # 과목 필드 매핑
-    과목_mapping = {
-        '종합': '과목_종합',
-        '수학': '과목_수학',
-        '영어': '과목_영어',
-        '과학': '과목_과학',
-        '외국어': '과목_외국어',
-        '예체능': '과목_예체능',
-        '컴퓨터': '과목_컴퓨터',
-        '논술': '과목_논술',
-        '기타': '과목_기타',
-        '독서실/스터디카페': '과목_독서실스터디카페',
-    }
-
-    queryset = Data.objects.all()
-    if 시도명:
-        queryset = queryset.filter(시도명=시도명)
-    if 시군구명:
-        queryset = queryset.filter(시군구명=시군구명)
-    if 행정동명:
-        queryset = queryset.filter(행정동명=행정동명)
-    if 과목 and 과목 in 과목_mapping:
-        filter_field = {과목_mapping[과목]: True}
-        queryset = queryset.filter(**filter_field)
-
-    # 가격 범위 필터 적용 (GET 파라미터 'price_min', 'price_max')
-    price_min = request.GET.get('price_min', None)
-    price_max = request.GET.get('price_max', None)
-    queryset = queryset.annotate(수강료평균_float=Cast('수강료_평균', FloatField()))
-    if price_min:
-        try:
-            price_min_val = float(price_min)
-            queryset = queryset.filter(수강료평균_float__gte=price_min_val)
-        except ValueError:
-            pass
-    if price_max:
-        try:
-            price_max_val = float(price_max)
-            queryset = queryset.filter(수강료평균_float__lte=price_max_val)
-        except ValueError:
-            pass
-
-    # 페이지네이션 설정 (예, 한 페이지당 1000개)
-    paginator = Paginator(queryset, 1000)
-    page = request.GET.get('page')
-    try:
-        academylist = paginator.page(page)
-    except PageNotAnInteger:
-        academylist = paginator.page(1)
-    except EmptyPage:
-        academylist = paginator.page(paginator.num_pages)
-
-    # 현재 데이터의 최소/최대 수강료 값을 구함
-    price_range = Data.objects.aggregate(
-       min_price=Min(Cast('수강료_평균', FloatField())),
-       max_price=Max(Cast('수강료_평균', FloatField()))
-    )
-
-    context = {
-        '시도명_list': 시도명_list,
-        '시도명_selected': 시도명,
-        '시군구명_selected': 시군구명,
-        '행정동명_selected': 행정동명,
-        '과목_selected': 과목,
-        'academylist': academylist,
-        '과목_list': ['종합', '수학', '영어', '과학', '외국어', '예체능', '컴퓨터', '논술', '기타', '독서실/스터디카페'],
-        'min_price': price_range['min_price'] or 0,
-        'max_price': price_range['max_price'] or 100,
-    }
-    return render(request, 'main/academy_list.html', context)
-
-
-
-
 def get_regions(request):
     level = request.GET.get('level')
     parent_value = request.GET.get('parent_value')
@@ -358,7 +300,7 @@ def filtered_academies(request):
         except ValueError:
             pass
 
-    # 연령 필터 적용 (여러 그룹이 OR 조건으로 적용됨)
+    # 연령 필터 적용
     ageGroups = body.get('ageGroups', [])
     if ageGroups:
         q_age = Q()
@@ -379,10 +321,10 @@ def filtered_academies(request):
                 q_age |= Q(대상_기타=True)
         queryset = queryset.filter(q_age)
 
-    # 셔틀버스 필터 적용: shuttleFilter가 true이면 셔틀버스 필드가 "true" (대소문자 무시)인 학원만 선택
+    # 셔틀버스 필터 적용 (있음, True, true 등)
     shuttleFilter = body.get('shuttleFilter', False)
     if shuttleFilter:
-        queryset = queryset.filter(셔틀버스__iexact="true")
+        queryset = queryset.filter(Q(셔틀버스__icontains='있음') | Q(셔틀버스__iexact='true'))
 
     data = list(queryset.values(
         'id',
@@ -392,6 +334,10 @@ def filtered_academies(request):
         '도로명주소',
         '전화번호',
         '시군구명',
+        '상권업종소분류명',
+        '셔틀버스',  # 🔥 반드시 추가되어야 하는 필드!
+        '영업시간',  # 🔥 반드시 추가되어야 하는 필드!
+        '별점',      # 🔥 필요하다면 추가
     ))
     return JsonResponse(data, safe=False)
 

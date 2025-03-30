@@ -8,7 +8,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('main', main.views.main, name='main'),
     path('academy/<int:pk>', main.views.academy, name='academy'),
-    path('academy_list', main.views.academy_list, name='academy_list'),
     path('search', main.views.search, name='search'),
     path('get_regions', main.views.get_regions, name='get_regions'),
 
