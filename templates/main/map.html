@@ -9,13 +9,13 @@
 </style>
 <div class="navbar" style="padding-right: 0;">
   <button class="nav_item1" onclick="window.location.href='javascript:history.back()'"><span class="material-symbols-outlined">arrow_back_ios</span></button>
-    <a href="{% url 'search' %}" class="nav_item2">
-      <div class="search_box">학원명/지역 검색</div>
-      <div class="search_icon_box"><span class="material-symbols-outlined">search</span></div>
-    </a>
+  <a href="{% url 'search' %}" class="nav_item2">
+    <div class="search_box">학원명/지역 검색</div>
+    <div class="search_icon_box"><span class="material-symbols-outlined">search</span></div>
+  </a>
     <!-- Toggle Panel Button -->
   <div class="nav_item3">
-    <button class="account"><span class="material-symbols-outlined">person</span></button>
+    <button class="account" style="display:none;"><span class="material-symbols-outlined">person</span></button>
     <button class="filterButton" id="toggle-panel" onclick="togglePanel()"><span class="material-symbols-outlined">tune</span></button>
   </div>
 </div>
@@ -220,42 +220,46 @@
     const zoomControlContainer = document.createElement('div');
     // 원하는 위치 설정
     zoomControlContainer.style.position = 'absolute';
-    zoomControlContainer.style.bottom = '23rem';
-    zoomControlContainer.style.right = '0.85rem';
+    zoomControlContainer.style.bottom = '28rem';
+    zoomControlContainer.style.right = '1.2rem';
     zoomControlContainer.style.display = 'flex';
     zoomControlContainer.style.flexDirection = 'column'; // 세로 배열
     zoomControlContainer.style.alignItems = 'center';
-    zoomControlContainer.style.borderRadius = '0.5rem';
-    zoomControlContainer.style.padding = '0.4rem';
-    zoomControlContainer.style.width = '3.3rem';
-    zoomControlContainer.style.height = '4.5rem';
+    zoomControlContainer.style.borderRadius = '0.4rem';
+    zoomControlContainer.style.padding = '0';
+    zoomControlContainer.style.margin = '0';
+    zoomControlContainer.style.width = '3rem';
+    zoomControlContainer.style.height = '4rem';
     zoomControlContainer.style.zIndex = '1';
 
     // "+" 버튼 (위쪽)
     const zoomPlus = document.createElement('button');
     zoomPlus.id = 'zoomPlus';
     zoomPlus.innerText = '+';
-    zoomPlus.style.marginBottom = '0.1rem';
-    zoomPlus.style.width = '3rem';
-    zoomPlus.style.height = '3rem';
+    zoomPlus.style.margin = '0 !important';
+    zoomPlus.style.padding = '0rem';
+    zoomPlus.style.width = '2.7rem';
+    zoomPlus.style.height = '2.5rem';
     zoomPlus.style.fontSize = '2rem';
     zoomPlus.style.border = '1px solid lightgray';
-    zoomPlus.style.boxShadow = '0 0 5px rgba(0,0,0,0.5)';
+    zoomPlus.style.boxShadow = '0 0 0px rgba(0,0,0,0.5)';
     zoomPlus.style.backgroundColor = 'white';
-    zoomPlus.style.borderRadius = '0.5rem';
+    zoomPlus.style.borderRadius = '0.4rem 0.4rem 0 0';
     zoomControlContainer.appendChild(zoomPlus);
 
     // "–" 버튼 (아래쪽)
     const zoomMinus = document.createElement('button');
     zoomMinus.id = 'zoomMinus';
     zoomMinus.innerText = '–';
-    zoomMinus.style.width = '3rem';
-    zoomMinus.style.height = '2.5rem';
+    zoomMinus.style.width = '2.7rem';
+    zoomMinus.style.height = '2.2rem';
+    zoomMinus.style.margin = '0 !important';
+    zoomMinus.style.padding = '0rem';
     zoomMinus.style.fontSize = '2.5rem';
     zoomMinus.style.border = '1px solid lightgray';
-    zoomMinus.style.boxShadow = '0 0 5px rgba(0,0,0,0.5)';
+    zoomMinus.style.boxShadow = '0 0 0px rgba(0,0,0,0.5)';
     zoomMinus.style.backgroundColor = 'white';
-    zoomMinus.style.borderRadius = '0.5rem';
+    zoomMinus.style.borderRadius = '0 0 0.4rem 0.4rem';
     zoomControlContainer.appendChild(zoomMinus);
 
     document.getElementById('map').appendChild(zoomControlContainer);
@@ -532,29 +536,39 @@ group.forEach((ac, index) => {
     const popup = document.getElementById('academyPopup');
     const popupContent = document.getElementById('popupContent');
     popupContent.innerHTML = `
-    <div style="padding-left: 1rem;
-                line-height: 1.5;
-                color: lightgray;">
-      <h3><a style="text-decoration: none;
-                    color: black;
-                    font-size: 1.2rem;"
-             href="/academy/${academy.id}">
-             ${academy.상호명}
-          </a>
-      </h3>
-      <div style="font-size: 1.5rem;
-                  color: yellow;
-                  background-color: brown;">${academy.별점 || '별점 정보 없음'}</br></div>
-      전화번호: ${academy.전화번호 || '정보 없음'}</br>
-      주소:${academy.도로명주소 || '정보 없음'}</br>
-      대상:${academy.대상_유아 || ''}
-          ${academy.대상_초등 || ''}
-          ${academy.대상_고등 || ''}
-          ${academy.대상_특목고 || ''}
-          ${academy.대상_일반 || ''}
-          ${academy.대상_기타 || ''}</br>
-      영업시간:${academy.영업시간 || ''}</br>
-      셔틀버스:${academy.셔틀버스 || ''}</br>
+    <div style="display: flex; align-items: center;">
+      <a style="text-decoration: none; color: #333; font-size: 1.5rem;"
+         href="/academy/${academy.id}">
+        ${academy.상호명}
+      </a>
+      <span style="margin-left: 0.5rem; font-size: 1.1rem; color: #777;">
+        ${academy.상권업종소분류명 || ''}
+      </span>
+    </div>
+    <div style="padding-left: 1rem;">
+      <div style="font-size: 1.3rem;
+                    color: #696969;
+                    background-color: transparents;">별점 ${academy.별점 || '정보 없음'}</br></div>
+        <div>${academy.도로명주소 || '정보 없음'}</div>
+        <div style="font-size: 1rem;">
+          대상:
+          ${academy.대상_유아 ? '유아 ' : ''}
+          ${academy.대상_초등 ? '초등 ' : ''}
+          ${academy.대상_중등 ? '중등 ' : ''}
+          ${academy.대상_고등 ? '고등 ' : ''}
+          ${academy.대상_특목고 ? '특목고 ' : ''}
+          ${academy.대상_일반 ? '일반 ' : ''}
+          ${academy.대상_기타 ? '기타' : ''}
+        </div>
+<table style="border-collapse: collapse; border: none; margin-top: 0.5rem; font-size: 1rem;">
+  <tr>
+    <td style="padding:0.3rem 0rem; border:none; font-size: 1rem;">
+      <strong>영업시간:</strong>
+      ${academy.영업시간 && academy.영업시간 !== '없음' && academy.영업시간 !== 'false' ? academy.영업시간 : '정보 없음'}
+    </td>
+  </tr>
+</table>
+      </div>
     </div>
     `;
     popup.classList.add('active');

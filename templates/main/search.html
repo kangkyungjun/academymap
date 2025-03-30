@@ -1,88 +1,211 @@
 {% extends "templates/main/base.html" %}
-{% load static %}
+{% load static humanize %}
 {% block contents %}
-{% load humanize %}
+<style>
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6rem;
+  background-color: white;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  justify-content: space-between;
+}
 
+.nav_item3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
+#panel-container {
+  position: fixed;
+  top: 6rem;
+  left: 0.3rem;
+  right: 0.5rem;
+  width: 98%;
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  border: 1px solid lightgray;
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
+  z-index: 3;
+  display: none;
+  overflow-y: auto;
+  max-height: 80vh;
+}
+</style>
 
 <div class="navbar">
-  <button class="nav_item1" onclick="window.location.href='javascript:history.back()'"><span class="material-symbols-outlined">arrow_back_ios</span></button>
-    <form class="search-form" method="POST" action="{% url 'search' %}">
-      {% csrf_token %}
-      <input class="search-input" type="search" placeholder="학원명/지역 검색" name="searched">
-      <button class="search-button" type="submit"><span class="material-symbols-outlined" style="font-size:1.8rem;">search</span></button>
-    </form>
+  <button class="nav_item1" onclick="window.history.back()">
+    <span class="material-symbols-outlined">arrow_back_ios</span>
+  </button>
+  <form class="search-form" method="GET" action="{% url 'search' %}">
+    <input class="search-input" type="search" name="searched" placeholder="학원명/지역 검색" value="{{ searched }}">
+    <button class="search-button" type="submit">
+      <span class="material-symbols-outlined">search</span>
+    </button>
+  </form>
 
-  <a href="{% url 'map' %}">
-      <div class="search_icon_box"><span class="material-symbols-outlined">location_on</span></div>
-  </a>
-
+  <div class="nav_item3">
+    <a href="{% url 'map' %}">
+      <span class="material-symbols-outlined">location_on</span>
+    </a>
+    <button class="filterButton" onclick="togglePanel()">
+      <span class="material-symbols-outlined">tune</span>
+    </button>
+  </div>
 </div>
 
-
-<!-- 내용 영역(검색 결과) -->
-<div class="content-area">
-  {% if searched %}
-    {% for academy in data %}
-    <div class="academy-list-item">
-      <!-- 왼쪽 20% : 학원 사진 -->
-      <div class="academy-img-wrap">
-        {% if academy.학원사진 %}
-          <img src="{{ academy.학원사진.url }}" alt="{{ academy.상호명 }}" class="academy-img"/>
-        {% else %}
-          <img src="{% static 'images/no_image.png' %}" alt="No Image" class="academy-img"/>
-        {% endif %}
-      </div>
-
-      <!-- 오른쪽 80% : 상호명, 소개글, 별점, 주소, 대상, 과목, 영업시간, 셔틀버스, 수강료 -->
-      <div class="academy-info-wrap">
-        <a href="{% url 'academy' academy.id %}" class="academy-name">
-          {{ academy.상호명 }}
-        </a>
-
-        {% if academy.소개글 %}
-          <div class="academy-intro">{{ academy.소개글|linebreaksbr }}</div>
-        {% else %}
-          <div class="academy-intro">소개 정보가 없습니다.</div>
-        {% endif %}
-
-        {% if academy.별점 %}
-          <div class="academy-subinfo">별점: ★ {{ academy.별점 }}</div>
-        {% endif %}
-        <div class="academy-subinfo">지번주소: {{ academy.지번주소 }}</div>
-        <div class="academy-subinfo">도로명주소: {{ academy.도로명주소 }}</div>
-
-        <div class="academy-subinfo">
-          대상학년:
-          {% if academy.대상_유아 %}유아 {% endif %}
-          {% if academy.대상_초등 %}초등 {% endif %}
-          {% if academy.대상_중등 %}중등 {% endif %}
-          {% if academy.대상_고등 %}고등 {% endif %}
-          {% if academy.대상_특목고 %}특목고 {% endif %}
-          {% if academy.대상_일반 %}일반 {% endif %}
-          {% if academy.대상_기타 %}기타{% endif %}
-        </div>
-
-        <div class="academy-subinfo">
-          과목:
-          {% if academy.과목_종합 %}종합 {% endif %}
-          {% if academy.과목_수학 %}수학 {% endif %}
-          {% if academy.과목_영어 %}영어 {% endif %}
-          {% if academy.과목_과학 %}과학 {% endif %}
-          {% if academy.과목_외국어 %}외국어 {% endif %}
-          {% if academy.과목_예체능 %}예체능 {% endif %}
-          {% if academy.과목_컴퓨터 %}컴퓨터 {% endif %}
-          {% if academy.과목_논술 %}논술 {% endif %}
-          {% if academy.과목_기타 %}기타 {% endif %}
-          {% if academy.과목_독서실스터디카페 %}독서실/스터디카페{% endif %}
-        </div>
-        <div class="academy-subinfo">영업시간: {{ academy.영업시간 }}</div>
-        <div class="academy-subinfo">셔틀버스: {{ academy.셔틀버스 }}</div>
-        <div class="academy-subinfo">수강료: {{ academy.수강료 }}</div>
-      </div>
-    </div>
+<div id="panel-container">
+  <div>과목</div>
+  <div id="panel-category">
+    {% for subject in 과목_list %}
+      <button onclick="setCategory('{{ subject }}', this)">{{ subject }}</button>
     {% endfor %}
-  {% endif %}
+  </div>
+  <hr>
+  <div>수강료</div>
+  <div>
+    <span id="price-slider-min"></span> - <span id="price-slider-max"></span>
+    <div id="price-slider"></div>
+    <input type="hidden" id="price-min" value="{{ min_price }}">
+    <input type="hidden" id="price-max" value="{{ max_price }}">
+  </div>
+  <hr>
+  <div>연령</div>
+  <div>
+    {% for age in target_age_groups %}
+      <button onclick="toggleAgeFilter('{{ age }}', this)">{{ age }}</button>
+    {% endfor %}
+  </div>
+  <hr>
+  <div>셔틀</div>
+  <div>
+    <button onclick="toggleShuttleFilter(this)">셔틀버스</button>
+  </div>
 </div>
+
+<div class="search-content" id="search-results">
+  {% include 'main/search_results_partial.html' with academies=initial_results %}
+</div>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
+
+
+<script>
+let category = '전체';
+let selectedAgeGroups = [];
+let shuttleFilter = false;
+
+function togglePanel() {
+  const panel = document.getElementById("panel-container");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+function setCategory(cat, btn) {
+  category = cat;
+  document.querySelectorAll("#panel-category button").forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchSearchResults();
+}
+
+function toggleAgeFilter(age, btn) {
+  btn.classList.toggle('active');
+  if (selectedAgeGroups.includes(age)) {
+    selectedAgeGroups = selectedAgeGroups.filter(a => a !== age);
+  } else {
+    selectedAgeGroups.push(age);
+  }
+  fetchSearchResults();
+}
+
+function toggleShuttleFilter(btn) {
+  shuttleFilter = !shuttleFilter;
+  btn.classList.toggle('active');
+  fetchSearchResults();
+}
+
+// 디바운스 함수로 AJAX 요청 최적화
+function debounce(func, wait) {
+  let timeout;
+  return function() {
+    const context = this, args = arguments;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const slider = document.getElementById('price-slider');
+  const minPrice = 0;
+  const maxPrice = 2000000;
+
+  const initialMin = parseInt(document.getElementById('price-min').value) || minPrice;
+  const initialMax = parseInt(document.getElementById('price-max').value) || maxPrice;
+
+  noUiSlider.create(slider, {
+    start: [initialMin, initialMax],
+    connect: true,
+    orientation: 'horizontal',
+    direction: 'ltr',
+    range: {'min': minPrice, 'max': maxPrice},
+    tooltips: [true, true],
+    format: {
+      to: function(value) {
+        const rounded = Math.round(value);
+        return rounded >= maxPrice ? `${maxPrice.toLocaleString()} 이상` : rounded.toLocaleString();
+      },
+      from: function(value) {
+        return Number(value.replace(/[^\d]/g, ''));
+      }
+    }
+  });
+
+  slider.noUiSlider.on('update', debounce(function(values) {
+    const currentMin = parseInt(values[0].replace(/[^\d]/g, ''), 10);
+    const currentMax = values[1].includes('이상') ? 999999999 : parseInt(values[1].replace(/[^\d]/g, ''), 10);
+
+    document.getElementById('price-min').value = currentMin;
+    document.getElementById('price-max').value = currentMax;
+
+    document.getElementById('price-slider-min').innerHTML =
+      "최소 <span class='price-value-min'>" + currentMin.toLocaleString() + "</span>원";
+
+    document.getElementById('price-slider-max').innerHTML =
+      currentMax === 999999999
+        ? "최대 <span class='price-value-max'>" + maxPrice.toLocaleString() + "</span>원 이상"
+        : "최대 <span class='price-value-max'>" + currentMax.toLocaleString() + "</span>원";
+
+    fetchSearchResults();
+  }, 300));
+});
+
+function fetchSearchResults() {
+  const params = new URLSearchParams({
+    searched: document.querySelector('.search-input').value,
+    price_min: document.getElementById('price-min').value,
+    price_max: document.getElementById('price-max').value,
+    category: category,
+    shuttleFilter: shuttleFilter,
+  });
+  selectedAgeGroups.forEach(age => params.append('ageGroups[]', age));
+
+  fetch(`{% url 'search' %}?${params.toString()}`, {
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  })
+  .then(res => res.text())
+  .then(html => {
+    document.getElementById('search-results').innerHTML = html;
+  })
+  .catch(err => console.error(err));
+}
+</script>
+
 
 {% endblock %}
