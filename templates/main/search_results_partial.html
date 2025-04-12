@@ -1,6 +1,9 @@
-{% load static %}
-{% for academy in academies %}
 {% load static humanize %}
+{% for academy in academies %}
+<style>
+
+</style>
+
 <div class="academy-list-item">
   <div class="academy_detail_logo {% if not academy.학원사진 %}no-image{% endif %}">
     {% if academy.학원사진 %}
@@ -24,58 +27,69 @@
       {{ academy.도로명주소|default:"정보 없음" }}
     </div>
 
-<div class="academy-subinfo_fee">
-  수강료<span>(평균)</span>
-  {% if academy.수강료_평균 %}
-    <span>{{ academy.수강료_평균|floatformat:0|intcomma }}</span><span>원</span>
-  {% else %}
-    <span>정보 없음</span>
-  {% endif %}
-</div>
+    <div class="academy-subinfo_fee">
+      수강료<span>(평균)</span>
+      {% if academy.수강료_평균 %}
+        <span>{{ academy.수강료_평균|floatformat:0|intcomma }}</span><span>원</span>
+      {% else %}
+        <span>정보 없음</span>
+      {% endif %}
+    </div>
 
-<div class="academy-subinfo_subject">
-  {% if academy.과목_종합 or academy.과목_수학 or academy.과목_영어 or academy.과목_과학 or academy.과목_외국어 or academy.과목_예체능 or academy.과목_컴퓨터 or academy.과목_논술 or academy.과목_기타 or academy.과목_독서실스터디카페 %}
-    {% if academy.과목_종합 %}<span>종합</span>{% else %}{% endif %}
-    {% if academy.과목_수학 %}<span>수학</span>{% else %}{% endif %}
-    {% if academy.과목_영어 %}<span>영어</span>{% else %}{% endif %}
-    {% if academy.과목_과학 %}<span>과학</span>{% else %}{% endif %}
-    {% if academy.과목_외국어 %}<span>외국어</span>{% else %}{% endif %}
-    {% if academy.과목_예체능 %}<span>예체능</span>{% else %}{% endif %}
-    {% if academy.과목_컴퓨터 %}<span>컴퓨터</span>{% else %}{% endif %}
-    {% if academy.과목_논술 %}<span>논술</span>{% else %}{% endif %}
-    {% if academy.과목_기타 %}<span>기타</span>{% else %}{% endif %}
-    {% if academy.과목_독서실스터디카페 %}<span>독서실/스터디카페</span>{% else %}{% endif %}
-  {% else %}
-    과목 정보 없음
-  {% endif %}
-</div>
+    <div class="academy-subinfo_subject">
+      {% if academy.과목_종합 or academy.과목_수학 or academy.과목_영어 or academy.과목_과학 or academy.과목_외국어 or academy.과목_예체능 or academy.과목_컴퓨터 or academy.과목_논술 or academy.과목_기타 or academy.과목_독서실스터디카페 %}
+        {% if academy.과목_종합 %}<span>종합</span>{% endif %}
+        {% if academy.과목_수학 %}<span>수학</span>{% endif %}
+        {% if academy.과목_영어 %}<span>영어</span>{% endif %}
+        {% if academy.과목_과학 %}<span>과학</span>{% endif %}
+        {% if academy.과목_외국어 %}<span>외국어</span>{% endif %}
+        {% if academy.과목_예체능 %}<span>예체능</span>{% endif %}
+        {% if academy.과목_컴퓨터 %}<span>컴퓨터</span>{% endif %}
+        {% if academy.과목_논술 %}<span>논술</span>{% endif %}
+        {% if academy.과목_기타 %}<span>기타</span>{% endif %}
+        {% if academy.과목_독서실스터디카페 %}<span>독서실/스터디카페</span>{% endif %}
+      {% else %}
+        과목 정보 없음
+      {% endif %}
+    </div>
 
+    <div class="academy-subinfo_grade">
+      {% if academy.대상_유아 or academy.대상_초등 or academy.대상_중등 or academy.대상_고등 or academy.대상_특목고 or academy.대상_일반 or academy.대상_기타 %}
+        {% if academy.대상_유아 %}<span>유아</span>{% endif %}
+        {% if academy.대상_초등 %}<span>초등</span>{% endif %}
+        {% if academy.대상_중등 %}<span>중등</span>{% endif %}
+        {% if academy.대상_고등 %}<span>고등</span>{% endif %}
+        {% if academy.대상_특목고 %}<span>특목고</span>{% endif %}
+        {% if academy.대상_일반 %}<span>일반</span>{% endif %}
+        {% if academy.대상_기타 %}<span>기타</span>{% endif %}
+      {% else %}
+        학년 정보 없음
+      {% endif %}
+    </div>
 
-<div class="academy-subinfo_grade">
-  {% if academy.대상_유아 or academy.대상_초등 or academy.대상_중등 or academy.대상_고등 or academy.대상_특목고 or academy.대상_일반 or academy.대상_기타 %}
-    {% if academy.대상_유아 %}<span>유아</span>{% endif %}
-    {% if academy.대상_초등 %}<span>초등</span>{% endif %}
-    {% if academy.대상_중등 %}<span>중등</span>{% endif %}
-    {% if academy.대상_고등 %}<span>고등</span>{% endif %}
-    {% if academy.대상_특목고 %}<span>특목고</span>{% endif %}
-    {% if academy.대상_일반 %}<span>일반</span>{% endif %}
-    {% if academy.대상_기타 %}<span>기타</span>{% endif %}
-  {% else %}
-    학년 정보 없음
-  {% endif %}
-</div>
-
-<div class="academy-subinfo_shuttle">
-  {% if academy.셔틀버스 == "true" or academy.셔틀버스 == "True" %}
-    <span>셔틀버스 있음</span>
-  {% else %}
-    셔틀 정보 없음
-  {% endif %}
-</div>
-
-
+    <div class="academy-subinfo_shuttle">
+      {% if academy.셔틀버스 == "true" or academy.셔틀버스 == "True" %}
+        <span>셔틀버스 있음</span>
+      {% else %}
+        셔틀 정보 없음
+      {% endif %}
+    </div>
   </div>
 </div>
+
+{# 광고 영역 삽입: 학원 3개마다 표시 #}
+{% if forloop.counter|divisibleby:3 %}
+
+<div class="adv_line_small">
+  <ins class="kakao_ad_area" style="display:none;"
+  data-ad-unit = "DAN-iokMmhxqpwG7UgGk"
+  data-ad-width = "320"
+  data-ad-height = "50"></ins>
+  <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
+
+{% endif %}
+
 {% empty %}
 <p>검색 결과가 없습니다.</p>
 {% endfor %}
