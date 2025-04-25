@@ -293,38 +293,7 @@
 
 <script>
   // Block 3: 학원 자료 불러오기와 화면 표시 디자인
-  function fetchAcademies() {
-    const bounds = map.getBounds();
-    const sw = bounds.getSW();
-    const ne = bounds.getNE();
 
-    // 가격 범위 필터 값 가져오기
-    let priceMin = document.getElementById('price-min') ? document.getElementById('price-min').value : "";
-    let priceMax = document.getElementById('price-max') ? document.getElementById('price-max').value : "";
-
-    fetch('/api/filtered_academies', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      },
-      body: JSON.stringify({
-        swLat: sw._lat,
-        swLng: sw._lng,
-        neLat: ne._lat,
-        neLng: ne._lng,
-        category: selectedCategory,
-        priceMin: priceMin,
-        priceMax: priceMax
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      allAcademyData = data;
-      renderMarkers();
-    })
-    .catch(error => console.error('학원 데이터 요청 에러:', error));
-  }
 
   function renderMarkers() {
     clearMarkers();
@@ -759,40 +728,44 @@ if (currentMax >= maxPrice) {
 <!-- fetchAcademies() 함수 (Price, Age, Shuttle 필터 모두 전달) -->
 <script>
   function fetchAcademies() {
-    const bounds = map.getBounds();
-    const sw = bounds.getSW();
-    const ne = bounds.getNE();
-
-    // 가격 범위 필터 값
-    let priceMin = document.getElementById('price-min') ? document.getElementById('price-min').value : "";
-    let priceMax = document.getElementById('price-max') ? document.getElementById('price-max').value : "";
-
-    // API 호출 시 연령과 셔틀버스 필터 값도 포함
-    fetch('/api/filtered_academies', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      },
-      body: JSON.stringify({
-        swLat: sw._lat,
-        swLng: sw._lng,
-        neLat: ne._lat,
-        neLng: ne._lng,
-        category: selectedCategory,
-        priceMin: priceMin,
-        priceMax: priceMax,
-        ageGroups: window.selectedAgeGroups, // 연령 필터
-        shuttleFilter: window.shuttleFilter    // 셔틀버스 필터 (true/false)
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      allAcademyData = data;
-      renderMarkers();
-    })
-    .catch(error => console.error('학원 데이터 요청 에러:', error));
+  if (!map || typeof map.getBounds !== 'function') {
+    console.warn("🛑 map 객체가 아직 초기화되지 않았거나 getBounds를 사용할 수 없습니다.");
+    return;
   }
+
+  const bounds = map.getBounds();
+  const sw = bounds.getSW();
+  const ne = bounds.getNE();
+
+  const priceMin = document.getElementById('price-min')?.value || "";
+  const priceMax = document.getElementById('price-max')?.value || "";
+
+  fetch('/api/filtered_academies', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken()
+    },
+    body: JSON.stringify({
+      swLat: sw._lat,
+      swLng: sw._lng,
+      neLat: ne._lat,
+      neLng: ne._lng,
+      category: selectedCategory,
+      priceMin: priceMin,
+      priceMax: priceMax,
+      ageGroups: window.selectedAgeGroups,
+      shuttleFilter: window.shuttleFilter
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    allAcademyData = data;
+    renderMarkers();
+  })
+  .catch(error => console.error('학원 데이터 요청 에러:', error));
+}
+
 </script>
 
 <script>
