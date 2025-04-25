@@ -821,9 +821,9 @@ function filterMarkers(btn, category) {
 
 </script>
 <script>
-  // ✅ 안전하게 Naver Maps API 로드 후 initMap 호출
   function waitForNaverMap(callback) {
     if (window.naver && window.naver.maps && typeof window.naver.maps.Map === 'function') {
+      console.log("✅ Naver Maps API 로드 완료"); // 디버깅용
       callback();
     } else {
       setTimeout(() => waitForNaverMap(callback), 100);
@@ -831,7 +831,7 @@ function filterMarkers(btn, category) {
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    waitForNaverMap(initMap);  // ✅ initMap 직접 호출
+    waitForNaverMap(initMap);
   });
 </script>
 {% endblock %}
