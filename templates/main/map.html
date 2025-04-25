@@ -114,6 +114,7 @@
 <!-- noUiSlider CSS, JS -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
+<script src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=rh9hwnvmx1&submodules=geocoder" async defer></script>
 
 <script>
   // Block 1: 전역 변수 값 설정
@@ -820,5 +821,18 @@ function filterMarkers(btn, category) {
 }
 
 </script>
+<script>
+  // ✅ 안전하게 Naver Maps API 로드 후 initMap 호출
+  function waitForNaverMap(callback) {
+    if (window.naver && window.naver.maps && typeof window.naver.maps.Map === 'function') {
+      callback();
+    } else {
+      setTimeout(() => waitForNaverMap(callback), 100);
+    }
+  }
 
+  document.addEventListener('DOMContentLoaded', () => {
+    waitForNaverMap(initMap);  // ✅ initMap 직접 호출
+  });
+</script>
 {% endblock %}
