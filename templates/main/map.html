@@ -183,8 +183,7 @@
 </script>
 
 <script>
-  // Block 2: Map Initialization and Custom Zoom Control
-// Block 2: Map Initialization and Custom Zoom Control
+// Block 2: Map Initialization and Custom Zoom Control (최종 완벽 해결 코드)
 function initMap() {
   navigator.geolocation.getCurrentPosition(pos => {
     const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
@@ -204,8 +203,8 @@ function initMap() {
     });
 
     naver.maps.Event.once(map, 'init', function () {
-      fetchAcademies();  // <-- 수정: 지도가 완전히 로드된 후 실행
-      naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+      safeFetchAcademies();  // 지도가 확실히 로드된 후 호출
+      naver.maps.Event.addListener(map, 'idle', safeFetchAcademies);
     });
 
     createCustomZoomControl();
@@ -219,13 +218,25 @@ function initMap() {
     });
 
     naver.maps.Event.once(map, 'init', function () {
-      fetchAcademies();  // <-- 수정: 지도가 완전히 로드된 후 실행
-      naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+      safeFetchAcademies();  // 지도가 확실히 로드된 후 호출
+      naver.maps.Event.addListener(map, 'idle', safeFetchAcademies);
     });
 
     createCustomZoomControl();
   });
 }
+
+// 안전한 fetchAcademies 호출 함수
+function safeFetchAcademies() {
+  if (map && map.getBounds && typeof map.getBounds === 'function') {
+    fetchAcademies();
+  } else {
+    setTimeout(safeFetchAcademies, 200);  // 0.2초마다 재시도
+  }
+}
+
+naver.maps.onJSContentLoaded = initMap;
+
 
 
   function createCustomZoomControl() {
@@ -297,7 +308,6 @@ function initMap() {
     });
   }
 
-  naver.maps.onJSContentLoaded = initMap;
 </script>
 
 <script>
