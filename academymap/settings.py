@@ -43,8 +43,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'corsheaders',
+    'rest_framework',
+    'api',
+    'map_api',
     'main',
 ]
+
+# CORS 설정
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+CORS_ALLOW_HEADERS = ['*']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

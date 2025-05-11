@@ -1,8 +1,8 @@
 from django.contrib import admin
-from django.urls import path
 from django.conf.urls.static import static
 from django.conf import settings
 import main.views
+from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -19,6 +19,9 @@ urlpatterns = [
     path('manage/add/', main.views.add_academy, name='add_academy'),
     path('manage/modify/<int:pk>/', main.views.modify_academy, name='modify_academy'),
     path('manage/delete/<int:pk>/', main.views.delete_academy, name='delete_academy'),
+
+    path('map_api/', include('map_api.urls')),
+    path('api/', include('api.urls')),
 
     # 전체 데이터 업로드 시 사용
     path('data_update', main.views.data_update, name='data_update'),
