@@ -184,40 +184,49 @@
 
 <script>
   // Block 2: Map Initialization and Custom Zoom Control
-  function initMap() {
-    navigator.geolocation.getCurrentPosition(pos => {
-      const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-      // 기본 줌 컨트롤 비활성화 → 커스텀 컨트롤 사용
-      map = new naver.maps.Map('map', {
-        center: userLoc,
-        zoom: 17,
-        minZoom: 7,
-        zoomControl: false
-      });
-      currentMarker = new naver.maps.Marker({
-        position: userLoc,
-        map: map,
-        icon: {
-          content: '<div style="width:1.7rem;height:1.7rem;background-color:red;border-radius:50%;border:5px solid white;box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
-          anchor: new naver.maps.Point(7.5, 7.5)
-        }
-      });
-      fetchAcademies();
-      naver.maps.Event.addListener(map, 'idle', fetchAcademies);
-      // 커스텀 줌 컨트롤 생성 (세로 배열: 상단 "+" / 하단 "–")
-      createCustomZoomControl();
-    }, err => {
-      const defaultLoc = new naver.maps.LatLng(37.5665, 126.9780);
-      map = new naver.maps.Map('map', {
-        center: defaultLoc,
-        zoom: 17,
-        minZoom: 7,
-        zoomControl: false
-      });
-      fetchAcademies();
-      createCustomZoomControl();
+// Block 2: Map Initialization and Custom Zoom Control
+function initMap() {
+  navigator.geolocation.getCurrentPosition(pos => {
+    const userLoc = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+    map = new naver.maps.Map('map', {
+      center: userLoc,
+      zoom: 17,
+      minZoom: 7,
+      zoomControl: false
     });
-  }
+    currentMarker = new naver.maps.Marker({
+      position: userLoc,
+      map: map,
+      icon: {
+        content: '<div style="width:1.7rem;height:1.7rem;background-color:red;border-radius:50%;border:5px solid white;box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
+        anchor: new naver.maps.Point(7.5, 7.5)
+      }
+    });
+
+    naver.maps.Event.once(map, 'init', function () {
+      fetchAcademies();  // <-- 수정: 지도가 완전히 로드된 후 실행
+      naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+    });
+
+    createCustomZoomControl();
+  }, err => {
+    const defaultLoc = new naver.maps.LatLng(37.5665, 126.9780);
+    map = new naver.maps.Map('map', {
+      center: defaultLoc,
+      zoom: 17,
+      minZoom: 7,
+      zoomControl: false
+    });
+
+    naver.maps.Event.once(map, 'init', function () {
+      fetchAcademies();  // <-- 수정: 지도가 완전히 로드된 후 실행
+      naver.maps.Event.addListener(map, 'idle', fetchAcademies);
+    });
+
+    createCustomZoomControl();
+  });
+}
+
 
   function createCustomZoomControl() {
     const zoomControlContainer = document.createElement('div');
