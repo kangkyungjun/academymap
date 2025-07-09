@@ -1,0 +1,451 @@
+.navbar {
+  position: fixed;         /* 화면에 고정 */
+  top: 0;                  /* 상단에 위치 */
+  left: 0;
+  right:0;
+  width: 100%;
+  height: 60px;            /* 충분한 높이로 지정 (예: 60px) */
+  background-color: transparent;
+  z-index: 2;
+  display: flex;
+  align-items: center;     /* 세로 가운데 정렬 */
+  padding: 0 1rem;
+}
+
+.nav_item1{
+    height: 3rem;
+    font-size: 1.1rem;
+    border-radius: 0.5rem;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 0 0.3rem;
+      text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #fff,
+    0 0 40px #fff;
+}
+.nav_item2{
+display: flex;
+    align-items: center; /* 세로 가운데 정렬 */
+  justify-content: center; /* 가로 가운데 정렬 (필요시) */
+    width: 13rem;
+    height: 3rem;
+    border: 1px solid lightgray;
+    border-radius: 0.7rem;
+    text-decoration: none;
+    font-size: 1.6rem;
+    background-color: white;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    vertical-align: middle;
+      text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #fff,
+    0 0 40px #fff;
+}
+
+/* search_box에 필요한 크기와 간격 설정 (예시) */
+.search_box {
+  width: 10rem;
+  height: 3rem;
+  margin-right: 0.5rem;  /* 검색 아이콘과 간격 추가 */
+  color: gray;
+  text-align: center;
+  padding-left: -2rem;
+  align-content: center;
+  font-size: 1.2rem;
+      vertical-align: middle;
+      margin-left: -0.5rem;
+      margin-bottom: 0.6rem;
+}
+
+.search_icon_box {
+margin-bottom: 0.7rem;
+}
+.search_icon_box span{
+color: gray;
+}
+
+.location_icon_box span{
+margin-bottom: 2rem;
+}
+.nav_item3{
+    height: 3rem;
+    font-size:1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    background-color: transparent;
+      text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #fff,
+    0 0 40px #fff;
+}
+
+.nav_item2_1 {
+  display: flex;
+  text-decoration: none;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: black;
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #fff,
+    0 0 40px #fff;
+  align-items: center; /* 세로 중앙 정렬 */
+  margin-bottom: 0.5rem;
+}
+
+
+/* 지도 영역 */
+#map {
+top: -2%;
+  width: 100%;
+  height: 105%;
+}
+
+.filterButton{
+background-color: transparent;
+  border: 1px solid lightgray;
+  transition: transform 0.2s ease;
+  background-color: white;
+}
+.filterButton:active {
+  transform: scale(1.1);
+}
+.account {
+  background-color: white;
+  transition: transform 0.2s ease;
+  border: 1px solid lightgray;
+}
+.account:active {
+  transform: scale(1.1);
+}
+
+    /* 카테고리 컨테이너 (가로 스크롤) */
+#category-container {
+    top: 6%;
+    position: absolute;
+    width: 95%;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+    z-index: 1;
+    padding: 0.2rem;
+    border-radius: 1rem;
+    background-color: transparent;
+}
+#category {
+  display: inline-flex;
+  gap: 0.1rem;
+  padding-left: 1rem;
+}
+#category button {
+  display: inline-block;
+  padding: 0.65em 0.8em;       /* em 단위 사용 → font-size에 비례하여 여백이 결정됩니다. */
+  font-size: 0.85em;             /* 기본 폰트 크기 (부모의 font-size에 따라 조정됨) */
+  border: 1px solid #F0F0F0;
+  border-radius: 1.1em;       /* em 단위로 설정하면 폰트 크기에 따라 둥근 정도도 같이 변합니다. */
+  background-color: #fff;
+  color: #696969;
+  white-space: nowrap;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+
+/* 마우스 오버 시 */
+#category button:hover {
+  background-color: #008B8B;
+  color: #fff;
+}
+
+#category > button:nth-child(1).active {
+  background-color: green !important; /* 전체 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(2).active {
+  background-color: #FF5733 !important; /* 수학 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(3).active {
+  background-color: #3498DB !important; /* 영어 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(4).active {
+  background-color: #27AE60 !important; /* 과학 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(5).active {
+  background-color: #8E44AD !important; /* 외국어 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(6).active {
+  background-color: #F1C40F !important; /* 예체능 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(7).active {
+  background-color: #E74C3C !important; /* 컴퓨터 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(8).active {
+  background-color: #9B59B6 !important; /* 논술 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(9).active {
+  background-color: #95A5A6 !important; /* 기타 */
+  color: #fff !important;
+}
+
+#category > button:nth-child(10).active {
+  background-color: #1ABC9C !important; /* 독서실/스터디카페 */
+  color: #fff !important;
+}
+
+
+
+
+#panel-category button:nth-child(1).active {
+  background-color: green; /* 전체 */
+  color: #fff;
+}
+
+#panel-category button:nth-child(2).active {
+  background-color: #FF5733; /* 수학 */
+  color: #fff;
+}
+#panel-category button:nth-child(3).active {
+  background-color: #3498DB; /* 영어 */
+  color: #fff;
+}
+#panel-category button:nth-child(4).active {
+  background-color: #27AE60; /* 과학 */
+  color: #fff;
+}
+#panel-category button:nth-child(5).active {
+  background-color: #8E44AD; /* 외국어 */
+  color: #fff;
+}
+#panel-category button:nth-child(6).active {
+  background-color: #F1C40F; /* 예체능 */
+  color: #fff;
+}
+#panel-category button:nth-child(7).active {
+  background-color: #E74C3C; /* 컴퓨터 */
+  color: #fff;
+}
+#panel-category button:nth-child(8).active {
+  background-color: #9B59B6; /* 논술 */
+  color: #fff;
+}
+#panel-category button:nth-child(9).active {
+  background-color: #95A5A6; /* 기타 */
+  color: #fff;
+}
+#panel-category button:nth-child(10).active {
+  background-color: #1ABC9C; /* 독서실/스터디카페 */
+  color: #fff;
+}
+
+/* 패널 컨테이너 스타일 */
+#panel-container {
+  position: fixed;/* 버튼과 동일한 상단 위치로 지정 (원하는 위치로 조정 가능) */
+  z-index: 3;
+  transition: height 0.2s ease-in-out;
+  display: none;
+  top: 9%;
+  left: 0.3rem;
+  right: 0.5rem;
+  width: 98%;
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  border: 1px solid lightgray;
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
+}
+
+#panel-container div{
+  color: gray;
+  line-height: 1.5;
+}
+
+#panel-category button {
+  display: inline-block;
+  padding: 0.45em 0.8em;       /* em 단위 사용 → font-size에 비례하여 여백이 결정됩니다. */
+  font-size: 0.85em;             /* 기본 폰트 크기 (부모의 font-size에 따라 조정됨) */
+  border: 0.1px solid #FAFAFA;
+  border-radius: 0.5em;       /* em 단위로 설정하면 폰트 크기에 따라 둥근 정도도 같이 변합니다. */
+  background-color: #fff;
+  color: #696969;
+  white-space: nowrap;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+.panel-subject-title button.active {
+  background-color: green;
+  color: white;
+}
+
+.price-part {
+  display: flex;
+  justify-content: center; /* 가로 가운데 정렬 */
+  align-items: center;
+  font-size: 1.2rem;
+  color: #696969;
+  margin: 0;
+}
+
+.price-value-min, .price-value-max  {
+  font-size: 1.7rem;
+  font-weight: bold;
+  color: green;
+}
+
+/* 1. 슬라이더 전체 컨테이너의 크기와 위치를 결정합니다. */
+#price-slider {
+display: block !important;
+    height: 2rem !important;       /* 슬라이더 전체 높이 */
+    width: 100% !important;         /* 슬라이더 전체 너비 */
+    margin: 0 auto !important;
+padding-top: 0 !important;
+padding-bottom: 0 !important;
+    padding-left: 2rem !important;
+    padding-right: 3rem !important;
+}
+
+/* 2. 슬라이더 트랙 영역 */
+.noUi-target {
+    background: none !important;           /* 트랙 배경색 (연한 회색) */
+    border: 0.125rem solid #fff !important;   /* 트랙 테두리 (얇은 회색) */
+    box-shadow: 0 0 0px rgba(0,0,0,0) !important;
+}
+.noUi-connects {
+}
+
+.noUi-origin {
+}
+
+/* 3. Connect Bar (선택된 영역) */
+.noUi-connect {
+border: 0.1px solid #006400;
+border-radius: 0.2rem;
+}
+
+/* 4. 슬라이더 핸들 */
+.noUi-handle {
+    width: 1.1rem !important;                /* 핸들 너비 */
+    height: 1.1rem !important;               /* 핸들 높이 */
+    border-radius: 50% !important;           /* 원형으로 */
+    background: #006400 !important;             /* 핸들 배경색 (흰색) */
+}
+
+/* 5. 툴팁 */
+.noUi-tooltip {
+    display: none !important;
+    color: #fff !important;                  /* 툴팁 텍스트 색상 */
+    border: none !important;  /* 툴팁 테두리 */
+    border-radius: 0.5rem !important;         /* 둥근 모서리 */
+    padding: 0.2rem 0.5rem !important;
+}
+
+.panel-age-title {
+  padding-top: 1.3rem;
+}
+
+.age-filter {
+  display: inline-block;
+  padding: 0.45em 0.8em;       /* em 단위 사용 → font-size에 비례하여 여백이 결정됩니다. */
+  font-size: 0.85em;             /* 기본 폰트 크기 (부모의 font-size에 따라 조정됨) */
+  border: 1px solid #F0F0F0;
+  border-radius: 0.4em;       /* em 단위로 설정하면 폰트 크기에 따라 둥근 정도도 같이 변합니다. */
+  background-color: #fff;
+  color: #696969;
+  white-space: nowrap;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+.suttle-filter {
+  display: inline-block;
+  padding: 0.45em 0.8em;       /* em 단위 사용 → font-size에 비례하여 여백이 결정됩니다. */
+  font-size: 0.85em;             /* 기본 폰트 크기 (부모의 font-size에 따라 조정됨) */
+  border: 1px solid #F0F0F0;
+  border-radius: 0.4em;       /* em 단위로 설정하면 폰트 크기에 따라 둥근 정도도 같이 변합니다. */
+  background-color: #fff;
+  color: #696969;
+  white-space: nowrap;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+    /* 내 위치 버튼 (오른쪽 하단) */
+    #controls {
+      position: absolute;
+      bottom: 15rem;
+      right: 1.15rem;
+      z-index: 1;
+    }
+    #controls button {
+    width: 2.7rem;
+    height: 2.7rem;
+      font-size: 5.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      color: #008B8B;
+      cursor: pointer;
+      padding : 0.2rem;
+      text-align: center;
+      background-color: #fff;
+      box-shadow: 0 0 0px rgba(0,0,0,0.5);
+      border: 1px solid lightgray;
+    }
+
+    /* 팝업 (하단 슬라이드) */
+    .popup {
+      position: fixed;
+      bottom: -3000px;
+      left: 0;
+      width: 100%; max-width: 500px;
+      background-color: #fff;
+      border-radius: 1.2rem 1.2rem 0 0;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+      padding: 1rem;
+      transition: bottom 0.3s ease-in-out;
+      z-index: 3;
+    }
+    .popup.active {
+      bottom: 0;
+    }
+    #popupContent h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    #popupContent p {
+      margin: 5px 0;
+      font-size: 0.9rem;
+    }
+    .popup button {
+      display: block;
+      width: 100%;
+      padding: 0.8rem;
+      background-color: #ff5a5f;
+      color: #fff;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 0.3rem;
+      margin-top: 1rem;
+    }
+    .popup button:hover {
+      background-color: #ff3a40;
+    }
+
