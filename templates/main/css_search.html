@@ -1,0 +1,199 @@
+
+  /* 검색 폼 */
+  .search-form {
+    padding-right: 4rem;
+    display: flex;
+    width: 14rem;
+    max-width: 400px;
+    height: 3rem;
+    border: 1px solid lightgray;
+    border-radius: 0.7rem;
+    text-decoration: none;
+    font-size: 1.6rem;
+    background-color: white;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+  }
+
+  .search-input {
+  width: 10rem;
+  height: 2rem;
+  margin-top: 0.6rem;
+  color: lightgray;
+  text-align: center;
+  margin-left: 0.5rem;
+  align-content: center;
+  border: none;
+  color: gray;
+  background-color: white;
+  }
+
+  .search-input:focus {
+	  outline: none;
+	  background-color: none;
+	  font-size: 1.2rem;
+	  color: gray;
+	}
+
+.search-input::placeholder {
+	  outline: none;
+	  background-color: none;
+	  font-size: 1.2rem;
+	  color: gray;
+}
+
+  .search-input:focus::placeholder  {
+	  outline: none;
+	  background-color: none;
+	  font-size: 1.2rem;
+	  color: gray;
+	}
+
+  .search-button {
+    padding: 0.7rem 1rem;
+    font-size: 1rem;
+    background-color: transparent;
+    color: white;
+    border: none;
+    border-radius: 0 0.3rem 0.3rem 0;
+    cursor: pointer;
+  }
+.search-button span {
+color: gray;
+}
+.search-button:active {
+  background-color: transparent;
+  }
+  .search-button:hover {
+    background-color: transparent;
+  }
+
+  /* 내용 영역 */
+  .search-content {
+    position: absolute;
+    top: 2.5rem;
+    left: 0;
+    width: 100%;
+    overflow-y: auto;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  /* 검색 결과 스타일 */
+  .academy-list-item {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    padding: 0.5rem 0;
+  }
+
+  .academy-list-item .academy_detail_logo,
+.academy-list-item img {
+    width: 12rem;
+    height: 6rem;
+    border-radius: 0.3rem;
+    }
+
+  .academy-img-wrap {
+    width: 20%;
+    text-align: center;
+  }
+
+  .academy-img {
+    width: 100%;
+    height: auto;
+    max-width: 80px;
+    object-fit: cover;
+    border-radius: 0.3rem;
+  }
+
+  .academy-info-wrap {
+    width: 80%;
+    padding-left: 1rem;
+  }
+
+  .academy-name {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+    color: #003300;
+    text-decoration: none;
+  }
+
+  .academy-intro {
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  /* 반응형 스타일 */
+  @media (max-width: 600px) {
+    .title-bar {
+      font-size: 1.2rem;
+    }
+
+    .search-input {
+      font-size: 0.9rem;
+      padding: 0.5rem;
+    }
+
+    .search-button {
+      font-size: 0.9rem;
+      padding: 0.5rem;
+    }
+
+    .academy-intro {
+      font-size: 0.8rem;
+    }
+  }
+#panel-container div button.active {
+  background-color: #008B8B; /* 진한 청록색 (변경 가능) */
+  color: white !important;
+  border-color: #008B8B;
+}
+
+.academy-subinfo_address {
+  color: gray;
+  font-size: 1rem;
+}
+.academy-subinfo_fee {
+  color: gray;
+  font-size: 1.2rem;
+}
+.academy-subinfo_fee :nth-child(1) {
+  color: gray;
+  font-size: 1rem;
+}
+.academy-subinfo_fee :nth-child(2) {
+  color: #333;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+.academy-subinfo_subject {
+  color: gray;
+  font-size: 1rem;
+}
+
+.academy-subinfo_subject span {
+  color: #006400; /* 진한 초록색 */
+  background-color: #e6ffe6; /* 연한 초록색 배경 */
+  padding: 0.1rem;
+  border-radius: 0.2rem;
+  border: none;
+  margin-right: 0.12rem; /* 과목 사이 여백 추가 추천 */
+}
+
+.academy-subinfo_grade {
+  color: gray;
+  font-size: 1rem;
+}
+.academy-subinfo_grade span {
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.academy-subinfo_shuttle {
+  color: gray;
+  font-size: 1rem;
+}
+.academy-subinfo_shuttle span{
+  color: #333;
+  font-size: 1rem;
+}
