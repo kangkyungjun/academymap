@@ -12,6 +12,7 @@ urlpatterns = [
     path('get_regions', main.views.get_regions, name='get_regions'),
 
     path('', main.views.map, name='map'),
+    path('map2/', main.views.map2, name='map2'),
     path('api/filtered_academies', main.views.filtered_academies, name='filtered_academies'),
 
     # 학원 관리 페이지 관련 URL 추가

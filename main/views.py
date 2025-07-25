@@ -249,6 +249,44 @@ def map(request):
     }
     return render(request, 'main/map.html', context)
 
+
+
+def map2(request):
+    subject_list = ['전체', '수학', '영어', '과학', '외국어', '예체능', '컴퓨터', '논술', '기타', '독서실스터디카페']
+    selected_subjects = request.GET.getlist('subjects')
+
+    # 전체 버튼 처리
+    if '전체' in selected_subjects or not selected_subjects:
+        academies = Data.objects.all()
+        selected_subjects = ['전체']
+    else:
+        subject_mapping = {
+            '수학': '과목_수학',
+            '영어': '과목_영어',
+            '과학': '과목_과학',
+            '외국어': '과목_외국어',
+            '예체능': '과목_예체능',
+            '컴퓨터': '과목_컴퓨터',
+            '논술': '과목_논술',
+            '기타': '과목_기타',
+            '독서실스터디카페': '과목_독서실스터디카페'
+        }
+        filter_query = Q()
+        for subject in selected_subjects:
+            if subject in subject_mapping:
+                filter_query |= Q(**{subject_mapping[subject]: True})
+        academies = Data.objects.filter(filter_query)
+
+    context = {
+        'subject_list': subject_list,
+        'selected_subjects': selected_subjects,
+        'academies': academies,
+    }
+
+    return render(request, 'main/map2.html', context)
+
+
+
 @csrf_exempt
 def filtered_academies(request):
     body = json.loads(request.body)
@@ -256,9 +294,8 @@ def filtered_academies(request):
     sw_lng = body.get('swLng')
     ne_lat = body.get('neLat')
     ne_lng = body.get('neLng')
-    category = body.get('category', '')
+    subjects = body.get('subjects', [])  # ✅ 수정됨
 
-    # 지도 범위 내의 학원들 필터링
     queryset = Data.objects.filter(
         위도__gte=sw_lat,
         위도__lte=ne_lat,
@@ -266,8 +303,8 @@ def filtered_academies(request):
         경도__lte=ne_lng,
     )
 
-    # 과목(카테고리) 필터 적용
-    과목_mapping = {
+    # ✅ 다중 과목 필터 적용
+    subject_mapping = {
         '종합': '과목_종합',
         '수학': '과목_수학',
         '영어': '과목_영어',
@@ -277,70 +314,144 @@ def filtered_academies(request):
         '컴퓨터': '과목_컴퓨터',
         '논술': '과목_논술',
         '기타': '과목_기타',
-        '독서실/스터디카페': '과목_독서실스터디카페',
+        '독서실스터디카페': '과목_독서실스터디카페',
     }
-    if category and category != '전체' and category in 과목_mapping:
-        filter_field = {과목_mapping[category]: True}
-        queryset = queryset.filter(**filter_field)
 
-    # 가격 범위 필터 적용 (수강료_평균을 float으로 캐스팅)
-    priceMin = body.get('priceMin', None)
-    priceMax = body.get('priceMax', None)
+    if subjects and '전체' not in subjects:
+        subject_q = Q()
+        for subject in subjects:
+            if subject in subject_mapping:
+                subject_q |= Q(**{subject_mapping[subject]: True})
+        queryset = queryset.filter(subject_q)
+
+    # 가격 필터
+    priceMin = body.get('priceMin')
+    priceMax = body.get('priceMax')
     queryset = queryset.annotate(수강료평균_float=Cast('수강료_평균', FloatField()))
+
     if priceMin:
         try:
-            priceMin_val = float(priceMin)
-            queryset = queryset.filter(수강료평균_float__gte=priceMin_val)
-        except ValueError:
-            pass
-    if priceMax:
-        try:
-            priceMax_val = float(priceMax)
-            queryset = queryset.filter(수강료평균_float__lte=priceMax_val)
+            queryset = queryset.filter(수강료평균_float__gte=float(priceMin))
         except ValueError:
             pass
 
-    # 연령 필터 적용
+    if priceMax:
+        try:
+            queryset = queryset.filter(수강료평균_float__lte=float(priceMax))
+        except ValueError:
+            pass
+
+    # 연령 필터
     ageGroups = body.get('ageGroups', [])
     if ageGroups:
         q_age = Q()
         for group in ageGroups:
-            if group == '유아':
-                q_age |= Q(대상_유아=True)
-            elif group == '초등':
-                q_age |= Q(대상_초등=True)
-            elif group == '중등':
-                q_age |= Q(대상_중등=True)
-            elif group == '고등':
-                q_age |= Q(대상_고등=True)
-            elif group == '특목고':
-                q_age |= Q(대상_특목고=True)
-            elif group == '일반':
-                q_age |= Q(대상_일반=True)
-            elif group == '기타':
-                q_age |= Q(대상_기타=True)
+            field = f"대상_{group}"
+            if field in [f.name for f in Data._meta.fields]:
+                q_age |= Q(**{field: True})
         queryset = queryset.filter(q_age)
 
-    # 셔틀버스 필터 적용 (있음, True, true 등)
+    # 셔틀버스 필터
     shuttleFilter = body.get('shuttleFilter', False)
     if shuttleFilter:
         queryset = queryset.filter(Q(셔틀버스__icontains='있음') | Q(셔틀버스__iexact='true'))
 
     data = list(queryset.values(
-        'id',
-        '상호명',
-        '위도',
-        '경도',
-        '도로명주소',
-        '전화번호',
-        '시군구명',
-        '상권업종소분류명',
-        '셔틀버스',  # 🔥 반드시 추가되어야 하는 필드!
-        '영업시간',  # 🔥 반드시 추가되어야 하는 필드!
-        '별점',      # 🔥 필요하다면 추가
+        'id', '상호명', '위도', '경도', '도로명주소', '전화번호',
+        '시군구명', '상권업종소분류명', '셔틀버스', '영업시간', '별점'
     ))
     return JsonResponse(data, safe=False)
-
+###### 기존 map 용 ######
+# def filtered_academies(request):
+#     body = json.loads(request.body)
+#     sw_lat = body.get('swLat')
+#     sw_lng = body.get('swLng')
+#     ne_lat = body.get('neLat')
+#     ne_lng = body.get('neLng')
+#     category = body.get('category', '')
+#
+#     # 지도 범위 내의 학원들 필터링
+#     queryset = Data.objects.filter(
+#         위도__gte=sw_lat,
+#         위도__lte=ne_lat,
+#         경도__gte=sw_lng,
+#         경도__lte=ne_lng,
+#     )
+#
+#     # 과목(카테고리) 필터 적용
+#     과목_mapping = {
+#         '종합': '과목_종합',
+#         '수학': '과목_수학',
+#         '영어': '과목_영어',
+#         '과학': '과목_과학',
+#         '외국어': '과목_외국어',
+#         '예체능': '과목_예체능',
+#         '컴퓨터': '과목_컴퓨터',
+#         '논술': '과목_논술',
+#         '기타': '과목_기타',
+#         '독서실/스터디카페': '과목_독서실스터디카페',
+#     }
+#     if category and category != '전체' and category in 과목_mapping:
+#         filter_field = {과목_mapping[category]: True}
+#         queryset = queryset.filter(**filter_field)
+#
+#     # 가격 범위 필터 적용 (수강료_평균을 float으로 캐스팅)
+#     priceMin = body.get('priceMin', None)
+#     priceMax = body.get('priceMax', None)
+#     queryset = queryset.annotate(수강료평균_float=Cast('수강료_평균', FloatField()))
+#     if priceMin:
+#         try:
+#             priceMin_val = float(priceMin)
+#             queryset = queryset.filter(수강료평균_float__gte=priceMin_val)
+#         except ValueError:
+#             pass
+#     if priceMax:
+#         try:
+#             priceMax_val = float(priceMax)
+#             queryset = queryset.filter(수강료평균_float__lte=priceMax_val)
+#         except ValueError:
+#             pass
+#
+#     # 연령 필터 적용
+#     ageGroups = body.get('ageGroups', [])
+#     if ageGroups:
+#         q_age = Q()
+#         for group in ageGroups:
+#             if group == '유아':
+#                 q_age |= Q(대상_유아=True)
+#             elif group == '초등':
+#                 q_age |= Q(대상_초등=True)
+#             elif group == '중등':
+#                 q_age |= Q(대상_중등=True)
+#             elif group == '고등':
+#                 q_age |= Q(대상_고등=True)
+#             elif group == '특목고':
+#                 q_age |= Q(대상_특목고=True)
+#             elif group == '일반':
+#                 q_age |= Q(대상_일반=True)
+#             elif group == '기타':
+#                 q_age |= Q(대상_기타=True)
+#         queryset = queryset.filter(q_age)
+#
+#     # 셔틀버스 필터 적용 (있음, True, true 등)
+#     shuttleFilter = body.get('shuttleFilter', False)
+#     if shuttleFilter:
+#         queryset = queryset.filter(Q(셔틀버스__icontains='있음') | Q(셔틀버스__iexact='true'))
+#
+#     data = list(queryset.values(
+#         'id',
+#         '상호명',
+#         '위도',
+#         '경도',
+#         '도로명주소',
+#         '전화번호',
+#         '시군구명',
+#         '상권업종소분류명',
+#         '셔틀버스',  # 🔥 반드시 추가되어야 하는 필드!
+#         '영업시간',  # 🔥 반드시 추가되어야 하는 필드!
+#         '별점',      # 🔥 필요하다면 추가
+#     ))
+#     return JsonResponse(data, safe=False)
 
 
 def clean_value(value):

@@ -1,0 +1,142 @@
+{% extends "templates/main/base.html" %}
+{% load static %}
+{% block contents %}
+<style>
+  #map { width: 100%; height: 600px; margin-top: 20px; }
+  .subject-button {
+    padding: 5px 10px; margin: 3px; border: 1px solid #ccc;
+    border-radius: 5px; cursor: pointer; text-decoration: none; color: black;
+  }
+  .active { background-color: green; color: white; }
+</style>
+
+<h2>과목 필터링</h2>
+<div id="filter-buttons">
+  {% for subject in subject_list %}
+    <span class="subject-button" data-subject="{{ subject }}">{{ subject }}</span>
+  {% endfor %}
+</div>
+
+<div id="map"></div>
+
+<script>
+  let map;
+  let markers = [];
+  let selectedSubjects = ['전체'];
+
+  function initMap() {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const center = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+      map = new naver.maps.Map('map', {
+        center: center,
+        zoom: 15
+      });
+
+      new naver.maps.Marker({
+        position: center,
+        map: map,
+        icon: {
+          content: '<div style="width:15px;height:15px;background:red;border-radius:50%;border:3px solid white;"></div>',
+          anchor: new naver.maps.Point(7.5, 7.5)
+        }
+      });
+
+      loadAcademies(); // 최초 로딩
+      naver.maps.Event.addListener(map, 'idle', loadAcademies); // 지도 이동 시
+
+    }, () => {
+      alert("위치 정보를 가져올 수 없습니다.");
+    });
+  }
+
+  function loadAcademies() {
+    const bounds = map.getBounds();
+    const sw = bounds.getSW();
+    const ne = bounds.getNE();
+
+    fetch("/api/filtered_academies", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}"
+      },
+      body: JSON.stringify({
+        swLat: sw._lat,
+        swLng: sw._lng,
+        neLat: ne._lat,
+        neLng: ne._lng,
+        subjects: selectedSubjects
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      clearMarkers();
+      data.forEach(ac => {
+        const marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(ac.위도, ac.경도),
+          map: map,
+          title: ac.상호명
+        });
+
+        const infoWindow = new naver.maps.InfoWindow({
+          content: `<div style="padding:10px;">
+                      <strong>${ac.상호명}</strong><br>${ac.도로명주소}
+                    </div>`
+        });
+
+        naver.maps.Event.addListener(marker, 'click', function () {
+          infoWindow.open(map, marker);
+        });
+
+        markers.push(marker);
+      });
+    });
+  }
+
+  function clearMarkers() {
+    markers.forEach(marker => marker.setMap(null));
+    markers = [];
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    initMap();
+
+    // 필터 버튼 이벤트 등록
+    document.querySelectorAll('.subject-button').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const subject = this.getAttribute('data-subject');
+
+        if (subject === '전체') {
+          selectedSubjects = ['전체'];
+          document.querySelectorAll('.subject-button').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+        } else {
+          if (selectedSubjects.includes('전체')) selectedSubjects = [];
+
+          if (selectedSubjects.includes(subject)) {
+            selectedSubjects = selectedSubjects.filter(s => s !== subject);
+            this.classList.remove('active');
+          } else {
+            selectedSubjects.push(subject);
+            this.classList.add('active');
+          }
+
+          if (selectedSubjects.length === 0) {
+            selectedSubjects = ['전체'];
+            document.querySelector('[data-subject="전체"]').classList.add('active');
+          } else {
+            document.querySelector('[data-subject="전체"]').classList.remove('active');
+          }
+        }
+
+        // 마커 새로고침
+        loadAcademies();
+      });
+    });
+
+    // 초기 '전체' 버튼 활성화
+    document.querySelector('[data-subject="전체"]').classList.add('active');
+  });
+</script>
+
+{% endblock %}
