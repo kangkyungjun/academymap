@@ -21,6 +21,10 @@ urlpatterns = [
     path('manage/modify/<int:pk>/', main.views.modify_academy, name='modify_academy'),
     path('manage/delete/<int:pk>/', main.views.delete_academy, name='delete_academy'),
 
+    # API v1 (Flutter 앱용)
+    path('api/v1/', include('api.urls')),
+    
+    # 기존 API (하위 호환성)
     path('map_api/', include('map_api.urls')),
     path('api/', include('api.urls')),
 
