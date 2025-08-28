@@ -64,7 +64,21 @@ class Data(models.Model):
     수강료_평균 = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
-        return self.상호명
+        return self.상호명 or f"Academy {self.id}"
+    
+    class Meta:
+        verbose_name = "학원"
+        verbose_name_plural = "학원들"
+        # 성능 최적화를 위한 데이터베이스 인덱스
+        indexes = [
+            models.Index(fields=['경도', '위도'], name='location_idx'),
+            models.Index(fields=['상호명'], name='name_idx'),
+            models.Index(fields=['시도명', '시군구명'], name='region_idx'),
+            models.Index(fields=['별점'], name='rating_idx'),
+            models.Index(fields=['과목_수학'], name='subject_math_idx'),
+            models.Index(fields=['과목_영어'], name='subject_eng_idx'),
+            models.Index(fields=['과목_종합'], name='subject_general_idx'),
+        ]
 
 # class Data(models.Model):
 #     상가업소번호 = models.CharField(max_length=255)

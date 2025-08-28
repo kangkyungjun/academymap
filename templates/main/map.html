@@ -32,7 +32,7 @@
     <button onclick="filterMarkers(this, '컴퓨터')">컴퓨터</button>
     <button onclick="filterMarkers(this, '논술')">논술</button>
     <button onclick="filterMarkers(this, '기타')">기타</button>
-    <button onclick="filterMarkers(this, '독서실/스터디카페')">독서실/스터디카페</button>
+    <button onclick="filterMarkers(this, '독서실스터디카페')">독서실/스터디카페</button>
   </div>
 </div>
 
@@ -48,7 +48,7 @@
     <button onclick="filterMarkers(this, '컴퓨터')">컴퓨터</button>
     <button onclick="filterMarkers(this, '논술')">논술</button>
     <button onclick="filterMarkers(this, '기타')">기타</button>
-    <button onclick="filterMarkers(this, '독서실/스터디카페')">독서실/스터디카페</button>
+    <button onclick="filterMarkers(this, '독서실스터디카페')">독서실/스터디카페</button>
   </div>
 
   <hr>
@@ -770,7 +770,7 @@ if (currentMax >= maxPrice) {
       swLng: sw._lng,
       neLat: ne._lat,
       neLng: ne._lng,
-      category: selectedCategory,
+      subjects: selectedCategory === '전체' ? ['전체'] : [selectedCategory],
       priceMin: priceMin,
       priceMax: priceMax,
       ageGroups: window.selectedAgeGroups,
