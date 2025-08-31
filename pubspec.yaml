@@ -1,0 +1,12 @@
+name: academymap_flutter_test
+description: Flutter API test for AcademyMap
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  http: ^1.1.0
+
+dev_dependencies:
+  test: ^1.24.0
