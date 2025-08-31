@@ -1,0 +1,274 @@
+{% extends "templates/main/base.html" %}
+{% load static %}
+{% block contents %}
+
+<div class="no-academy-container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <div class="no-academy-content">
+                    <div class="icon-container mb-4">
+                        <i class="fas fa-school fa-5x text-muted"></i>
+                    </div>
+                    
+                    <h1 class="mb-4">학원 운영자 등록</h1>
+                    
+                    {% if has_pending_requests %}
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-clock me-2"></i>승인 대기 중</h5>
+                        <p class="mb-0">학원 운영자 승인 요청이 검토 중입니다. 승인까지 1-2일 소요됩니다.</p>
+                    </div>
+                    {% else %}
+                    <div class="mb-4">
+                        <h4 class="text-muted">관리할 학원이 없습니다</h4>
+                        <p class="lead">학원 운영자로 등록하여 대시보드를 이용해보세요.</p>
+                    </div>
+                    
+                    <div class="registration-options">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="option-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
+                                        <h5>새 학원 등록</h5>
+                                        <p class="text-muted">새로운 학원 정보를 등록하고 운영자가 되세요.</p>
+                                        <button class="btn btn-primary" onclick="showRegistrationForm()">
+                                            학원 등록하기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <div class="option-card">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-search fa-3x text-success mb-3"></i>
+                                        <h5>기존 학원 찾기</h5>
+                                        <p class="text-muted">이미 등록된 학원의 운영자 권한을 요청하세요.</p>
+                                        <button class="btn btn-success" onclick="showSearchForm()">
+                                            학원 찾기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 학원 등록 모달 -->
+<div class="modal fade" id="registrationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">새 학원 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="academyRegistrationForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">학원명 *</label>
+                                <input type="text" class="form-control" name="academy_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">전화번호</label>
+                                <input type="tel" class="form-control" name="phone">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">주소 *</label>
+                        <input type="text" class="form-control" name="address" required>
+                        <div class="form-text">정확한 주소를 입력해주세요.</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">운영자 역할</label>
+                                <select class="form-select" name="role">
+                                    <option value="owner">원장</option>
+                                    <option value="manager">관리자</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">사업자등록번호</label>
+                                <input type="text" class="form-control" name="business_number" 
+                                       placeholder="000-00-00000">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">인증 서류</label>
+                        <textarea class="form-control" name="verification_docs" rows="3" 
+                                  placeholder="사업자등록증, 학원 설립 신고증 등 관련 서류 정보를 입력해주세요."></textarea>
+                        <div class="form-text">승인 과정에서 추가 서류 제출을 요청할 수 있습니다.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="submitRegistration()">등록 신청</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 학원 검색 모달 -->
+<div class="modal fade" id="searchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">기존 학원 찾기</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">학원명으로 검색</label>
+                    <input type="text" class="form-control" id="academySearch" 
+                           placeholder="학원명을 입력하세요" onkeyup="searchAcademies()">
+                </div>
+                
+                <div id="searchResults" class="search-results">
+                    <p class="text-center text-muted">학원명을 입력하여 검색해보세요.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.no-academy-container {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.no-academy-content {
+    background: white;
+    border-radius: 15px;
+    padding: 3rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.option-card {
+    height: 100%;
+    border: 2px solid #f8f9fa;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.option-card:hover {
+    border-color: #007bff;
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,123,255,0.15);
+}
+
+.search-results {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.academy-result {
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.academy-result:hover {
+    background-color: #f8f9fa;
+}
+
+.icon-container {
+    opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+    .no-academy-content {
+        padding: 2rem;
+        margin: 1rem;
+    }
+}
+</style>
+
+<script>
+function showRegistrationForm() {
+    new bootstrap.Modal(document.getElementById('registrationModal')).show();
+}
+
+function showSearchForm() {
+    new bootstrap.Modal(document.getElementById('searchModal')).show();
+}
+
+function submitRegistration() {
+    // 간단한 유효성 검사
+    const form = document.getElementById('academyRegistrationForm');
+    const formData = new FormData(form);
+    
+    if (!formData.get('academy_name') || !formData.get('address')) {
+        alert('필수 정보를 모두 입력해주세요.');
+        return;
+    }
+    
+    // 실제 구현에서는 AJAX로 서버에 전송
+    alert('학원 등록 신청이 완료되었습니다. 승인까지 1-2일 소요됩니다.');
+    bootstrap.Modal.getInstance(document.getElementById('registrationModal')).hide();
+    
+    // 페이지 새로고침 또는 상태 업데이트
+    location.reload();
+}
+
+let searchTimeout;
+function searchAcademies() {
+    const query = document.getElementById('academySearch').value.trim();
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '<p class="text-center text-muted">최소 2글자 이상 입력해주세요.</p>';
+        return;
+    }
+    
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        // 실제 구현에서는 AJAX로 서버에서 학원 검색
+        resultsDiv.innerHTML = `
+            <div class="academy-result" onclick="requestOwnership(1)">
+                <h6>테스트 수학학원</h6>
+                <p class="text-muted small mb-0">서울특별시 강남구 테스트로 123</p>
+            </div>
+            <div class="academy-result" onclick="requestOwnership(2)">
+                <h6>예시 영어학원</h6>
+                <p class="text-muted small mb-0">서울특별시 서초구 예시로 456</p>
+            </div>
+        `;
+    }, 500);
+}
+
+function requestOwnership(academyId) {
+    if (confirm('이 학원의 운영자 권한을 요청하시겠습니까?')) {
+        // 실제 구현에서는 AJAX로 권한 요청 처리
+        alert('운영자 권한 요청이 전송되었습니다. 승인까지 1-2일 소요됩니다.');
+        bootstrap.Modal.getInstance(document.getElementById('searchModal')).hide();
+        location.reload();
+    }
+}
+</script>
+
+{% endblock %}

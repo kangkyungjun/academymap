@@ -1,0 +1,195 @@
+# Chinese translations for AcademyMap
+# Copyright (C) 2025 AcademyMap
+# This file is distributed under the same license as the AcademyMap package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: AcademyMap 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-31 19:23+0900\n"
+"PO-Revision-Date: 2025-08-31 19:35+0900\n"
+"Last-Translator: AcademyMap Team\n"
+"Language-Team: Chinese <zh@academymap.kr>\n"
+"Language: zh-hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+#: templates/main/map_i18n.html:20 templates/main/map_i18n.html:154
+msgid "학원명/지역 검색"
+msgstr "搜索学院/地区"
+
+#: templates/main/map_i18n.html:33 templates/main/map_i18n.html:49
+#: templates/main/map_i18n.html:155 templates/main/map_i18n.html:176
+msgid "전체"
+msgstr "全部"
+
+#: templates/main/map_i18n.html:34 templates/main/map_i18n.html:50
+#: templates/main/map_i18n.html:177
+msgid "수학"
+msgstr "数学"
+
+#: templates/main/map_i18n.html:35 templates/main/map_i18n.html:51
+#: templates/main/map_i18n.html:178
+msgid "영어"
+msgstr "英语"
+
+#: templates/main/map_i18n.html:36 templates/main/map_i18n.html:52
+#: templates/main/map_i18n.html:179
+msgid "과학"
+msgstr "科学"
+
+#: templates/main/map_i18n.html:37 templates/main/map_i18n.html:53
+#: templates/main/map_i18n.html:180
+msgid "외국어"
+msgstr "外语"
+
+#: templates/main/map_i18n.html:38 templates/main/map_i18n.html:54
+#: templates/main/map_i18n.html:181
+msgid "예체능"
+msgstr "艺术体育"
+
+#: templates/main/map_i18n.html:39 templates/main/map_i18n.html:55
+#: templates/main/map_i18n.html:182
+msgid "컴퓨터"
+msgstr "计算机"
+
+#: templates/main/map_i18n.html:40 templates/main/map_i18n.html:56
+#: templates/main/map_i18n.html:183
+msgid "논술"
+msgstr "论文写作"
+
+#: templates/main/map_i18n.html:41 templates/main/map_i18n.html:57
+#: templates/main/map_i18n.html:87 templates/main/map_i18n.html:184
+#: templates/main/map_i18n.html:195
+msgid "기타"
+msgstr "其他"
+
+#: templates/main/map_i18n.html:42 templates/main/map_i18n.html:58
+#: templates/main/map_i18n.html:185
+msgid "독서실/스터디카페"
+msgstr "阅览室/自习室"
+
+#: templates/main/map_i18n.html:47 templates/main/map_i18n.html:146
+msgid "과목"
+msgstr "科目"
+
+#: templates/main/map_i18n.html:65 templates/main/map_i18n.html:148
+msgid "수강료"
+msgstr "学费"
+
+#: templates/main/map_i18n.html:78
+msgid "연령"
+msgstr "年龄组"
+
+#: templates/main/map_i18n.html:81 templates/main/map_i18n.html:189
+msgid "유아"
+msgstr "学前儿童"
+
+#: templates/main/map_i18n.html:82 templates/main/map_i18n.html:190
+msgid "초등"
+msgstr "小学"
+
+#: templates/main/map_i18n.html:83 templates/main/map_i18n.html:191
+msgid "중등"
+msgstr "初中"
+
+#: templates/main/map_i18n.html:84 templates/main/map_i18n.html:192
+msgid "고등"
+msgstr "高中"
+
+#: templates/main/map_i18n.html:85 templates/main/map_i18n.html:193
+msgid "특목고"
+msgstr "特殊高中"
+
+#: templates/main/map_i18n.html:86 templates/main/map_i18n.html:194
+msgid "일반"
+msgstr "一般"
+
+#: templates/main/map_i18n.html:93
+msgid "셔틀"
+msgstr "班车"
+
+#: templates/main/map_i18n.html:95
+msgid "셔틀버스"
+msgstr "校车"
+
+#: templates/main/map_i18n.html:126
+msgid "상세보기"
+msgstr "查看详情"
+
+#: templates/main/map_i18n.html:130
+msgid "전화하기"
+msgstr "拨打电话"
+
+#: templates/main/map_i18n.html:134
+msgid "공유하기"
+msgstr "分享"
+
+#: templates/main/map_i18n.html:143
+msgid "학원명"
+msgstr "学院名称"
+
+#: templates/main/map_i18n.html:144
+msgid "주소"
+msgstr "地址"
+
+#: templates/main/map_i18n.html:145
+msgid "전화번호"
+msgstr "电话号码"
+
+#: templates/main/map_i18n.html:147
+msgid "대상"
+msgstr "目标年龄"
+
+#: templates/main/map_i18n.html:149
+msgid "평점"
+msgstr "评分"
+
+#: templates/main/map_i18n.html:150
+msgid "전화번호 없음"
+msgstr "无电话号码"
+
+#: templates/main/map_i18n.html:151
+msgid "학원에 전화하기"
+msgstr "联系学院"
+
+#: templates/main/map_i18n.html:152
+msgid "학원 정보 공유하기"
+msgstr "分享学院信息"
+
+#: templates/main/map_i18n.html:153
+msgid "로딩 중..."
+msgstr "加载中..."
+
+#: templates/main/map_i18n.html:156
+msgid "검색 결과가 없습니다"
+msgstr "没有搜索结果"
+
+#: templates/main/map_i18n.html:157
+msgid "데이터를 불러오는 중 오류가 발생했습니다"
+msgstr "加载数据时出错"
+
+#: templates/main/map_i18n.html:158
+msgid "위치 접근이 거부되었습니다"
+msgstr "位置访问被拒绝"
+
+#: templates/main/map_i18n.html:159
+msgid "위치 정보를 사용할 수 없습니다"
+msgstr "位置信息不可用"
+
+#: templates/main/map_i18n.html:160
+msgid "위치 요청 시간이 초과되었습니다"
+msgstr "位置请求超时"
+
+#: templates/main/map_i18n.html:200
+msgid "문의"
+msgstr "咨询"
+
+#: templates/main/map_i18n.html:208
+msgid "원"
+msgstr " 韩元"
+
+#: templates/main/map_i18n.html:213
+msgid "평가없음"
+msgstr "无评分"

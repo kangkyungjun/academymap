@@ -1,0 +1,535 @@
+{% extends "templates/main/base.html" %}
+{% load static %}
+{% load humanize %}
+{% block contents %}
+
+{% if academy %}
+<!-- 상단 바 -->
+<div class="navbar">
+  <button class="nav_item1" onclick="window.location.href='javascript:history.back()'">
+    <span class="material-symbols-outlined">arrow_back_ios</span>
+  </button>
+  <div class="nav_item2_1">{{ academy.상호명 }}</div>
+  <button class="nav_item3" onclick="window.location.href='{% url 'search' %}'">
+    <span class="material-symbols-outlined" style="font-size:1.8rem;">search</span>
+  </button>
+</div>
+
+<!-- 학원 기본 정보 -->
+<div class="academy_content">
+  <div class="academy_detail_logo {% if not academy.학원사진 %}no-image{% endif %}">
+    {% if academy.학원사진 %}
+      <img src="{{ academy.학원사진 }}" alt="{{ academy.상호명 }}">
+    {% endif %}
+  </div>
+
+  <!-- 평점 및 통계 정보 -->
+  <div class="academy_detail_name">
+    {% if academy.별점 %}
+      평점 {{ academy.별점 }}
+    {% else %}
+      별점 정보 없음
+    {% endif %}
+    {% if enhanced_data.statistics %}
+      ({{ enhanced_data.statistics.review_count|default:"0" }}개 리뷰)
+    {% endif %}
+    
+    <!-- 인기도 및 랭킹 정보 -->
+    {% if enhanced_data.statistics %}
+      <div class="popularity-info">
+        <span class="popularity-score">인기도: {{ enhanced_data.statistics.popularity_grade }}</span>
+        {% if enhanced_data.statistics.local_rank %}
+          <span class="local-rank">지역 순위: {{ enhanced_data.statistics.local_rank }}위</span>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- 종합 점수 -->
+  {% if academy_score %}
+    <div class="comprehensive-score">
+      <h3>종합 점수</h3>
+      <div class="score-display">
+        <span class="score-number">{{ academy_score|floatformat:1 }}</span>
+        <span class="score-max">/100</span>
+      </div>
+      <div class="score-bar">
+        <div class="score-fill" style="width: {{ academy_score }}%;"></div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- 소개글 -->
+  <div class="academy_introduce">
+    {% if academy.소개글 %}
+      {{ academy.소개글|linebreaksbr }}
+    {% else %}
+      학원 소개가 없습니다.
+    {% endif %}
+  </div>
+
+  <!-- 상세 정보 (확장된 정보) -->
+  {% if enhanced_data.detail_info %}
+    <div class="detailed-info">
+      <h3>상세 정보</h3>
+      {% if enhanced_data.detail_info.total_classrooms %}
+        <p><strong>교실 수:</strong> {{ enhanced_data.detail_info.total_classrooms }}개</p>
+      {% endif %}
+      {% if enhanced_data.detail_info.total_teachers %}
+        <p><strong>강사 수:</strong> {{ enhanced_data.detail_info.total_teachers }}명</p>
+      {% endif %}
+      {% if enhanced_data.detail_info.max_students_per_class %}
+        <p><strong>반 최대 인원:</strong> {{ enhanced_data.detail_info.max_students_per_class }}명</p>
+      {% endif %}
+      {% if enhanced_data.detail_info.website_url %}
+        <p><strong>웹사이트:</strong> <a href="{{ enhanced_data.detail_info.website_url }}" target="_blank">{{ enhanced_data.detail_info.website_url }}</a></p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- 갤러리 -->
+  {% if enhanced_data.gallery %}
+    <div class="academy-gallery">
+      <h3>갤러리</h3>
+      <div class="gallery-grid">
+        {% for image in enhanced_data.gallery %}
+          <div class="gallery-item">
+            <img src="{{ image.image_url }}" alt="{{ image.title }}" onclick="openImageModal('{{ image.image_url }}')">
+            {% if image.title %}
+              <div class="gallery-caption">{{ image.title }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- 기존 정보들 -->
+  <div class="academy_mid_container">
+    <table class="academy_mid_table">
+      <tr>
+        <td>
+          <div class="label">수강료(평균)</div>
+          <div class="value" id="academy_fee_st">
+            {% if academy.수강료_평균 %}
+              {{ academy.수강료_평균|intcomma }}원
+            {% else %}
+              정보없음
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <div class="label">영업시간</div>
+          <div class="value">
+            {% if academy.영업시간 %}
+              {{ academy.영업시간 }}
+            {% else %}
+              정보없음
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <div class="label">전화번호</div>
+          <div class="value">
+            {% if academy.전화번호 %}
+              <a href="tel:{{ academy.전화번호 }}">{{ academy.전화번호 }}</a>
+            {% else %}
+              정보없음
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 주소 정보 -->
+  <a href="javascript:togglePop()">
+    <div>
+      <span class="title_s2">주소</span> {{ academy.도로명주소 }} 
+      <span id="arrow_icon" class="material-symbols-outlined" style="vertical-align: middle;">keyboard_arrow_down</span>
+    </div>
+  </a>
+
+  <!-- 팝업 레이어 -->
+  <div class="popup_layer" id="popup_layer" style="display: none;">
+    <div class="popup_box">
+      <div class="popup_cont">
+        <span class="title_s2">지번</span> {{ academy.지번주소 }}
+        <button onclick="copyToClipboard('{{ academy.지번주소|escapejs }}')" style="color: #002db3;">복사</button>
+        <br>
+        <span class="title_s2">도로명</span> {{ academy.도로명주소 }}
+        <button onclick="copyToClipboard('{{ academy.도로명주소|escapejs }}')" style="color: #002db3;">복사</button>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- FAQ 섹션 -->
+  {% if enhanced_data.faqs %}
+    <div class="academy-faq">
+      <h3>자주 묻는 질문</h3>
+      {% for faq in enhanced_data.faqs %}
+        <div class="faq-item">
+          <div class="faq-question" onclick="toggleFAQ({{ forloop.counter }})">
+            <span>Q: {{ faq.question }}</span>
+            <span class="faq-toggle">▼</span>
+          </div>
+          <div class="faq-answer" id="faq-{{ forloop.counter }}" style="display: none;">
+            <p>A: {{ faq.answer|linebreaksbr }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <hr>
+  {% endif %}
+
+  <!-- 최근 소식 -->
+  {% if enhanced_data.recent_news %}
+    <div class="academy-news">
+      <h3>최근 소식</h3>
+      {% for news in enhanced_data.recent_news %}
+        <div class="news-item">
+          <div class="news-title">
+            {% if news.is_important %}<span class="important-badge">중요</span>{% endif %}
+            {{ news.title }}
+          </div>
+          <div class="news-date">{{ news.publish_date|date:"Y-m-d" }}</div>
+          <div class="news-content">{{ news.content|truncatewords:20|linebreaksbr }}</div>
+        </div>
+      {% endfor %}
+    </div>
+    <hr>
+  {% endif %}
+
+  <!-- 과목 정보 -->
+  <div>
+    <span class="title_s1">과목</span>
+    {% if subjects %}
+      <div class="contents_c1">
+        {% for subject in subjects %}
+          <span class="subject-tag">{{ subject }}</span>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="contents_c1">과목 정보 없음</div>
+    {% endif %}
+  </div>
+
+  <hr>
+
+  <!-- 수강생 대상 -->
+  <div>
+    <span class="title_s1">수강생</span>
+    {% if target_ages %}
+      <div class="contents_c1">
+        {% for age in target_ages %}
+          <span class="age-tag">{{ age }}</span>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="contents_c1">정보 없음</div>
+    {% endif %}
+  </div>
+
+  <hr>
+
+  <!-- 기타 서비스 -->
+  <div class="academy_mid_container">
+    <table class="academy_mid_table_2">
+      <tr>
+        <td>
+          <div class="label">셔틀버스</div>
+          {% if academy.셔틀버스 %}
+            <div class="value_y">○, 운행</div>
+          {% else %}
+            <div class="value_n">X, 셔틀버스 없음</div>
+          {% endif %}
+        </td>
+        <td>
+          <div class="label">레벨테스트</div>
+          {% if academy.레벨테스트 %}
+            <div class="value_y">테스트 ○</div>
+          {% else %}
+            <div class="value_n">X, 테스트 없음</div>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <hr>
+
+  <!-- 하단 정보 -->
+  <div class="nav_bottom">
+    <div>업체명: {{ academy.상호명|default:"정보 없음" }}</div>
+    <div>대표원장: {{ academy.대표원장|default:"정보 없음" }}</div>
+    <div>강사: {{ academy.강사|floatformat:"0"|default:"정보 없음" }}명</div>
+    <div>학원시대는 정보 및 서비스 중개자로서 서비스 제공 당사자가 아닙니다.<br>
+         정보 및 실질적 서비스 제공 의무와 책임은 각 학원에 있습니다.</div>
+  </div>
+</div>
+
+{% endif %}
+
+<!-- 스타일 추가 -->
+<style>
+.popularity-info {
+  margin: 10px 0;
+  font-size: 0.9rem;
+}
+
+.popularity-score, .local-rank {
+  margin-right: 15px;
+  color: #666;
+}
+
+.comprehensive-score {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  text-align: center;
+}
+
+.score-display {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.score-number {
+  color: #007bff;
+}
+
+.score-max {
+  color: #666;
+  font-size: 1.2rem;
+}
+
+.score-bar {
+  width: 100%;
+  height: 10px;
+  background: #e9ecef;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  background: linear-gradient(to right, #28a745, #ffc107, #dc3545);
+  transition: width 0.3s ease;
+}
+
+.detailed-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+}
+
+.academy-gallery {
+  margin: 20px 0;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.gallery-item {
+  position: relative;
+  cursor: pointer;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.gallery-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 5px;
+  font-size: 0.8rem;
+  border-radius: 0 0 8px 8px;
+}
+
+.academy-faq {
+  margin: 20px 0;
+}
+
+.faq-item {
+  border-bottom: 1px solid #eee;
+  margin-bottom: 10px;
+}
+
+.faq-question {
+  padding: 10px;
+  background: #f8f9fa;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.faq-answer {
+  padding: 10px;
+  background: white;
+}
+
+.academy-news {
+  margin: 20px 0;
+}
+
+.news-item {
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+
+.news-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.important-badge {
+  background: #dc3545;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  margin-right: 5px;
+}
+
+.news-date {
+  color: #666;
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+}
+
+.subject-tag, .age-tag {
+  display: inline-block;
+  background: #007bff;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  margin: 2px;
+}
+</style>
+
+<!-- JavaScript -->
+<script>
+function togglePop() {
+  var popup = document.getElementById("popup_layer");
+  var arrow = document.getElementById("arrow_icon");
+  if (popup.style.display === "block") {
+    popup.style.display = "none";
+    arrow.innerHTML = "keyboard_arrow_down";
+  } else {
+    popup.style.display = "block";
+    arrow.innerHTML = "keyboard_arrow_up";
+  }
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text)
+      .then(function() {
+        showCopyPopup();
+      })
+      .catch(function(err) {
+        alert("복사 실패: " + err);
+      });
+  } else {
+    var tempInput = document.createElement("input");
+    tempInput.value = text;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    try {
+      document.execCommand("copy");
+      showCopyPopup();
+    } catch (err) {
+      alert("복사 실패: " + err);
+    }
+    document.body.removeChild(tempInput);
+  }
+}
+
+function showCopyPopup() {
+  var popup = document.createElement("div");
+  popup.innerText = "주소가 복사되었습니다.";
+  popup.style.position = "fixed";
+  popup.style.bottom = "20px";
+  popup.style.left = "50%";
+  popup.style.transform = "translateX(-50%)";
+  popup.style.fontSize = "1.2rem";
+  popup.style.backgroundColor = "darkgray";
+  popup.style.color = "#fff";
+  popup.style.borderRadius = "0.7rem";
+  popup.style.padding = "0.5rem 1rem";
+  popup.style.zIndex = "10000";
+  popup.style.opacity = "1";
+  popup.style.transition = "opacity 1s ease";
+
+  document.body.appendChild(popup);
+
+  setTimeout(function() {
+    popup.style.opacity = "0";
+  }, 500);
+
+  setTimeout(function() {
+    popup.parentNode.removeChild(popup);
+  }, 1500);
+}
+
+function toggleFAQ(id) {
+  var answer = document.getElementById("faq-" + id);
+  var toggle = document.querySelector("#faq-" + id).previousElementSibling.querySelector('.faq-toggle');
+  
+  if (answer.style.display === "none" || answer.style.display === "") {
+    answer.style.display = "block";
+    toggle.innerHTML = "▲";
+  } else {
+    answer.style.display = "none";
+    toggle.innerHTML = "▼";
+  }
+}
+
+function openImageModal(imageUrl) {
+  // 간단한 모달 구현
+  var modal = document.createElement("div");
+  modal.style.position = "fixed";
+  modal.style.top = "0";
+  modal.style.left = "0";
+  modal.style.width = "100%";
+  modal.style.height = "100%";
+  modal.style.backgroundColor = "rgba(0,0,0,0.8)";
+  modal.style.display = "flex";
+  modal.style.justifyContent = "center";
+  modal.style.alignItems = "center";
+  modal.style.zIndex = "10000";
+  modal.onclick = function() {
+    document.body.removeChild(modal);
+  };
+
+  var img = document.createElement("img");
+  img.src = imageUrl;
+  img.style.maxWidth = "90%";
+  img.style.maxHeight = "90%";
+  img.style.borderRadius = "8px";
+
+  modal.appendChild(img);
+  document.body.appendChild(modal);
+}
+</script>
+
+{% endblock %}

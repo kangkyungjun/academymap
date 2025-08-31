@@ -63,6 +63,33 @@ class AcademyListAPIView(generics.ListAPIView):
         if category and category != '전체':
             queryset = queryset.filter(**{f'과목_{category}': True})
         
+        # 가격 필터링 (Flutter 호환)
+        price_min = self.request.GET.get('priceMin')
+        price_max = self.request.GET.get('priceMax')
+        if price_min or price_max:
+            # 수강료가 있는 학원만 대상
+            queryset = queryset.exclude(수강료_평균__isnull=True).exclude(수강료_평균='').exclude(수강료_평균='0')
+            
+            if price_min:
+                try:
+                    min_price = int(float(price_min))
+                    queryset = queryset.extra(
+                        where=["CAST(수강료_평균 AS INTEGER) >= %s"],
+                        params=[min_price]
+                    )
+                except ValueError:
+                    pass
+                    
+            if price_max and price_max != '999999999':
+                try:
+                    max_price = int(float(price_max))
+                    queryset = queryset.extra(
+                        where=["CAST(수강료_평균 AS INTEGER) <= %s"],
+                        params=[max_price]
+                    )
+                except ValueError:
+                    pass
+        
         # 연령대 필터링
         age_groups = self.request.GET.getlist('age_groups')
         if age_groups:
@@ -219,15 +246,37 @@ class AcademySearchAPIView(APIView):
         if category and category != '전체':
             queryset = queryset.filter(**{f'과목_{category}': True})
         
-        # 가격 필터
+        # 가격 필터 (수강료_평균 필드 기준)
         price_min = data.get('price_min')
         price_max = data.get('price_max')
-        if price_min:
-            # 수강료 필드가 문자열이므로 숫자로 변환 가능한 것만 필터링
-            # 실제로는 수강료 데이터 정제가 필요할 수 있음
-            pass
-        if price_max:
-            pass
+        if price_min or price_max:
+            # 수강료가 있는 학원만 대상
+            price_queryset = queryset.exclude(수강료_평균__isnull=True).exclude(수강료_평균='').exclude(수강료_평균='0')
+            
+            if price_min:
+                try:
+                    min_price = int(price_min)
+                    # Cast를 사용해 문자열을 정수로 변환하여 비교
+                    from django.db.models import Cast, IntegerField
+                    price_queryset = price_queryset.extra(
+                        where=["CAST(수강료_평균 AS INTEGER) >= %s"],
+                        params=[min_price]
+                    )
+                except ValueError:
+                    pass
+                    
+            if price_max:
+                try:
+                    max_price = int(price_max) if price_max != '999999999' else 10000000
+                    from django.db.models import Cast, IntegerField  
+                    price_queryset = price_queryset.extra(
+                        where=["CAST(수강료_평균 AS INTEGER) <= %s"],
+                        params=[max_price]
+                    )
+                except ValueError:
+                    pass
+                    
+            queryset = price_queryset
         
         # 연령대 필터
         age_groups = data.get('age_groups', [])

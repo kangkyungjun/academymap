@@ -1,0 +1,1 @@
+WARNING 2025-08-31 19:38:37,870 performance_middleware 38329 13341061120 Slow request: GET /performance/metrics/ took 1.012s

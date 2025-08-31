@@ -80,6 +80,15 @@ class Data(models.Model):
             models.Index(fields=['과목_종합'], name='subject_general_idx'),
         ]
 
+
+# 운영자 관련 모델들 import
+try:
+    from .operator_models import *
+    from .academy_enhancements import *
+except ImportError:
+    # 마이그레이션 중이거나 모델이 아직 없는 경우
+    pass
+
 # class Data(models.Model):
 #     상가업소번호 = models.CharField(max_length=255)
 #     상호명 = models.CharField(max_length=255)

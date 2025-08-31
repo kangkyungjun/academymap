@@ -1,0 +1,286 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}채팅 목록 - AcademyMap{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="bg-white rounded-lg shadow-md">
+        <!-- 헤더 -->
+        <div class="flex justify-between items-center p-6 border-b">
+            <h1 class="text-2xl font-bold text-gray-800">채팅 목록</h1>
+            <button id="refreshBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-sync-alt mr-2"></i>새로고침
+            </button>
+        </div>
+
+        <!-- 필터 -->
+        <div class="p-4 bg-gray-50 border-b">
+            <div class="flex flex-wrap gap-4">
+                <select id="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="">전체 상태</option>
+                    <option value="active">활성</option>
+                    <option value="pending">대기중</option>
+                    <option value="closed">종료</option>
+                </select>
+                <select id="typeFilter" class="border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="">전체 유형</option>
+                    <option value="inquiry">문의</option>
+                    <option value="consultation">상담</option>
+                    <option value="support">지원</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="학원명 또는 제목 검색..." 
+                       class="border border-gray-300 rounded-lg px-3 py-2 flex-1 min-w-48">
+            </div>
+        </div>
+
+        <!-- 채팅방 목록 -->
+        <div id="chatRoomList" class="divide-y divide-gray-200">
+            <!-- 로딩 상태 -->
+            <div id="loadingState" class="p-8 text-center">
+                <div class="inline-flex items-center">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    채팅방을 불러오는 중...
+                </div>
+            </div>
+
+            <!-- 빈 상태 -->
+            <div id="emptyState" class="p-8 text-center text-gray-500 hidden">
+                <i class="fas fa-comments text-6xl mb-4 text-gray-300"></i>
+                <p class="text-lg mb-2">아직 채팅방이 없습니다</p>
+                <p class="text-sm">학원 상세 페이지에서 문의하기를 통해 채팅을 시작해보세요</p>
+            </div>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div id="pagination" class="p-4 border-t bg-gray-50 hidden">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    <span id="pageInfo"></span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevBtn" class="px-3 py-1 border border-gray-300 rounded disabled:opacity-50" disabled>이전</button>
+                    <button id="nextBtn" class="px-3 py-1 border border-gray-300 rounded disabled:opacity-50" disabled>다음</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class ChatRoomList {
+    constructor() {
+        this.currentPage = 1;
+        this.pageSize = 20;
+        this.totalPages = 1;
+        this.filters = {
+            status: '',
+            room_type: '',
+            search: ''
+        };
+        
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.loadRooms();
+    }
+    
+    bindEvents() {
+        // 필터 이벤트
+        document.getElementById('statusFilter').addEventListener('change', (e) => {
+            this.filters.status = e.target.value;
+            this.currentPage = 1;
+            this.loadRooms();
+        });
+        
+        document.getElementById('typeFilter').addEventListener('change', (e) => {
+            this.filters.room_type = e.target.value;
+            this.currentPage = 1;
+            this.loadRooms();
+        });
+        
+        // 검색 디바운스
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.filters.search = e.target.value;
+                this.currentPage = 1;
+                this.loadRooms();
+            }, 500);
+        });
+        
+        // 새로고침
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            this.loadRooms();
+        });
+        
+        // 페이지네이션
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.loadRooms();
+            }
+        });
+        
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+                this.loadRooms();
+            }
+        });
+    }
+    
+    async loadRooms() {
+        this.showLoading();
+        
+        try {
+            const params = new URLSearchParams({
+                page: this.currentPage,
+                page_size: this.pageSize,
+                ...this.filters
+            });
+            
+            const response = await fetch(`/chat/api/rooms/?${params}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.renderRooms(data.results);
+                this.updatePagination(data);
+                this.hideLoading();
+            } else {
+                throw new Error(data.message || '채팅방 목록을 불러올 수 없습니다.');
+            }
+        } catch (error) {
+            this.showError(error.message);
+            this.hideLoading();
+        }
+    }
+    
+    renderRooms(rooms) {
+        const container = document.getElementById('chatRoomList');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (rooms.length === 0) {
+            container.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            return;
+        }
+        
+        emptyState.classList.add('hidden');
+        
+        container.innerHTML = rooms.map(room => this.renderRoom(room)).join('');
+    }
+    
+    renderRoom(room) {
+        const statusClass = {
+            'active': 'bg-green-100 text-green-800',
+            'pending': 'bg-yellow-100 text-yellow-800',
+            'closed': 'bg-gray-100 text-gray-800'
+        }[room.status];
+        
+        const statusText = {
+            'active': '활성',
+            'pending': '대기중',
+            'closed': '종료'
+        }[room.status];
+        
+        const typeText = {
+            'inquiry': '문의',
+            'consultation': '상담',
+            'support': '지원'
+        }[room.room_type];
+        
+        const lastMessage = room.last_message;
+        const lastMessageTime = lastMessage ? new Date(lastMessage.created_at).toLocaleString() : '';
+        const lastMessageContent = lastMessage ? 
+            (lastMessage.content.length > 50 ? lastMessage.content.substring(0, 50) + '...' : lastMessage.content) : 
+            '메시지가 없습니다';
+        
+        return `
+            <div class="p-4 hover:bg-gray-50 cursor-pointer" onclick="location.href='/chat/room/${room.room_id}/'">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-school text-blue-600"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="text-lg font-semibold text-gray-900 truncate">
+                                ${room.academy.상호명}
+                            </h3>
+                            <div class="flex items-center space-x-2">
+                                ${room.unread_count > 0 ? `
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        ${room.unread_count}
+                                    </span>
+                                ` : ''}
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                    ${statusText}
+                                </span>
+                                <span class="text-xs text-gray-500">${typeText}</span>
+                            </div>
+                        </div>
+                        
+                        <p class="text-sm text-gray-600 mb-2">${room.title || '제목 없음'}</p>
+                        
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm text-gray-500 truncate">${lastMessageContent}</p>
+                            ${lastMessageTime ? `<span class="text-xs text-gray-400 ml-2">${lastMessageTime}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    updatePagination(data) {
+        const pagination = document.getElementById('pagination');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        
+        if (data.count > 0) {
+            pagination.classList.remove('hidden');
+            
+            const startItem = (this.currentPage - 1) * this.pageSize + 1;
+            const endItem = Math.min(this.currentPage * this.pageSize, data.count);
+            
+            pageInfo.textContent = `${startItem}-${endItem} / ${data.count}개`;
+            
+            this.totalPages = Math.ceil(data.count / this.pageSize);
+            
+            prevBtn.disabled = this.currentPage <= 1;
+            nextBtn.disabled = this.currentPage >= this.totalPages;
+        } else {
+            pagination.classList.add('hidden');
+        }
+    }
+    
+    showLoading() {
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('emptyState').classList.add('hidden');
+    }
+    
+    hideLoading() {
+        document.getElementById('loadingState').classList.add('hidden');
+    }
+    
+    showError(message) {
+        alert(message);
+    }
+}
+
+// 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    new ChatRoomList();
+});
+</script>
+{% endblock %}

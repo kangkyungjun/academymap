@@ -1,0 +1,319 @@
+# English translations for AcademyMap
+# Copyright (C) 2025 AcademyMap
+# This file is distributed under the same license as the AcademyMap package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: AcademyMap 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-31 19:23+0900\n"
+"PO-Revision-Date: 2025-08-31 19:30+0900\n"
+"Last-Translator: AcademyMap Team\n"
+"Language-Team: English <en@academymap.kr>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# Search and Navigation
+msgid "학원명/지역 검색"
+msgstr "Search Academy/Location"
+
+msgid "검색"
+msgstr "Search"
+
+msgid "필터"
+msgstr "Filter"
+
+msgid "상세보기"
+msgstr "View Details"
+
+msgid "전화하기"
+msgstr "Call"
+
+msgid "공유하기"
+msgstr "Share"
+
+# Categories and Subjects
+msgid "전체"
+msgstr "All"
+
+msgid "과목"
+msgstr "Subjects"
+
+msgid "수학"
+msgstr "Math"
+
+msgid "영어"
+msgstr "English"
+
+msgid "과학"
+msgstr "Science"
+
+msgid "외국어"
+msgstr "Foreign Language"
+
+msgid "예체능"
+msgstr "Arts & Sports"
+
+msgid "컴퓨터"
+msgstr "Computer"
+
+msgid "논술"
+msgstr "Essay Writing"
+
+msgid "기타"
+msgstr "Others"
+
+msgid "독서실/스터디카페"
+msgstr "Study Room/Study Cafe"
+
+# Age Groups
+msgid "연령"
+msgstr "Age Groups"
+
+msgid "유아"
+msgstr "Preschool"
+
+msgid "초등"
+msgstr "Elementary"
+
+msgid "중등"
+msgstr "Middle School"
+
+msgid "고등"
+msgstr "High School"
+
+msgid "특목고"
+msgstr "Special High School"
+
+msgid "일반"
+msgstr "General"
+
+# Academy Information
+msgid "학원명"
+msgstr "Academy Name"
+
+msgid "주소"
+msgstr "Address"
+
+msgid "전화번호"
+msgstr "Phone Number"
+
+msgid "수강료"
+msgstr "Tuition Fee"
+
+msgid "평점"
+msgstr "Rating"
+
+msgid "셔틀"
+msgstr "Shuttle"
+
+msgid "셔틀버스"
+msgstr "Shuttle Bus"
+
+msgid "대상"
+msgstr "Target Age"
+
+msgid "원"
+msgstr " KRW"
+
+# Common Terms
+msgid "위치"
+msgstr "Location"
+
+msgid "가격"
+msgstr "Price"
+
+msgid "후기"
+msgstr "Reviews"
+
+msgid "문의"
+msgstr "Inquiry"
+
+msgid "등록"
+msgstr "Registration"
+
+msgid "수강신청"
+msgstr "Enrollment"
+
+msgid "강사"
+msgstr "Instructor"
+
+msgid "시설"
+msgstr "Facilities"
+
+msgid "주차"
+msgstr "Parking"
+
+msgid "커리큘럼"
+msgstr "Curriculum"
+
+msgid "성과"
+msgstr "Achievement"
+
+msgid "경력"
+msgstr "Experience"
+
+msgid "추천"
+msgstr "Recommendation"
+
+msgid "인기"
+msgstr "Popular"
+
+msgid "주변"
+msgstr "Nearby"
+
+msgid "최근"
+msgstr "Recent"
+
+msgid "신규"
+msgstr "New"
+
+msgid "업데이트"
+msgstr "Updated"
+
+msgid "휴원"
+msgstr "Closed"
+
+msgid "개원"
+msgstr "Open"
+
+# Status Messages
+msgid "로딩 중..."
+msgstr "Loading..."
+
+msgid "검색 결과가 없습니다"
+msgstr "No search results found"
+
+msgid "데이터를 불러오는 중 오류가 발생했습니다"
+msgstr "Error occurred while loading data"
+
+msgid "전화번호 없음"
+msgstr "No phone number"
+
+msgid "평가없음"
+msgstr "No rating"
+
+msgid "학원에 전화하기"
+msgstr "Call Academy"
+
+msgid "학원 정보 공유하기"
+msgstr "Share Academy Information"
+
+# Location Messages
+msgid "위치 접근이 거부되었습니다"
+msgstr "Location access denied"
+
+msgid "위치 정보를 사용할 수 없습니다"
+msgstr "Location information not available"
+
+msgid "위치 요청 시간이 초과되었습니다"
+msgstr "Location request timed out"
+
+# Navigation and UI
+msgid "뒤로가기"
+msgstr "Go Back"
+
+msgid "내 위치"
+msgstr "My Location"
+
+msgid "지도"
+msgstr "Map"
+
+msgid "목록"
+msgstr "List"
+
+msgid "설정"
+msgstr "Settings"
+
+msgid "로그인"
+msgstr "Login"
+
+msgid "로그아웃"
+msgstr "Logout"
+
+msgid "회원가입"
+msgstr "Sign Up"
+
+msgid "마이페이지"
+msgstr "My Page"
+
+# Error Messages
+msgid "오류가 발생했습니다"
+msgstr "An error occurred"
+
+msgid "다시 시도해 주세요"
+msgstr "Please try again"
+
+msgid "네트워크 연결을 확인해 주세요"
+msgstr "Please check your network connection"
+
+msgid "잘못된 요청입니다"
+msgstr "Invalid request"
+
+msgid "권한이 없습니다"
+msgstr "Permission denied"
+
+# Form Labels
+msgid "이름"
+msgstr "Name"
+
+msgid "이메일"
+msgstr "Email"
+
+msgid "비밀번호"
+msgstr "Password"
+
+msgid "비밀번호 확인"
+msgstr "Confirm Password"
+
+msgid "저장"
+msgstr "Save"
+
+msgid "취소"
+msgstr "Cancel"
+
+msgid "확인"
+msgstr "Confirm"
+
+msgid "삭제"
+msgstr "Delete"
+
+msgid "수정"
+msgstr "Edit"
+
+msgid "추가"
+msgstr "Add"
+
+# Time and Date
+msgid "년"
+msgstr "Year"
+
+msgid "월"
+msgstr "Month"
+
+msgid "일"
+msgstr "Day"
+
+msgid "시간"
+msgstr "Hour"
+
+msgid "분"
+msgstr "Minute"
+
+msgid "오전"
+msgstr "AM"
+
+msgid "오후"
+msgstr "PM"
+
+msgid "오늘"
+msgstr "Today"
+
+msgid "어제"
+msgstr "Yesterday"
+
+msgid "내일"
+msgstr "Tomorrow"

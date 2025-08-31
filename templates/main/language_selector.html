@@ -1,0 +1,272 @@
+{% extends "templates/main/base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "언어 선택" %} - AcademyMap{% endblock %}
+
+{% block contents %}
+<div class="language-selector-page">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-lg">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-globe me-2"></i>
+                            {% trans "언어 선택" %}
+                        </h4>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <p class="text-muted text-center mb-4">
+                            {% trans "원하시는 언어를 선택해주세요" %}
+                        </p>
+                        
+                        <form method="post" action="{% url 'set_language' %}" class="language-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ redirect_to }}" />
+                            
+                            <div class="language-options">
+                                {% for code, name in available_languages %}
+                                <div class="language-option mb-3">
+                                    <button type="submit" name="language" value="{{ code }}" 
+                                            class="btn btn-outline-primary w-100 text-start language-btn {% if code == current_language %}active{% endif %}">
+                                        <div class="d-flex align-items-center">
+                                            <span class="flag-icon me-3">
+                                                {% if code == 'ko' %}🇰🇷
+                                                {% elif code == 'en' %}🇺🇸
+                                                {% elif code == 'zh-hans' %}🇨🇳
+                                                {% endif %}
+                                            </span>
+                                            <div>
+                                                <div class="fw-bold">
+                                                    {% if code == 'ko' %}한국어
+                                                    {% elif code == 'en' %}English
+                                                    {% elif code == 'zh-hans' %}中文 (简体)
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted">{{ name }}</small>
+                                            </div>
+                                            {% if code == current_language %}
+                                            <span class="ms-auto">
+                                                <i class="fas fa-check text-primary"></i>
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </form>
+                        
+                        <hr>
+                        
+                        <div class="text-center">
+                            <a href="{{ redirect_to }}" class="btn btn-link text-muted">
+                                <i class="fas fa-arrow-left me-1"></i>
+                                {% trans "뒤로가기" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Language Information -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h6 class="card-title">{% trans "지원 언어" %}</h6>
+                        <div class="language-info">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="language-stat">
+                                        <span class="flag-icon fs-2">🇰🇷</span>
+                                        <div class="mt-2">
+                                            <small class="text-muted">{% trans "한국어" %}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="language-stat">
+                                        <span class="flag-icon fs-2">🇺🇸</span>
+                                        <div class="mt-2">
+                                            <small class="text-muted">English</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="language-stat">
+                                        <span class="flag-icon fs-2">🇨🇳</span>
+                                        <div class="mt-2">
+                                            <small class="text-muted">中文</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 text-center">
+                            <small class="text-muted">
+                                {% trans "더 많은 언어 지원이 곧 추가될 예정입니다" %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.language-selector-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem 0;
+}
+
+.language-btn {
+    border: 2px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.language-btn:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.language-btn.active {
+    border-color: #007bff;
+    background-color: #e7f3ff;
+    color: #007bff;
+}
+
+.flag-icon {
+    font-size: 1.5rem;
+    display: inline-block;
+    min-width: 2rem;
+    text-align: center;
+}
+
+.language-stat {
+    padding: 0.5rem;
+}
+
+.card {
+    border-radius: 1rem;
+    border: none;
+}
+
+.card-header {
+    border-radius: 1rem 1rem 0 0 !important;
+}
+
+@media (max-width: 768px) {
+    .language-selector-page {
+        padding: 1rem;
+    }
+    
+    .container {
+        padding: 0;
+    }
+}
+
+/* 애니메이션 */
+.language-option {
+    animation: fadeInUp 0.3s ease;
+}
+
+.language-option:nth-child(1) { animation-delay: 0.1s; }
+.language-option:nth-child(2) { animation-delay: 0.2s; }
+.language-option:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+    .language-selector-page {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    }
+    
+    .card {
+        background-color: #34495e;
+        color: #ecf0f1;
+    }
+    
+    .text-muted {
+        color: #bdc3c7 !important;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 언어 선택 버튼 클릭 시 로딩 표시
+    const languageButtons = document.querySelectorAll('.language-btn');
+    
+    languageButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner-border spinner-border-sm me-2';
+            spinner.setAttribute('role', 'status');
+            
+            this.prepend(spinner);
+            this.disabled = true;
+            
+            // 폼 제출은 자동으로 처리됨
+        });
+    });
+    
+    // 키보드 네비게이션 지원
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            window.location.href = '{{ redirect_to }}';
+        }
+    });
+    
+    // 자동 언어 감지 (선택사항)
+    const autoDetect = () => {
+        const userLang = navigator.language || navigator.userLanguage;
+        const supportedLangs = ['ko', 'en', 'zh-hans'];
+        
+        let detectedLang = 'ko'; // 기본값
+        
+        if (userLang.startsWith('ko')) {
+            detectedLang = 'ko';
+        } else if (userLang.startsWith('en')) {
+            detectedLang = 'en';
+        } else if (userLang.startsWith('zh')) {
+            detectedLang = 'zh-hans';
+        }
+        
+        // 감지된 언어가 현재 언어와 다르면 제안
+        const currentLang = '{{ current_language }}';
+        if (detectedLang !== currentLang && supportedLangs.includes(detectedLang)) {
+            const suggestion = document.createElement('div');
+            suggestion.className = 'alert alert-info alert-dismissible fade show mt-3';
+            suggestion.innerHTML = `
+                <i class="fas fa-lightbulb me-2"></i>
+                {% trans "브라우저 설정을 기반으로" %} ${detectedLang === 'en' ? 'English' : detectedLang === 'zh-hans' ? '中文' : '한국어'}{% trans "를 추천합니다" %}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const cardBody = document.querySelector('.card-body');
+            cardBody.appendChild(suggestion);
+        }
+    };
+    
+    // 페이지 로드 후 자동 감지 실행
+    setTimeout(autoDetect, 1000);
+});
+</script>
+{% endblock %}

@@ -92,13 +92,26 @@ class AcademyListView(APIView):
         if shuttle:
             academies = academies.filter(셔틀버스__isnull=False).exclude(셔틀버스='')
         
-        # 페이지네이션 지원
+        # 페이지네이션 지원 (보안 강화)
         limit = request.GET.get('limit', '50')
         offset = request.GET.get('offset', '0')
         
         try:
             limit = int(limit)
             offset = int(offset)
+            
+            # 보안: limit 범위 제한 (DoS 방지)
+            if limit < 1:
+                limit = 50
+            elif limit > 500:  # 최대 500개로 제한
+                limit = 500
+                
+            # 보안: offset 범위 제한 
+            if offset < 0:
+                offset = 0
+            elif offset > 100000:  # 최대 10만번째 레코드까지
+                offset = 100000
+                
             total_count = academies.count()
             academies = academies[offset:offset + limit]
             
@@ -110,9 +123,13 @@ class AcademyListView(APIView):
                 'next': offset + limit < total_count,
                 'previous': offset > 0
             }, status=status.HTTP_200_OK)
-        except ValueError:
-            serializer = AcademySerializer(academies, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValueError as e:
+            # 잘못된 파라미터에 대한 명확한 오류 응답
+            return Response({
+                'error': '잘못된 파라미터입니다.',
+                'detail': 'limit과 offset은 숫자여야 합니다.',
+                'code': 'INVALID_PARAMETERS'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class FilteredAcademyView(APIView):
     def post(self, request):

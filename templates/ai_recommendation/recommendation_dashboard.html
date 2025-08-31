@@ -1,0 +1,753 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}AI 추천 대시보드 - AcademyMap{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- 사용자 선호도 설정 섹션 -->
+    <div class="bg-white rounded-lg shadow-md mb-6">
+        <div class="p-6 border-b">
+            <h2 class="text-xl font-bold text-gray-800">학습 선호도 설정</h2>
+            <p class="text-gray-600 mt-1">맞춤형 추천을 위해 선호도를 설정해주세요.</p>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 과목 선호도 -->
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-gray-700">선호 과목</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" class="subject-pref" value="수학" class="rounded">
+                            <span class="ml-2">수학</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="subject-pref" value="영어" class="rounded">
+                            <span class="ml-2">영어</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="subject-pref" value="국어" class="rounded">
+                            <span class="ml-2">국어</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="subject-pref" value="과학" class="rounded">
+                            <span class="ml-2">과학</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="subject-pref" value="예술" class="rounded">
+                            <span class="ml-2">예술</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="subject-pref" value="체육" class="rounded">
+                            <span class="ml-2">체육</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 가격대 선호도 -->
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-gray-700">희망 가격대</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" name="price-pref" value="low" class="rounded">
+                            <span class="ml-2">10만원 이하</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="price-pref" value="medium" class="rounded">
+                            <span class="ml-2">10-30만원</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="price-pref" value="high" class="rounded">
+                            <span class="ml-2">30만원 이상</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 교육방식 선호도 -->
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-gray-700">선호 교육방식</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" class="method-pref" value="group" class="rounded">
+                            <span class="ml-2">그룹 수업</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="method-pref" value="individual" class="rounded">
+                            <span class="ml-2">개별 수업</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="method-pref" value="online" class="rounded">
+                            <span class="ml-2">온라인 수업</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="method-pref" value="offline" class="rounded">
+                            <span class="ml-2">오프라인 수업</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="analyzeBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                    <i class="fas fa-brain mr-2"></i>행동 패턴 분석
+                </button>
+                <button id="savePreferencesBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                    <i class="fas fa-save mr-2"></i>선호도 저장
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 개인화 추천 섹션 -->
+    <div class="bg-white rounded-lg shadow-md mb-6">
+        <div class="flex justify-between items-center p-6 border-b">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">맞춤 추천 학원</h2>
+                <p class="text-gray-600 mt-1">AI가 분석한 회원님께 적합한 학원들입니다.</p>
+            </div>
+            <button id="getRecommendationsBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg">
+                <i class="fas fa-magic mr-2"></i>추천 받기
+            </button>
+        </div>
+        
+        <div id="recommendationsContainer" class="p-6">
+            <!-- 로딩 상태 -->
+            <div id="loadingRecommendations" class="text-center py-8 hidden">
+                <div class="inline-flex items-center">
+                    <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    AI가 분석 중입니다...
+                </div>
+            </div>
+            
+            <!-- 빈 상태 -->
+            <div id="emptyRecommendations" class="text-center py-8">
+                <i class="fas fa-robot text-6xl text-gray-300 mb-4"></i>
+                <p class="text-lg text-gray-500 mb-2">아직 추천이 없습니다</p>
+                <p class="text-sm text-gray-400">위의 "추천 받기" 버튼을 클릭하여 맞춤 추천을 받아보세요</p>
+            </div>
+            
+            <!-- 추천 결과 -->
+            <div id="recommendationsList" class="space-y-4 hidden"></div>
+        </div>
+    </div>
+
+    <!-- 사용자 행동 분석 섹션 -->
+    <div class="bg-white rounded-lg shadow-md mb-6">
+        <div class="p-6 border-b">
+            <h2 class="text-xl font-bold text-gray-800">활동 분석</h2>
+            <p class="text-gray-600 mt-1">최근 30일간의 활동을 분석합니다.</p>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 활동 통계 -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-blue-800 mb-2">총 활동 수</h3>
+                    <div class="text-3xl font-bold text-blue-600" id="totalActivities">-</div>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-green-800 mb-2">관심 학원 수</h3>
+                    <div class="text-3xl font-bold text-green-600" id="interestedAcademies">-</div>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-purple-800 mb-2">문의 횟수</h3>
+                    <div class="text-3xl font-bold text-purple-600" id="inquiryCount">-</div>
+                </div>
+            </div>
+            
+            <!-- 선호 과목 차트 -->
+            <div class="mt-6">
+                <h3 class="font-semibold text-gray-700 mb-3">관심 과목 분포</h3>
+                <div id="subjectChart" class="bg-gray-50 p-4 rounded-lg min-h-48"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 유사한 사용자 추천 섹션 -->
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="p-6 border-b">
+            <h2 class="text-xl font-bold text-gray-800">비슷한 관심사를 가진 사용자들이 선택한 학원</h2>
+            <p class="text-gray-600 mt-1">협업 필터링을 통한 추천입니다.</p>
+        </div>
+        
+        <div id="collaborativeRecommendations" class="p-6">
+            <div class="text-center py-8">
+                <i class="fas fa-users text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">비슷한 사용자 추천을 불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 학원 상세 모달 -->
+<div id="academyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">학원 상세 정보</h3>
+                    <button id="closeAcademyModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="academyDetails"></div>
+                
+                <!-- 추천 이유 -->
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h4 class="font-semibold text-blue-800 mb-2">
+                        <i class="fas fa-lightbulb mr-2"></i>추천 이유
+                    </h4>
+                    <p id="recommendationReason" class="text-blue-700"></p>
+                </div>
+                
+                <!-- 액션 버튼 -->
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button id="bookmarkBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-bookmark mr-2"></i>즐겨찾기
+                    </button>
+                    <button id="contactBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-phone mr-2"></i>문의하기
+                    </button>
+                    <button id="feedbackBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-star mr-2"></i>평가하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 피드백 모달 -->
+<div id="feedbackModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-bold mb-4">추천 평가</h3>
+                <p class="text-gray-600 mb-4">이 추천이 도움이 되었나요?</p>
+                
+                <!-- 별점 -->
+                <div class="flex justify-center mb-4">
+                    <div class="star-rating">
+                        <i class="fas fa-star star" data-rating="1"></i>
+                        <i class="fas fa-star star" data-rating="2"></i>
+                        <i class="fas fa-star star" data-rating="3"></i>
+                        <i class="fas fa-star star" data-rating="4"></i>
+                        <i class="fas fa-star star" data-rating="5"></i>
+                    </div>
+                </div>
+                
+                <!-- 의견 -->
+                <textarea id="feedbackComment" placeholder="의견을 남겨주세요 (선택사항)" 
+                         class="w-full p-3 border border-gray-300 rounded-lg mb-4" rows="3"></textarea>
+                
+                <div class="flex justify-end space-x-3">
+                    <button id="cancelFeedback" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg">취소</button>
+                    <button id="submitFeedback" class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg">전송</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class RecommendationDashboard {
+    constructor() {
+        this.currentRecommendations = [];
+        this.selectedRating = 0;
+        this.currentRecommendationId = null;
+        
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.loadUserPreferences();
+        this.loadBehaviorStatistics();
+    }
+    
+    bindEvents() {
+        // 선호도 저장
+        document.getElementById('savePreferencesBtn').addEventListener('click', () => {
+            this.savePreferences();
+        });
+        
+        // 행동 패턴 분석
+        document.getElementById('analyzeBtn').addEventListener('click', () => {
+            this.analyzeFromBehavior();
+        });
+        
+        // 추천 받기
+        document.getElementById('getRecommendationsBtn').addEventListener('click', () => {
+            this.getPersonalizedRecommendations();
+        });
+        
+        // 모달 관련
+        document.getElementById('closeAcademyModal').addEventListener('click', () => {
+            this.hideAcademyModal();
+        });
+        
+        document.getElementById('cancelFeedback').addEventListener('click', () => {
+            this.hideFeedbackModal();
+        });
+        
+        document.getElementById('submitFeedback').addEventListener('click', () => {
+            this.submitFeedback();
+        });
+        
+        // 별점 선택
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', (e) => {
+                this.selectRating(parseInt(e.target.dataset.rating));
+            });
+        });
+    }
+    
+    async savePreferences() {
+        try {
+            const subjects = Array.from(document.querySelectorAll('.subject-pref:checked'))
+                .map(cb => cb.value);
+            
+            const price = document.querySelector('input[name="price-pref"]:checked')?.value;
+            
+            const methods = Array.from(document.querySelectorAll('.method-pref:checked'))
+                .map(cb => cb.value);
+            
+            const preferences = {
+                subject: subjects.reduce((acc, subj, i) => {
+                    acc[subj] = 1.0 - (i * 0.1); // 선택 순서에 따른 가중치
+                    return acc;
+                }, {}),
+                price: price ? {[price]: 1.0} : {},
+                teaching_method: methods.reduce((acc, method, i) => {
+                    acc[method] = 1.0 - (i * 0.1);
+                    return acc;
+                }, {})
+            };
+            
+            const response = await fetch('/ai-recommendation/api/preferences/update_preferences/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Token ${this.getAuthToken()}`,
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                body: JSON.stringify({ preferences })
+            });
+            
+            if (response.ok) {
+                this.showSuccess('선호도가 저장되었습니다.');
+            } else {
+                throw new Error('선호도 저장 실패');
+            }
+            
+        } catch (error) {
+            this.showError('선호도 저장 중 오류가 발생했습니다.');
+        }
+    }
+    
+    async analyzeFromBehavior() {
+        try {
+            const response = await fetch('/ai-recommendation/api/preferences/analyze_from_behavior/', {
+                headers: {
+                    'Authorization': `Token ${this.getAuthToken()}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.applyAnalyzedPreferences(data.preferences);
+                this.showSuccess('행동 패턴 분석이 완료되었습니다.');
+            } else {
+                throw new Error(data.error || '분석 실패');
+            }
+            
+        } catch (error) {
+            this.showError('행동 패턴 분석 중 오류가 발생했습니다.');
+        }
+    }
+    
+    async getPersonalizedRecommendations() {
+        try {
+            document.getElementById('loadingRecommendations').classList.remove('hidden');
+            document.getElementById('emptyRecommendations').classList.add('hidden');
+            document.getElementById('recommendationsList').classList.add('hidden');
+            
+            const response = await fetch('/ai-recommendation/api/recommendations/personalized/?limit=10', {
+                headers: {
+                    'Authorization': `Token ${this.getAuthToken()}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.currentRecommendations = data.recommendations;
+                this.renderRecommendations(data.recommendations);
+                
+                // 추천 요청 행동 추적
+                this.trackBehavior({
+                    action: 'search',
+                    search_query: 'personalized_recommendations',
+                    page_url: window.location.href
+                });
+            } else {
+                throw new Error(data.error || '추천 생성 실패');
+            }
+            
+        } catch (error) {
+            this.showError('추천 생성 중 오류가 발생했습니다.');
+        } finally {
+            document.getElementById('loadingRecommendations').classList.add('hidden');
+        }
+    }
+    
+    renderRecommendations(recommendations) {
+        const container = document.getElementById('recommendationsList');
+        
+        if (recommendations.length === 0) {
+            document.getElementById('emptyRecommendations').classList.remove('hidden');
+            return;
+        }
+        
+        const html = recommendations.map((rec, index) => `
+            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                 onclick="recommendationDashboard.showAcademyDetails(${index})">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-lg font-semibold text-gray-900">${rec.상호명}</h3>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                            ${(rec.recommendation_score * 100).toFixed(0)}% 매치
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="text-sm text-gray-600 space-y-1 mb-3">
+                    <p><i class="fas fa-map-marker-alt mr-2"></i>${rec.location_info?.address || rec.시도명 + ' ' + rec.시군구명}</p>
+                    ${rec.subjects && Object.keys(rec.subjects).length > 0 ? 
+                        `<p><i class="fas fa-book mr-2"></i>${Object.keys(rec.subjects).join(', ')}</p>` : 
+                        ''
+                    }
+                    ${rec.price_info?.available ? 
+                        `<p><i class="fas fa-won-sign mr-2"></i>${rec.price_info.raw_value}</p>` : 
+                        ''
+                    }
+                </div>
+                
+                <div class="bg-blue-50 p-3 rounded text-sm">
+                    <p class="text-blue-700">
+                        <i class="fas fa-lightbulb mr-2"></i>${rec.explanation}
+                    </p>
+                </div>
+                
+                <div class="mt-3 flex justify-between items-center">
+                    <span class="text-xs text-gray-500">신뢰도: ${(rec.confidence_score * 100).toFixed(0)}%</span>
+                    <div class="flex space-x-2">
+                        <button onclick="event.stopPropagation(); recommendationDashboard.bookmarkAcademy(${rec.id})" 
+                                class="text-yellow-600 hover:text-yellow-700">
+                            <i class="fas fa-bookmark"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); recommendationDashboard.contactAcademy(${rec.id})" 
+                                class="text-green-600 hover:text-green-700">
+                            <i class="fas fa-phone"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        container.innerHTML = html;
+        container.classList.remove('hidden');
+    }
+    
+    showAcademyDetails(index) {
+        const academy = this.currentRecommendations[index];
+        
+        const detailsHtml = `
+            <div class="space-y-4">
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-2">기본 정보</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p><strong>학원명:</strong> ${academy.상호명}</p>
+                        <p><strong>주소:</strong> ${academy.location_info?.address || academy.시도명 + ' ' + academy.시군구명}</p>
+                        ${academy.contact_info?.phone ? `<p><strong>전화:</strong> ${academy.contact_info.phone}</p>` : ''}
+                        ${academy.contact_info?.website ? `<p><strong>웹사이트:</strong> ${academy.contact_info.website}</p>` : ''}
+                    </div>
+                </div>
+                
+                ${academy.subjects && Object.keys(academy.subjects).length > 0 ? `
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-2">개설 과목</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        ${Object.entries(academy.subjects).map(([age, subjects]) => 
+                            `<p><strong>${age}:</strong> ${subjects.join(', ')}</p>`
+                        ).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div>
+                    <h4 class="font-semibold text-gray-700 mb-2">추천 점수</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-sm text-gray-600">매치 점수:</span>
+                                <div class="font-semibold">${(academy.recommendation_score * 100).toFixed(1)}%</div>
+                            </div>
+                            <div>
+                                <span class="text-sm text-gray-600">신뢰도:</span>
+                                <div class="font-semibold">${(academy.confidence_score * 100).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('academyDetails').innerHTML = detailsHtml;
+        document.getElementById('recommendationReason').textContent = academy.explanation;
+        
+        // 버튼 이벤트 설정
+        document.getElementById('bookmarkBtn').onclick = () => this.bookmarkAcademy(academy.id);
+        document.getElementById('contactBtn').onclick = () => this.contactAcademy(academy.id);
+        document.getElementById('feedbackBtn').onclick = () => this.showFeedbackModal(academy.id);
+        
+        this.showAcademyModal();
+        
+        // 상세 보기 행동 추적
+        this.trackBehavior({
+            action: 'view',
+            academy_id: academy.id,
+            page_url: window.location.href
+        });
+    }
+    
+    async loadBehaviorStatistics() {
+        try {
+            const response = await fetch('/ai-recommendation/api/behaviors/statistics/', {
+                headers: {
+                    'Authorization': `Token ${this.getAuthToken()}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                document.getElementById('totalActivities').textContent = data.total_behaviors;
+                document.getElementById('interestedAcademies').textContent = data.top_academies.length;
+                
+                const inquiryCount = data.action_statistics.find(s => s.action === 'contact')?.count || 0;
+                document.getElementById('inquiryCount').textContent = inquiryCount;
+                
+                // 간단한 차트 렌더링
+                this.renderSubjectChart(data.action_statistics);
+            }
+            
+        } catch (error) {
+            console.error('행동 통계 로드 실패:', error);
+        }
+    }
+    
+    async trackBehavior(behaviorData) {
+        try {
+            await fetch('/ai-recommendation/api/track/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Token ${this.getAuthToken()}`,
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                body: JSON.stringify({
+                    ...behaviorData,
+                    session_id: this.getSessionId(),
+                    timestamp: new Date().toISOString()
+                })
+            });
+        } catch (error) {
+            console.error('행동 추적 실패:', error);
+        }
+    }
+    
+    // 유틸리티 메서드들
+    applyAnalyzedPreferences(preferences) {
+        // 과목 선호도 적용
+        if (preferences.subject) {
+            document.querySelectorAll('.subject-pref').forEach(cb => {
+                cb.checked = preferences.subject.hasOwnProperty(cb.value);
+            });
+        }
+        
+        // 가격 선호도 적용
+        if (preferences.price) {
+            const priceLevel = Object.keys(preferences.price)[0];
+            const priceRadio = document.querySelector(`input[name="price-pref"][value="${priceLevel}"]`);
+            if (priceRadio) priceRadio.checked = true;
+        }
+        
+        // 교육방식 선호도 적용
+        if (preferences.teaching_method) {
+            document.querySelectorAll('.method-pref').forEach(cb => {
+                cb.checked = preferences.teaching_method.hasOwnProperty(cb.value);
+            });
+        }
+    }
+    
+    selectRating(rating) {
+        this.selectedRating = rating;
+        document.querySelectorAll('.star').forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('text-yellow-400');
+                star.classList.remove('text-gray-300');
+            } else {
+                star.classList.add('text-gray-300');
+                star.classList.remove('text-yellow-400');
+            }
+        });
+    }
+    
+    showAcademyModal() {
+        document.getElementById('academyModal').classList.remove('hidden');
+    }
+    
+    hideAcademyModal() {
+        document.getElementById('academyModal').classList.add('hidden');
+    }
+    
+    showFeedbackModal(recommendationId) {
+        this.currentRecommendationId = recommendationId;
+        this.selectedRating = 0;
+        document.querySelectorAll('.star').forEach(star => {
+            star.classList.add('text-gray-300');
+            star.classList.remove('text-yellow-400');
+        });
+        document.getElementById('feedbackComment').value = '';
+        document.getElementById('feedbackModal').classList.remove('hidden');
+    }
+    
+    hideFeedbackModal() {
+        document.getElementById('feedbackModal').classList.add('hidden');
+    }
+    
+    async submitFeedback() {
+        if (this.selectedRating === 0) {
+            this.showError('평점을 선택해주세요.');
+            return;
+        }
+        
+        try {
+            const comment = document.getElementById('feedbackComment').value;
+            
+            const response = await fetch(`/ai-recommendation/api/recommendations/${this.currentRecommendationId}/feedback/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Token ${this.getAuthToken()}`,
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                body: JSON.stringify({
+                    score: this.selectedRating,
+                    comment: comment
+                })
+            });
+            
+            if (response.ok) {
+                this.showSuccess('피드백이 전송되었습니다. 감사합니다!');
+                this.hideFeedbackModal();
+            } else {
+                throw new Error('피드백 전송 실패');
+            }
+            
+        } catch (error) {
+            this.showError('피드백 전송 중 오류가 발생했습니다.');
+        }
+    }
+    
+    async bookmarkAcademy(academyId) {
+        await this.trackBehavior({
+            action: 'bookmark',
+            academy_id: academyId,
+            page_url: window.location.href
+        });
+        this.showSuccess('즐겨찾기에 추가되었습니다.');
+    }
+    
+    async contactAcademy(academyId) {
+        await this.trackBehavior({
+            action: 'contact',
+            academy_id: academyId,
+            page_url: window.location.href
+        });
+        this.showSuccess('문의가 접수되었습니다.');
+    }
+    
+    renderSubjectChart(actionStats) {
+        const chartContainer = document.getElementById('subjectChart');
+        const chartHtml = actionStats.map(stat => `
+            <div class="flex items-center justify-between py-2">
+                <span class="text-sm font-medium">${stat.action}</span>
+                <div class="flex items-center space-x-2">
+                    <div class="bg-blue-200 h-2 rounded-full" style="width: ${Math.min(stat.count * 10, 200)}px;"></div>
+                    <span class="text-sm text-gray-600">${stat.count}</span>
+                </div>
+            </div>
+        `).join('');
+        
+        chartContainer.innerHTML = chartHtml || '<p class="text-gray-500">데이터가 충분하지 않습니다.</p>';
+    }
+    
+    getAuthToken() {
+        return localStorage.getItem('authToken') || '';
+    }
+    
+    getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
+    
+    getSessionId() {
+        let sessionId = sessionStorage.getItem('sessionId');
+        if (!sessionId) {
+            sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            sessionStorage.setItem('sessionId', sessionId);
+        }
+        return sessionId;
+    }
+    
+    showSuccess(message) {
+        alert(message); // 실제 구현에서는 토스트 메시지 사용
+    }
+    
+    showError(message) {
+        alert(message); // 실제 구현에서는 토스트 메시지 사용
+    }
+}
+
+// 초기화
+let recommendationDashboard;
+document.addEventListener('DOMContentLoaded', () => {
+    recommendationDashboard = new RecommendationDashboard();
+});
+</script>
+
+<style>
+.star {
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.star:hover {
+    color: #fbbf24 !important;
+}
+
+.star-rating {
+    display: flex;
+    gap: 0.25rem;
+}
+</style>
+{% endblock %}
