@@ -29,10 +29,108 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>academymap_flutter</title>
+  <title>🏫 AcademyMap - 학원지도</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- 네이버 지도 API -->
+  <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=qcf9quj1gi"></script>
 </head>
 <body>
+  <!-- 지도 컨테이너 -->
+  <div id="naverMap" style="width:100%;height:100%;"></div>
+  
+  <!-- 네이버 지도 JavaScript 함수 -->
+  <script>
+    let map = null;
+    let markers = [];
+
+    // 네이버 지도 초기화
+    function initNaverMap() {
+      if (typeof naver === 'undefined') {
+        console.error('네이버 지도 API가 로드되지 않았습니다.');
+        return;
+      }
+
+      const mapOptions = {
+        center: new naver.maps.LatLng(37.5665, 126.978), // 서울 시청
+        zoom: 11,
+        mapTypeControl: false,
+        zoomControl: true,
+        logoControl: false
+      };
+
+      map = new naver.maps.Map('naverMap', mapOptions);
+      console.log('네이버 지도가 초기화되었습니다.');
+    }
+
+    // 마커 업데이트
+    function updateMapMarkers(academyData) {
+      if (!map) {
+        console.error('지도가 초기화되지 않았습니다.');
+        return;
+      }
+
+      // 기존 마커 제거
+      markers.forEach(marker => {
+        marker.setMap(null);
+      });
+      markers = [];
+
+      // 새 마커 추가
+      academyData.forEach(academy => {
+        if (academy.lat && academy.lng) {
+          const position = new naver.maps.LatLng(academy.lat, academy.lng);
+          
+          const marker = new naver.maps.Marker({
+            position: position,
+            map: map,
+            title: academy.name,
+            icon: {
+              content: '<div style="background: #007bff; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">🏫</div>',
+              size: new naver.maps.Size(24, 24),
+              anchor: new naver.maps.Point(12, 12)
+            }
+          });
+
+          // 마커 클릭 이벤트
+          const infoWindow = new naver.maps.InfoWindow({
+            content: '<div style="padding: 10px; min-width: 200px;">' +
+                    '<h4 style="margin: 0 0 8px 0; color: #333;">' + academy.name + '</h4>' +
+                    '<p style="margin: 0; color: #666; font-size: 12px;">' + academy.address + '</p>' +
+                    (academy.subject ? '<p style="margin: 4px 0 0 0; color: #007bff; font-size: 11px;">📚 ' + academy.subject + '</p>' : '') +
+                    '</div>'
+          });
+
+          naver.maps.Event.addListener(marker, 'click', function() {
+            if (infoWindow.getMap()) {
+              infoWindow.close();
+            } else {
+              infoWindow.open(map, marker);
+            }
+          });
+
+          markers.push(marker);
+        }
+      });
+
+      console.log(`지도에 ${markers.length}개 마커가 추가되었습니다.`);
+
+      // 마커들이 모두 보이도록 지도 범위 조정
+      if (markers.length > 0) {
+        const bounds = new naver.maps.LatLngBounds();
+        markers.forEach(marker => {
+          bounds.extend(marker.getPosition());
+        });
+        map.fitBounds(bounds);
+      }
+    }
+
+    // Flutter의 HtmlElementView를 위한 설정
+    window.addEventListener('flutter-initialized', function() {
+      console.log('Flutter 초기화 완료');
+    });
+  </script>
+  
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
