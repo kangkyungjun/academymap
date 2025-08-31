@@ -6,6 +6,7 @@ import 'dart:js' as js;
 import 'dart:async';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:ui_web' as ui_web;
+import 'package:geolocator/geolocator.dart';
 
 void main() {
   // 네이버 지도 iframe 등록
@@ -70,6 +71,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   TextEditingController searchController = TextEditingController();
   String searchQuery = '';
   Timer? searchTimer;
+  
+  // 위치 정보
+  Position? currentPosition;
+  bool isLocationLoading = false;
 
   final List<String> subjects = [
     '전체', '수학', '영어', '과학', '외국어', '예체능', '컴퓨터', '논술', '기타', '독서실스터디카페'
@@ -84,6 +89,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     super.initState();
     loadAcademies();
     scrollController.addListener(_onScroll);
+    _getCurrentLocation();
   }
   
   @override
@@ -100,6 +106,91 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       if (!isLoadingMore && hasMoreData) {
         loadMoreAcademies();
       }
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      isLocationLoading = true;
+    });
+
+    try {
+      // 위치 서비스 활성화 확인
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('🔍 위치 서비스가 비활성화되어 있습니다');
+        setState(() {
+          isLocationLoading = false;
+        });
+        return;
+      }
+
+      // 위치 권한 확인
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print('🚫 위치 권한이 거부되었습니다');
+          setState(() {
+            isLocationLoading = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print('🚫 위치 권한이 영구적으로 거부되었습니다');
+        setState(() {
+          isLocationLoading = false;
+        });
+        return;
+      }
+
+      // 현재 위치 획득
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        currentPosition = position;
+        isLocationLoading = false;
+      });
+
+      print('📍 현재 위치 획득: ${position.latitude}, ${position.longitude}');
+
+      // 지도가 이미 표시 중이면 위치 업데이트
+      if (isMapView) {
+        _sendLocationToMap();
+      }
+
+    } catch (e) {
+      print('❌ 위치 획득 실패: $e');
+      setState(() {
+        isLocationLoading = false;
+      });
+    }
+  }
+
+  void _sendLocationToMap() {
+    try {
+      final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
+      print('🔍 iframe 확인: ${iframe != null}, contentWindow: ${iframe?.contentWindow != null}, currentPosition: ${currentPosition != null}');
+      
+      if (iframe?.contentWindow != null && currentPosition != null) {
+        final message = {
+          'type': 'setMapCenter',
+          'lat': currentPosition!.latitude,
+          'lng': currentPosition!.longitude,
+        };
+        print('📤 전송할 메시지: $message');
+        
+        iframe!.contentWindow!.postMessage(message, '*');
+        print('📍 현재 위치를 지도에 전송 완료: ${currentPosition!.latitude}, ${currentPosition!.longitude}');
+      } else {
+        print('❌ iframe 또는 위치 정보가 없습니다. iframe: ${iframe != null}, position: ${currentPosition != null}');
+      }
+    } catch (e) {
+      print('위치 전송 오류: $e');
     }
   }
 
@@ -592,8 +683,9 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                   isMapView = index == 1;
                 });
                 if (isMapView) {
-                  // 지도 뷰로 전환할 때 마커 업데이트
+                  // 지도 뷰로 전환할 때 위치 및 마커 업데이트
                   Future.delayed(Duration(milliseconds: 500), () {
+                    _sendLocationToMap();
                     _addAcademyMarkersToMap();
                   });
                 }

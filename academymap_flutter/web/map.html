@@ -26,17 +26,26 @@
   <script>
     let map = null;
     let markers = [];
+    let mapCenter = { lat: 37.5665, lng: 126.978 }; // 기본값: 서울 시청
 
     // 지도 초기화
-    function initMap() {
+    function initMap(centerLat = null, centerLng = null) {
       if (typeof naver === 'undefined') {
         console.error('네이버 지도 API가 로드되지 않았습니다.');
         return;
       }
 
+      // 사용자 위치가 있으면 사용, 없으면 기본 위치 사용
+      if (centerLat && centerLng) {
+        mapCenter = { lat: centerLat, lng: centerLng };
+        console.log('🎯 사용자 위치로 지도 초기화:', mapCenter);
+      } else {
+        console.log('📍 기본 위치(서울 시청)로 지도 초기화:', mapCenter);
+      }
+
       const mapOptions = {
-        center: new naver.maps.LatLng(37.5665, 126.978), // 서울 시청
-        zoom: 11,
+        center: new naver.maps.LatLng(mapCenter.lat, mapCenter.lng),
+        zoom: centerLat && centerLng ? 13 : 11, // 사용자 위치면 더 확대
         mapTypeControl: false,
         zoomControl: true,
         logoControl: false,
@@ -52,6 +61,20 @@
         type: 'mapInitialized',
         data: { success: true }
       }, '*');
+    }
+
+    // 지도 중심 변경
+    function setMapCenter(lat, lng) {
+      console.log('setMapCenter 호출:', lat, lng, typeof lat, typeof lng);
+      if (map && lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
+        const newCenter = new naver.maps.LatLng(parseFloat(lat), parseFloat(lng));
+        map.setCenter(newCenter);
+        map.setZoom(13); // 사용자 위치로 이동 시 확대
+        mapCenter = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        console.log('✅ 지도 중심 이동 완료:', lat, lng);
+      } else {
+        console.log('❌ 지도 중심 이동 실패 - 유효하지 않은 좌표:', lat, lng);
+      }
     }
 
     // 마커 업데이트
@@ -125,8 +148,12 @@
 
     // Flutter로부터 메시지 수신
     window.addEventListener('message', function(event) {
+      console.log('iframe에서 메시지 수신:', event.data);
       if (event.data.type === 'updateMarkers') {
         updateMarkers(event.data.academies);
+      } else if (event.data.type === 'setMapCenter') {
+        console.log('setMapCenter 메시지 받음:', event.data);
+        setMapCenter(event.data.lat, event.data.lng);
       }
     });
 
