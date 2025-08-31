@@ -1,0 +1,39 @@
+/* AcademyMap Static CSS Files */
+/* 메인 스타일시트 */
+
+/* 기본 스타일 */
+body {
+    font-family: 'Noto Sans KR', Arial, sans-serif;
+}
+
+/* 성능 대시보드 스타일 */
+.performance-card {
+    transition: transform 0.2s;
+}
+
+.performance-card:hover {
+    transform: translateY(-2px);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.status-healthy { color: #28a745; }
+.status-warning { color: #ffc107; }
+.status-error { color: #dc3545; }
+
+/* 로딩 스피너 */
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 20px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .metric-value {
+        font-size: 1.5rem;
+    }
+}

@@ -1,0 +1,41 @@
+{% load seo_tags %}
+
+<!-- SEO Meta Tags -->
+<title>{{ metadata.title|default:"AcademyMap - 전국 학원 정보" }}</title>
+<meta name="description" content="{{ metadata.description|default:"전국 학원 정보를 한 곳에서 확인하세요." }}">
+<meta name="keywords" content="{{ metadata.keywords|default:"학원, 교육, 수강료" }}">
+<meta name="robots" content="index, follow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+
+{% if request %}
+<link rel="canonical" href="{{ request.build_absolute_uri }}">
+{% endif %}
+
+<!-- Open Graph Tags -->
+<meta property="og:title" content="{{ metadata.og_title|default:metadata.title|default:"AcademyMap" }}">
+<meta property="og:description" content="{{ metadata.og_description|default:metadata.description|default:"전국 학원 정보" }}">
+<meta property="og:image" content="{{ metadata.og_image|default:"/static/images/og-image.jpg" }}">
+{% if request %}
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+{% endif %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AcademyMap">
+
+<!-- Twitter Card Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ metadata.twitter_title|default:metadata.title|default:"AcademyMap" }}">
+<meta name="twitter:description" content="{{ metadata.twitter_description|default:metadata.description|default:"전국 학원 정보" }}">
+<meta name="twitter:image" content="{{ metadata.twitter_image|default:metadata.og_image|default:"/static/images/og-image.jpg" }}">
+
+<!-- Additional Meta Tags -->
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#007bff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<!-- Favicon -->
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">

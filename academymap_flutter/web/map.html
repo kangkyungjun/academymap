@@ -120,6 +120,7 @@
     let userLocationMarker = null; // 사용자 위치 마커
     let mapCenter = { lat: 37.5665, lng: 126.978 }; // 기본값: 서울 시청
     let currentZoomLevel = 11; // 현재 줌 레벨
+    let debounceTimer = null; // 디바운싱 타이머
 
     // 지도 초기화 
     function initMap(centerLat = null, centerLng = null) {
@@ -149,19 +150,19 @@
       map = new naver.maps.Map('map', mapOptions);
       console.log('네이버 지도 iframe 초기화 완료');
       
-      // 지도 이동 완료 이벤트 리스너 추가
+      // 지도 이동 완료 이벤트 리스너 추가 (디바운싱 적용)
       naver.maps.Event.addListener(map, 'idle', function() {
         console.log('지도 이동 완료, 새로운 마커 요청');
         currentZoomLevel = map.getZoom();
-        updateMarkersBasedOnZoom();
+        debouncedUpdateMarkers();
       });
       
-      // 줌 변경 이벤트 리스너 추가
+      // 줌 변경 이벤트 리스너 추가 (디바운싱 적용)
       naver.maps.Event.addListener(map, 'zoom_changed', function() {
         const newZoom = map.getZoom();
         console.log(`🔍 줌 레벨 변경: ${currentZoomLevel} → ${newZoom}`);
         currentZoomLevel = newZoom;
-        updateMarkersBasedOnZoom();
+        debouncedUpdateMarkers();
       });
       
       // Flutter에 초기화 완료 알림
@@ -218,19 +219,19 @@
       if (map && lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
         const newCenter = new naver.maps.LatLng(parseFloat(lat), parseFloat(lng));
         
-        // 사용자 위치로 이동 시에는 더 높은 줌 레벨로 설정
-        const targetZoom = 16; // 사용자 위치에 적합한 줌 레벨
+        // 현재 줌 레벨 유지 - 사용자가 설정한 줌 레벨을 보존
+        const currentZoom = map.getZoom();
         
-        // 지도 중심과 줌 레벨을 한번에 설정
-        map.morph(newCenter, targetZoom);
+        // 지도 중심만 변경하고 줌 레벨은 유지
+        map.setCenter(newCenter);
         
         mapCenter = { lat: parseFloat(lat), lng: parseFloat(lng) };
-        currentZoomLevel = targetZoom;
+        currentZoomLevel = currentZoom;
         
         // 사용자 위치 마커 추가/업데이트
         updateUserLocationMarker(parseFloat(lat), parseFloat(lng));
         
-        console.log('✅ 지도 중심 이동 완료:', lat, lng, '줌:', targetZoom);
+        console.log('✅ 지도 중심 이동 완료:', lat, lng, '줌:', currentZoom);
       } else {
         console.log('❌ 지도 중심 이동 실패 - 유효하지 않은 좌표:', lat, lng);
       }
@@ -317,14 +318,28 @@
 
       console.log(`지도에 ${markers.length}개 마커 추가 완료`);
 
-      // 마커들이 모두 보이도록 지도 범위 조정
-      if (markers.length > 0) {
-        const bounds = new naver.maps.LatLngBounds();
-        markers.forEach(marker => {
-          bounds.extend(marker.getPosition());
-        });
-        map.fitBounds(bounds);
+      // 마커들이 모두 보이도록 지도 범위 조정 (초기 로드시에만)
+      // fitBounds 비활성화 - 사용자가 선택한 위치와 줌 레벨 유지
+      // if (markers.length > 0) {
+      //   const bounds = new naver.maps.LatLngBounds();
+      //   markers.forEach(marker => {
+      //     bounds.extend(marker.getPosition());
+      //   });
+      //   map.fitBounds(bounds);
+      // }
+    }
+
+    // 디바운싱된 마커 업데이트 (API 요청 빈도 제한)
+    function debouncedUpdateMarkers() {
+      // 기존 타이머 취소
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
+      
+      // 800ms 지연 후 실행
+      debounceTimer = setTimeout(() => {
+        updateMarkersBasedOnZoom();
+      }, 800);
     }
 
     // 줌 레벨에 따른 마커 업데이트 결정

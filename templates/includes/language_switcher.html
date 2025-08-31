@@ -1,0 +1,67 @@
+{% load i18n %}
+
+<div class="language-switcher">
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            {% get_current_language as LANGUAGE_CODE %}
+            {% if LANGUAGE_CODE == 'ko' %}
+                🇰🇷 한국어
+            {% elif LANGUAGE_CODE == 'en' %}
+                🇺🇸 English
+            {% elif LANGUAGE_CODE == 'zh-hans' %}
+                🇨🇳 中文
+            {% endif %}
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="languageDropdown">
+            {% get_available_languages as LANGUAGES %}
+            {% get_language_info_list for LANGUAGES as languages %}
+            {% for language in languages %}
+                <li>
+                    <form action="{% url 'set_language' %}" method="post" class="language-form">
+                        {% csrf_token %}
+                        <input name="next" type="hidden" value="{{ redirect_to }}" />
+                        <input name="language" type="hidden" value="{{ language.code }}" />
+                        <button type="submit" class="dropdown-item {% if language.code == LANGUAGE_CODE %}active{% endif %}">
+                            {% if language.code == 'ko' %}
+                                🇰🇷 한국어
+                            {% elif language.code == 'en' %}
+                                🇺🇸 English
+                            {% elif language.code == 'zh-hans' %}
+                                🇨🇳 中文
+                            {% endif %}
+                        </button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<style>
+.language-switcher {
+    position: relative;
+    z-index: 1000;
+}
+
+.language-form {
+    margin: 0;
+    padding: 0;
+}
+
+.language-form button {
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.language-form button:hover {
+    background-color: var(--bs-dropdown-link-hover-bg);
+}
+
+.language-form button.active {
+    background-color: var(--bs-dropdown-link-active-bg);
+    color: var(--bs-dropdown-link-active-color);
+}
+</style>

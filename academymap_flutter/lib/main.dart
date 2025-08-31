@@ -273,7 +273,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   Future<void> _loadMarkersInBounds(double swLat, double swLng, double neLat, double neLng) async {
     try {
-      final Uri uri = Uri.parse('http://127.0.0.1:8000/map_api/academies/').replace(queryParameters: {
+      final Uri uri = Uri.parse('http://127.0.0.1:8000/api/academies/').replace(queryParameters: {
         'sw_lat': swLat.toString(),
         'sw_lng': swLng.toString(),
         'ne_lat': neLat.toString(),
@@ -287,12 +287,38 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final boundsAcademies = data['results'] ?? [];
+        final allAcademies = data['results'] ?? [];
         
-        print('📍 지도 영역 내 학원: ${boundsAcademies.length}개');
+        // 클라이언트 사이드에서 bounds 필터링 (임시로 범위 확대)
+        final boundsAcademies = allAcademies.where((academy) {
+          final lat = academy['위도'];
+          final lng = academy['경도'];
+          
+          if (lat == null || lng == null) return false;
+          
+          // 임시로 bounds 범위를 크게 확장 (±0.5도 = 약 55km)
+          final expandedSwLat = swLat - 0.5;
+          final expandedNeLat = neLat + 0.5;
+          final expandedSwLng = swLng - 0.5;
+          final expandedNeLng = neLng + 0.5;
+          
+          return lat >= expandedSwLat && lat <= expandedNeLat && lng >= expandedSwLng && lng <= expandedNeLng;
+        }).toList();
+        
+        print('📍 지도 영역 내 학원: ${boundsAcademies.length}개 (전체: ${allAcademies.length}개)');
+        print('✅ 지도 영역 마커 업데이트: ${boundsAcademies.length}개');
         
         // iframe에 마커 업데이트 메시지 전송
-        _sendMarkersToMap(boundsAcademies);
+        _sendMarkersToMap(boundsAcademies.take(200).toList()); // 최대 200개로 제한
+      } else {
+        print('❌ API 응답 오류: ${response.statusCode}');
+        print('📄 응답 내용: ${response.body}');
+        
+        // 에러 상황에서도 빈 배열로 마커 클리어
+        if (response.statusCode == 429) {
+          print('🚨 API Throttling 발생 - 잠시 후 다시 시도됩니다');
+        }
+        _sendMarkersToMap([]);
       }
     } catch (e) {
       print('지도 영역 마커 로드 오류: $e');
@@ -313,10 +339,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       params['priceMax'] = priceRange.end >= 2000000 ? '999999999' : priceRange.end.toString();
     }
     
-    // 연령대 필터
+    // 연령대 필터 (Django API 호환)
     if (selectedAgeGroups.isNotEmpty) {
       for (String ageGroup in selectedAgeGroups) {
-        params['ageGroups[]'] = ageGroup;
+        params['age_groups'] = ageGroup;
       }
     }
     
@@ -351,9 +377,19 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         final clusters = data['clusters'] ?? [];
         
         print('🏘️ 지도 영역 내 클러스터: ${clusters.length}개');
+        print('✅ 지도 영역 클러스터 업데이트: ${clusters.length}개');
         
         // iframe에 클러스터 업데이트 메시지 전송
         _sendClustersToMap(clusters);
+      } else {
+        print('❌ 클러스터 API 응답 오류: ${response.statusCode}');
+        print('📄 응답 내용: ${response.body}');
+        
+        // 에러 상황에서도 빈 배열로 클러스터 클리어
+        if (response.statusCode == 429) {
+          print('🚨 클러스터 API Throttling 발생 - 잠시 후 다시 시도됩니다');
+        }
+        _sendClustersToMap([]);
       }
     } catch (e) {
       print('클러스터 로드 오류: $e');
@@ -407,6 +443,78 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     } catch (e) {
       print('지도 마커 전송 오류: $e');
     }
+  }
+
+  bool _hasActiveFilters() {
+    return selectedSubject != '전체' ||
+           priceRange.start > 0 ||
+           priceRange.end < 2000000 ||
+           selectedAgeGroups.isNotEmpty ||
+           shuttleFilter;
+  }
+
+  List<Widget> _getActiveFilterChips() {
+    List<Widget> chips = [];
+
+    // 과목 필터
+    if (selectedSubject != '전체') {
+      chips.add(
+        Chip(
+          label: Text('📚 $selectedSubject'),
+          backgroundColor: Colors.blue[100],
+          labelStyle: TextStyle(fontSize: 11, color: Colors.blue[800]),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      );
+    }
+
+    // 가격 필터
+    if (priceRange.start > 0 || priceRange.end < 2000000) {
+      String priceText = '💰 ';
+      if (priceRange.start > 0 && priceRange.end < 2000000) {
+        priceText += '${(priceRange.start / 10000).toInt()}만~${priceRange.end >= 2000000 ? '200만+' : '${(priceRange.end / 10000).toInt()}만'}원';
+      } else if (priceRange.start > 0) {
+        priceText += '${(priceRange.start / 10000).toInt()}만원 이상';
+      } else {
+        priceText += '${(priceRange.end / 10000).toInt()}만원 이하';
+      }
+      
+      chips.add(
+        Chip(
+          label: Text(priceText),
+          backgroundColor: Colors.green[100],
+          labelStyle: TextStyle(fontSize: 11, color: Colors.green[800]),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      );
+    }
+
+    // 연령 필터
+    if (selectedAgeGroups.isNotEmpty) {
+      String ageText = '👶 ${selectedAgeGroups.join(', ')}';
+      chips.add(
+        Chip(
+          label: Text(ageText),
+          backgroundColor: Colors.purple[100],
+          labelStyle: TextStyle(fontSize: 11, color: Colors.purple[800]),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      );
+    }
+
+    // 셔틀버스 필터
+    if (shuttleFilter) {
+      chips.add(
+        Chip(
+          label: Text('🚌 셔틀버스'),
+          backgroundColor: Colors.orange[100],
+          labelStyle: TextStyle(fontSize: 11, color: Colors.orange[800]),
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      );
+    }
+
+    return chips;
   }
 
   void applyFiltersWithinMapBounds() {
@@ -967,12 +1075,52 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '📚 과목 선택',
-                  style: TextStyle(
-                    fontSize: MediaQuery.of(context).size.width > 600 ? 16 : 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '📚 과목 선택',
+                      style: TextStyle(
+                        fontSize: MediaQuery.of(context).size.width > 600 ? 16 : 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _hasActiveFilters() ? () {
+                        setState(() {
+                          selectedSubject = '전체';
+                          priceRange = const RangeValues(0, 2000000);
+                          selectedAgeGroups.clear();
+                          shuttleFilter = false;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🔄 필터가 초기화되었습니다'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        Future.delayed(Duration(milliseconds: 300), () {
+                          applyFiltersWithinMapBounds();
+                        });
+                      } : null,
+                      icon: Icon(
+                        Icons.refresh, 
+                        size: 18,
+                        color: _hasActiveFilters() ? Colors.blue[700] : Colors.grey[400],
+                      ),
+                      label: Text(
+                        '초기화',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _hasActiveFilters() ? Colors.blue[700] : Colors.grey[400],
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size(0, 0),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -1014,6 +1162,45 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
+                    ),
+                  ),
+                ],
+                
+                // 활성 필터 상태 표시
+                if (_hasActiveFilters()) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange[200]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.filter_alt, size: 16, color: Colors.orange[700]),
+                            const SizedBox(width: 4),
+                            Text(
+                              '활성 필터',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: _getActiveFilterChips(),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1142,14 +1329,61 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             child: isMapView
               ? _buildNaverMapWidget()
               : isLoading
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('학원 정보를 불러오는 중...'),
-                        ],
+                  ? Center(
+                      child: Container(
+                        padding: EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                shape: BoxShape.circle,
+                              ),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              '🔍 학원 정보를 불러오는 중...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '잠시만 기다려주세요',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            if (_hasActiveFilters()) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.orange[200]!),
+                                ),
+                                child: Text(
+                                  '필터가 적용된 결과를 찾는 중',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.orange[700],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     )
                   : academies.isEmpty
@@ -1183,14 +1417,45 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                             if (index == academies.length) {
                               if (isLoadingMore) {
                                 return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  child: const Center(
-                                    child: Column(
-                                      children: [
-                                        CircularProgressIndicator(),
-                                        SizedBox(height: 8),
-                                        Text('더 많은 학원 정보를 불러오는 중...'),
-                                      ],
+                                  padding: const EdgeInsets.all(20),
+                                  child: Center(
+                                    child: Container(
+                                      padding: EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[50],
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey[200]!),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            '📚 더 많은 학원을 찾는 중...',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '스크롤을 계속해보세요',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[500],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );

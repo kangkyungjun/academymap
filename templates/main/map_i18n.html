@@ -1,0 +1,220 @@
+{% extends "templates/main/base.html" %}
+{% load static %}
+{% load humanize %}
+{% load i18n %}
+{% block contents %}
+<style>
+  html, body {
+    overflow: hidden;
+  }
+</style>
+
+<!-- Language Switcher -->
+<div class="language-bar" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+    {% include 'includes/language_switcher.html' %}
+</div>
+
+<div class="navbar" style="padding-right: 0;">
+  <button class="nav_item1" onclick="window.location.href='javascript:history.back()'"><span class="material-symbols-outlined">arrow_back_ios</span></button>
+  <a href="{% url 'search' %}" class="nav_item2">
+    <div class="search_box">{% trans "학원명/지역 검색" %}</div>
+    <div class="search_icon_box"><span class="material-symbols-outlined">search</span></div>
+  </a>
+    <!-- Toggle Panel Button -->
+  <div class="nav_item3">
+    <button class="account" style="display:none;"><span class="material-symbols-outlined">person</span></button>
+    <button class="filterButton" id="toggle-panel" onclick="togglePanel()"><span class="material-symbols-outlined">tune</span></button>
+  </div>
+</div>
+
+<!-- 카테고리 버튼 (가로 스크롤) -->
+<div id="category-container">
+  <div id="category">
+    <button onclick="filterMarkers(this, '전체')">{% trans "전체" %}</button>
+    <button onclick="filterMarkers(this, '수학')">{% trans "수학" %}</button>
+    <button onclick="filterMarkers(this, '영어')">{% trans "영어" %}</button>
+    <button onclick="filterMarkers(this, '과학')">{% trans "과학" %}</button>
+    <button onclick="filterMarkers(this, '외국어')">{% trans "외국어" %}</button>
+    <button onclick="filterMarkers(this, '예체능')">{% trans "예체능" %}</button>
+    <button onclick="filterMarkers(this, '컴퓨터')">{% trans "컴퓨터" %}</button>
+    <button onclick="filterMarkers(this, '논술')">{% trans "논술" %}</button>
+    <button onclick="filterMarkers(this, '기타')">{% trans "기타" %}</button>
+    <button onclick="filterMarkers(this, '독서실스터디카페')">{% trans "독서실/스터디카페" %}</button>
+  </div>
+</div>
+
+<div id="panel-container">
+  <div class="panel-subject-title">{% trans "과목" %}</div>
+  <div id="panel-category">
+    <button onclick="filterMarkers(this, '전체')">{% trans "전체" %}</button>
+    <button onclick="filterMarkers(this, '수학')">{% trans "수학" %}</button>
+    <button onclick="filterMarkers(this, '영어')">{% trans "영어" %}</button>
+    <button onclick="filterMarkers(this, '과학')">{% trans "과학" %}</button>
+    <button onclick="filterMarkers(this, '외국어')">{% trans "외국어" %}</button>
+    <button onclick="filterMarkers(this, '예체능')">{% trans "예체능" %}</button>
+    <button onclick="filterMarkers(this, '컴퓨터')">{% trans "컴퓨터" %}</button>
+    <button onclick="filterMarkers(this, '논술')">{% trans "논술" %}</button>
+    <button onclick="filterMarkers(this, '기타')">{% trans "기타" %}</button>
+    <button onclick="filterMarkers(this, '독서실스터디카페')">{% trans "독서실/스터디카페" %}</button>
+  </div>
+
+  <hr>
+
+  <!-- 가격 필터: 슬라이더 영역 -->
+  <div>
+    {% trans "수강료" %}
+    <div class="price-part">
+      <span id="price-slider-min"></span>  -  <span id="price-slider-max"></span>
+    </div>
+
+  </div>
+  <div id="price-slider"></div>
+  <!-- 선택된 값 저장용 hidden input -->
+  <input type="hidden" id="price-min" value="{{ min_price }}">
+  <input type="hidden" id="price-max" value="{{ max_price }}">
+
+   <hr>
+
+  <div class="panel-age-title">{% trans "연령" %}</div>
+    <!-- 연령 필터 버튼 (다중 선택 가능) -->
+  <div class="panel-age-filters">
+    <button class="age-filter" onclick="toggleAgeFilter('유아', this)">{% trans "유아" %}</button>
+    <button class="age-filter" onclick="toggleAgeFilter('초등', this)">{% trans "초등" %}</button>
+    <button class="age-filter" onclick="toggleAgeFilter('중등', this)">{% trans "중등" %}</button>
+    <button class="age-filter" onclick="toggleAgeFilter('고등', this)">{% trans "고등" %}</button>
+    <button class="age-filter" onclick="toggleAgeFilter('특목고', this)">{% trans "특목고" %}</button>
+    <button class="age-filter" onclick="toggleAgeFilter('일반', this)">{% trans "일반" %}</button>
+    <button class="age-filter" onclick="toggleAgeFilter('기타', this)">{% trans "기타" %}</button>
+  </div>
+
+   <hr>
+
+    <!-- 패널 컨테이너 내부, 연령 필터 아래에 추가 -->
+  <div class="panel-suttle-title">{% trans "셔틀" %}</div>
+  <div class="panel-suttle-filters">
+    <button class="suttle-filter" onclick="toggleShuttleFilter(this)">{% trans "셔틀버스" %}</button>
+  </div>
+
+</div>
+
+<!-- 지도 영역 -->
+<div id="map"></div>
+
+<!-- 내 위치 버튼 -->
+<div id="controls">
+  <button onclick="moveToCurrentLocation()">
+    <span class="material-symbols-outlined">my_location</span>
+  </button>
+</div>
+
+<!-- 하단 정보 카드 (선택된 마커 정보 표시) -->
+<div id="info-card" class="info-card" style="display: none;">
+  <div class="info-card-header">
+    <h3 id="info-title"></h3>
+    <button id="close-info" onclick="closeInfoCard()" class="close-btn">×</button>
+  </div>
+  
+  <div class="info-card-content">
+    <div id="info-content">
+      <!-- 마커 정보가 여기에 동적으로 삽입됩니다 -->
+    </div>
+    
+    <!-- 액션 버튼들 -->
+    <div class="info-card-actions">
+      <button class="action-btn primary" onclick="goToDetail()">
+        <span class="material-symbols-outlined">info</span>
+        {% trans "상세보기" %}
+      </button>
+      <button class="action-btn secondary" onclick="callAcademy()">
+        <span class="material-symbols-outlined">call</span>
+        {% trans "전화하기" %}
+      </button>
+      <button class="action-btn secondary" onclick="shareAcademy()">
+        <span class="material-symbols-outlined">share</span>
+        {% trans "공유하기" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 다국어 지원을 위한 JavaScript 번역 객체
+window.translations = {
+    'academy_name': "{% trans '학원명' %}",
+    'address': "{% trans '주소' %}",
+    'phone': "{% trans '전화번호' %}",
+    'subjects': "{% trans '과목' %}",
+    'age_groups': "{% trans '대상' %}",
+    'fee': "{% trans '수강료' %}",
+    'rating': "{% trans '평점' %}",
+    'no_phone': "{% trans '전화번호 없음' %}",
+    'call_academy': "{% trans '학원에 전화하기' %}",
+    'share_academy': "{% trans '학원 정보 공유하기' %}",
+    'loading': "{% trans '로딩 중...' %}",
+    'search_placeholder': "{% trans '학원명/지역 검색' %}",
+    'filter_all': "{% trans '전체' %}",
+    'no_results': "{% trans '검색 결과가 없습니다' %}",
+    'error_loading': "{% trans '데이터를 불러오는 중 오류가 발생했습니다' %}",
+    'location_access_denied': "{% trans '위치 접근이 거부되었습니다' %}",
+    'location_not_available': "{% trans '위치 정보를 사용할 수 없습니다' %}",
+    'location_timeout': "{% trans '위치 요청 시간이 초과되었습니다' %}"
+};
+</script>
+
+<!-- Include the rest of the original JavaScript and CSS -->
+{% include "templates/main/css_map.html" %}
+
+<script>
+var map;
+var markers = [];
+var allAcademies = [];
+var selectedMarker = null;
+var infoWindow;
+
+// Load translated category data
+var categories = {
+    '전체': "{% trans '전체' %}",
+    '수학': "{% trans '수학' %}",
+    '영어': "{% trans '영어' %}",
+    '과학': "{% trans '과학' %}",
+    '외국어': "{% trans '외국어' %}",
+    '예체능': "{% trans '예체능' %}",
+    '컴퓨터': "{% trans '컴퓨터' %}",
+    '논술': "{% trans '논술' %}",
+    '기타': "{% trans '기타' %}",
+    '독서실스터디카페': "{% trans '독서실/스터디카페' %}"
+};
+
+var ageGroups = {
+    '유아': "{% trans '유아' %}",
+    '초등': "{% trans '초등' %}",
+    '중등': "{% trans '중등' %}",
+    '고등': "{% trans '고등' %}",
+    '특목고': "{% trans '특목고' %}",
+    '일반': "{% trans '일반' %}",
+    '기타': "{% trans '기타' %}"
+};
+
+// Language-aware formatting functions
+function formatPrice(price) {
+    if (!price || price === 0) return "{% trans '문의' %}";
+    const currentLang = "{{ LANGUAGE_CODE }}";
+    
+    if (currentLang === 'en') {
+        return '$' + price.toLocaleString();
+    } else if (currentLang === 'zh-hans') {
+        return '¥' + price.toLocaleString();
+    } else {
+        return price.toLocaleString() + '{% trans "원" %}';
+    }
+}
+
+function formatRating(rating) {
+    if (!rating || rating === 0) return "{% trans '평가없음' %}";
+    return rating.toFixed(1) + '★';
+}
+
+// Rest of the original JavaScript functions with translation support...
+</script>
+
+{% endblock %}

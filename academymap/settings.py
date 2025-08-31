@@ -44,14 +44,27 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',
     'django_filters',
+    'channels',
+    'accounts',
     'api',
     'map_api',
     'main',
+    'chat',
+    'payment',
+    'ai_recommendation',
 ]
 
 # Django REST Framework 설정
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS': [
@@ -67,13 +80,12 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.MultiPartParser',
         'rest_framework.parsers.FormParser',
     ],
+    # 합리적인 Rate Limiting 적용 (지도 이동 고려)
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
+        'anon': '1000/hour',  # 시간당 1000회 (분당 16회 정도)
     },
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
     'DEFAULT_VERSION': 'v1',
@@ -100,13 +112,20 @@ CORS_ALLOW_HEADERS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'main.performance_middleware.SecurityHeadersMiddleware',
+    'main.performance_middleware.PerformanceMonitoringMiddleware',
+    'main.performance_middleware.CompressionMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'main.performance_middleware.CacheMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'main.performance_middleware.DatabaseOptimizationMiddleware',
+    'main.performance_middleware.ResponseOptimizationMiddleware',
 ]
 
 ROOT_URLCONF = 'academymap.urls'
@@ -128,6 +147,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'academymap.wsgi.application'
+ASGI_APPLICATION = 'academymap.asgi.application'
 
 
 # Database
@@ -165,9 +185,22 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'ko'
 
+# 지원 언어 목록
+LANGUAGES = [
+    ('ko', 'Korean'),
+    ('en', 'English'),
+    ('zh-hans', 'Simplified Chinese'),
+]
+
+# 언어 파일 경로
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, 'locale'),
+]
+
 TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
+USE_L10N = True
 
 USE_TZ = True
 
@@ -185,6 +218,16 @@ STATIC_ROOT= os.path.join(BASE_DIR,'static')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Channels 설정 (실시간 채팅용)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -208,3 +251,68 @@ CACHES = {
 API_CACHE_TIMEOUT = 300  # 5분 캐싱
 POPULAR_ACADEMIES_CACHE_TIMEOUT = 1800  # 30분 캐싱
 STATS_CACHE_TIMEOUT = 3600  # 1시간 캐싱
+
+# 커스텀 사용자 모델 설정
+AUTH_USER_MODEL = 'accounts.User'
+
+# SEO 설정
+SITE_URL = 'https://academymap.co.kr'
+SITE_NAME = 'AcademyMap'
+SITE_DESCRIPTION = '전국 학원 정보를 한 곳에서 확인하세요. 지역별, 과목별 학원 검색과 수강료 비교.'
+
+# 성능 모니터링 설정
+PERFORMANCE_MONITORING = {
+    'ENABLE_MONITORING': True,
+    'SLOW_REQUEST_THRESHOLD': 1.0,  # 1초 이상 요청을 느린 요청으로 분류
+    'HIGH_QUERY_COUNT_THRESHOLD': 20,  # 20개 이상 쿼리를 많은 쿼리로 분류
+    'CACHE_HIT_RATE_WARNING': 0.7,  # 70% 미만일 때 경고
+    'ENABLE_N_PLUS_ONE_DETECTION': True,
+}
+
+# 캐시 최적화 설정
+CACHE_MIDDLEWARE_SECONDS = 300  # 5분
+CACHE_MIDDLEWARE_KEY_PREFIX = 'academymap'
+
+# 성능 최적화 추가 설정
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'performance.log'),
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'WARNING',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'main.performance_middleware': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'main.performance_services': {
+            'handlers': ['file', 'console'], 
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
+# Rate Limiting 설정
+RATE_LIMIT_PER_MINUTE = 120  # 분당 120회 요청 제한

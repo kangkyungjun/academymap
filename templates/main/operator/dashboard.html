@@ -1,0 +1,449 @@
+{% extends "templates/main/base.html" %}
+{% load static %}
+{% load humanize %}
+{% block contents %}
+
+<div class="operator-dashboard">
+    <!-- 상단 네비게이션 -->
+    <div class="dashboard-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="dashboard-title">학원 운영자 대시보드</h1>
+                    <p class="dashboard-subtitle">{{ selected_academy.상호명 }} 관리</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <!-- 학원 선택 드롭다운 -->
+                    {% if managed_academies|length > 1 %}
+                    <div class="academy-selector">
+                        <select class="form-select" id="academySelector" onchange="changeAcademy()">
+                            {% for academy in managed_academies %}
+                            <option value="{{ academy.id }}" {% if academy.id == selected_academy.id %}selected{% endif %}>
+                                {{ academy.상호명 }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <small class="text-muted">최종 업데이트: {{ overview.last_updated|date:"Y-m-d H:i" }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- 개요 카드들 -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="card-title text-muted">총 조회수</h6>
+                                <h3 class="mb-0">{{ overview.statistics.total_views|intcomma }}</h3>
+                                <small class="text-info">이번 달: {{ overview.statistics.monthly_views|intcomma }}</small>
+                            </div>
+                            <div class="stats-icon bg-primary">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="card-title text-muted">평점</h6>
+                                <h3 class="mb-0">{{ overview.statistics.average_rating|floatformat:1|default:"N/A" }}</h3>
+                                <small class="text-success">북마크: {{ overview.statistics.bookmark_count }}</small>
+                            </div>
+                            <div class="stats-icon bg-success">
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="card-title text-muted">미처리 문의</h6>
+                                <h3 class="mb-0 text-warning">{{ overview.management.pending_inquiries }}</h3>
+                                <small class="text-muted">처리 필요</small>
+                            </div>
+                            <div class="stats-icon bg-warning">
+                                <i class="fas fa-question-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stats-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="card-title text-muted">활성 프로모션</h6>
+                                <h3 class="mb-0 text-info">{{ overview.management.active_promotions }}</h3>
+                                <small class="text-muted">진행 중</small>
+                            </div>
+                            <div class="stats-icon bg-info">
+                                <i class="fas fa-tags"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- 방문자 분석 차트 -->
+            <div class="col-lg-8 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">방문자 분석 (최근 7일)</h5>
+                        <div class="card-tools">
+                            <a href="{% url 'academy_analytics' selected_academy.id %}" class="btn btn-sm btn-outline-primary">
+                                자세히 보기
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if visitor_analytics.daily_views %}
+                        <canvas id="visitorChart" height="100"></canvas>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted">방문자 데이터가 없습니다.</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h4>{{ visitor_analytics.total_visits|intcomma }}</h4>
+                                    <small class="text-muted">총 방문</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h4>{{ visitor_analytics.unique_visitors|intcomma }}</h4>
+                                    <small class="text-muted">순 방문자</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h4>{{ visitor_analytics.return_visitor_rate }}%</h4>
+                                    <small class="text-muted">재방문율</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 빠른 작업 -->
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">빠른 작업</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            {% if permissions.can_respond_reviews %}
+                            <a href="{% url 'inquiry_management' selected_academy.id %}" class="btn btn-outline-primary">
+                                <i class="fas fa-comments me-2"></i>문의 관리
+                                {% if overview.management.pending_inquiries > 0 %}
+                                <span class="badge bg-danger">{{ overview.management.pending_inquiries }}</span>
+                                {% endif %}
+                            </a>
+                            {% endif %}
+                            
+                            {% if permissions.can_manage_content %}
+                            <a href="{% url 'promotion_management' selected_academy.id %}" class="btn btn-outline-success">
+                                <i class="fas fa-tags me-2"></i>프로모션 관리
+                            </a>
+                            {% endif %}
+                            
+                            {% if permissions.can_edit_info %}
+                            <a href="{% url 'academy_info_edit' selected_academy.id %}" class="btn btn-outline-warning">
+                                <i class="fas fa-edit me-2"></i>학원 정보 수정
+                            </a>
+                            {% endif %}
+                            
+                            {% if permissions.can_view_analytics %}
+                            <a href="{% url 'academy_analytics' selected_academy.id %}" class="btn btn-outline-info">
+                                <i class="fas fa-chart-bar me-2"></i>상세 분석
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 순위 정보 -->
+                {% if overview.statistics.local_rank %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">순위 정보</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h4 class="text-primary">{{ overview.statistics.local_rank }}위</h4>
+                                    <small class="text-muted">지역 순위</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <h4 class="text-info">{{ overview.statistics.popularity_score|floatformat:0 }}</h4>
+                                    <small class="text-muted">인기점수</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 최근 활동 -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">최근 문의</h5>
+                        <div class="card-tools">
+                            <a href="{% url 'inquiry_management' selected_academy.id %}" class="btn btn-sm btn-outline-primary">
+                                전체보기
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if inquiry_summary.recent_inquiries %}
+                        {% for inquiry in inquiry_summary.recent_inquiries %}
+                        <div class="inquiry-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ inquiry.subject|truncatechars:30 }}</h6>
+                                    <p class="mb-1 text-muted small">{{ inquiry.inquirer_name }}</p>
+                                    <small class="text-muted">{{ inquiry.created_at|timesince }} 전</small>
+                                </div>
+                                <span class="badge 
+                                    {% if inquiry.status == 'new' %}bg-primary
+                                    {% elif inquiry.status == 'in_progress' %}bg-warning
+                                    {% elif inquiry.status == 'answered' %}bg-success
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ inquiry.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr class="my-2">{% endif %}
+                        {% endfor %}
+                        {% else %}
+                        <p class="text-center text-muted">최근 문의가 없습니다.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">활성 프로모션</h5>
+                        <div class="card-tools">
+                            <a href="{% url 'promotion_management' selected_academy.id %}" class="btn btn-sm btn-outline-success">
+                                관리하기
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if promotion_performance.active_promotions %}
+                        {% for promotion in promotion_performance.active_promotions %}
+                        <div class="promotion-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ promotion.title|truncatechars:25 }}</h6>
+                                    <p class="mb-1 text-muted small">{{ promotion.get_promotion_type_display }}</p>
+                                    <small class="text-info">{{ promotion.remaining_days }}일 남음</small>
+                                </div>
+                                {% if promotion.is_featured %}
+                                <span class="badge bg-warning">추천</span>
+                                {% endif %}
+                            </div>
+                            {% if promotion.current_participants %}
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar" style="width: {{ promotion.current_participants|mul:100|div:promotion.max_participants|default:0 }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ promotion.current_participants }}/{{ promotion.max_participants|default:"제한없음" }} 참여</small>
+                            {% endif %}
+                        </div>
+                        {% if not forloop.last %}<hr class="my-2">{% endif %}
+                        {% endfor %}
+                        {% else %}
+                        <p class="text-center text-muted">활성 프로모션이 없습니다.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 스타일 -->
+<style>
+.operator-dashboard {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.dashboard-header {
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+}
+
+.dashboard-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.dashboard-subtitle {
+    color: #6c757d;
+    margin: 0;
+}
+
+.stats-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    transition: transform 0.2s;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.stats-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card-header {
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+
+.card-tools {
+    margin-left: auto;
+}
+
+.inquiry-item, .promotion-item {
+    padding: 0.5rem 0;
+}
+
+.academy-selector {
+    display: inline-block;
+    margin-right: 1rem;
+}
+
+.academy-selector .form-select {
+    min-width: 200px;
+}
+
+@media (max-width: 768px) {
+    .dashboard-header .row {
+        text-align: center;
+    }
+    
+    .dashboard-header .col-md-6:last-child {
+        margin-top: 1rem;
+        text-align: center !important;
+    }
+}
+</style>
+
+<!-- JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function changeAcademy() {
+    const select = document.getElementById('academySelector');
+    const academyId = select.value;
+    window.location.href = `?academy_id=${academyId}`;
+}
+
+// 방문자 차트 그리기
+document.addEventListener('DOMContentLoaded', function() {
+    const visitorData = {{ visitor_analytics.daily_views|safe }};
+    
+    if (visitorData && visitorData.length > 0) {
+        const ctx = document.getElementById('visitorChart').getContext('2d');
+        
+        const labels = visitorData.map(item => {
+            const date = new Date(item.date);
+            return (date.getMonth() + 1) + '/' + date.getDate();
+        });
+        
+        const data = visitorData.map(item => item.count);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '일별 방문자',
+                    data: data,
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+
+{% endblock %}

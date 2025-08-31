@@ -1,0 +1,429 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}결제 관리 - AcademyMap{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="bg-white rounded-lg shadow-md">
+        <!-- 헤더 -->
+        <div class="flex justify-between items-center p-6 border-b">
+            <h1 class="text-2xl font-bold text-gray-800">결제 관리</h1>
+            <div class="flex space-x-3">
+                <button id="refreshBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-sync-alt mr-2"></i>새로고침
+                </button>
+                <button id="statisticsBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-chart-bar mr-2"></i>통계
+                </button>
+            </div>
+        </div>
+
+        <!-- 필터 -->
+        <div class="p-4 bg-gray-50 border-b">
+            <div class="flex flex-wrap gap-4">
+                <select id="statusFilter" class="border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="">전체 상태</option>
+                    <option value="pending">결제대기</option>
+                    <option value="completed">결제완료</option>
+                    <option value="failed">결제실패</option>
+                    <option value="cancelled">결제취소</option>
+                    <option value="refunded">환불완료</option>
+                </select>
+                <select id="serviceFilter" class="border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="">전체 서비스</option>
+                    <option value="course_fee">수강료</option>
+                    <option value="consultation_fee">상담비</option>
+                    <option value="premium_listing">프리미엄 등록</option>
+                    <option value="advertisement">광고</option>
+                </select>
+                <input type="date" id="startDate" class="border border-gray-300 rounded-lg px-3 py-2">
+                <input type="date" id="endDate" class="border border-gray-300 rounded-lg px-3 py-2">
+                <input type="text" id="searchInput" placeholder="결제 ID, 상품명 검색..." 
+                       class="border border-gray-300 rounded-lg px-3 py-2 flex-1 min-w-48">
+            </div>
+        </div>
+
+        <!-- 결제 목록 -->
+        <div id="paymentList" class="divide-y divide-gray-200">
+            <!-- 로딩 상태 -->
+            <div id="loadingState" class="p-8 text-center">
+                <div class="inline-flex items-center">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    결제 내역을 불러오는 중...
+                </div>
+            </div>
+
+            <!-- 빈 상태 -->
+            <div id="emptyState" class="p-8 text-center text-gray-500 hidden">
+                <i class="fas fa-credit-card text-6xl mb-4 text-gray-300"></i>
+                <p class="text-lg mb-2">결제 내역이 없습니다</p>
+                <p class="text-sm">결제가 발생하면 여기에 표시됩니다</p>
+            </div>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div id="pagination" class="p-4 border-t bg-gray-50 hidden">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    <span id="pageInfo"></span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevBtn" class="px-3 py-1 border border-gray-300 rounded disabled:opacity-50" disabled>이전</button>
+                    <button id="nextBtn" class="px-3 py-1 border border-gray-300 rounded disabled:opacity-50" disabled>다음</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 결제 상세 모달 -->
+<div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">결제 상세</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="paymentDetails"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class PaymentManager {
+    constructor() {
+        this.currentPage = 1;
+        this.pageSize = 20;
+        this.totalPages = 1;
+        this.filters = {
+            status: '',
+            service_type: '',
+            search: '',
+            start_date: '',
+            end_date: ''
+        };
+        
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.loadPayments();
+    }
+    
+    bindEvents() {
+        // 필터 이벤트
+        document.getElementById('statusFilter').addEventListener('change', (e) => {
+            this.filters.status = e.target.value;
+            this.currentPage = 1;
+            this.loadPayments();
+        });
+        
+        document.getElementById('serviceFilter').addEventListener('change', (e) => {
+            this.filters.service_type = e.target.value;
+            this.currentPage = 1;
+            this.loadPayments();
+        });
+        
+        document.getElementById('startDate').addEventListener('change', (e) => {
+            this.filters.start_date = e.target.value;
+            this.currentPage = 1;
+            this.loadPayments();
+        });
+        
+        document.getElementById('endDate').addEventListener('change', (e) => {
+            this.filters.end_date = e.target.value;
+            this.currentPage = 1;
+            this.loadPayments();
+        });
+        
+        // 검색 디바운스
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.filters.search = e.target.value;
+                this.currentPage = 1;
+                this.loadPayments();
+            }, 500);
+        });
+        
+        // 새로고침
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            this.loadPayments();
+        });
+        
+        // 통계 버튼
+        document.getElementById('statisticsBtn').addEventListener('click', () => {
+            this.showStatistics();
+        });
+        
+        // 페이지네이션
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.loadPayments();
+            }
+        });
+        
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+                this.loadPayments();
+            }
+        });
+        
+        // 모달 닫기
+        document.getElementById('closeModal').addEventListener('click', () => {
+            this.hideModal();
+        });
+        
+        document.getElementById('paymentModal').addEventListener('click', (e) => {
+            if (e.target.id === 'paymentModal') {
+                this.hideModal();
+            }
+        });
+    }
+    
+    async loadPayments() {
+        this.showLoading();
+        
+        try {
+            const params = new URLSearchParams({
+                page: this.currentPage,
+                page_size: this.pageSize,
+                ...this.filters
+            });
+            
+            const response = await fetch(`/payment/api/payments/?${params}`, {
+                headers: {
+                    'Authorization': `Token ${this.getAuthToken()}`
+                }
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.renderPayments(data.results);
+                this.updatePagination(data);
+                this.hideLoading();
+            } else {
+                throw new Error(data.message || '결제 목록을 불러올 수 없습니다.');
+            }
+        } catch (error) {
+            this.showError(error.message);
+            this.hideLoading();
+        }
+    }
+    
+    renderPayments(payments) {
+        const container = document.getElementById('paymentList');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (payments.length === 0) {
+            container.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            return;
+        }
+        
+        emptyState.classList.add('hidden');
+        
+        container.innerHTML = payments.map(payment => this.renderPayment(payment)).join('');
+    }
+    
+    renderPayment(payment) {
+        const statusClass = {
+            'pending': 'bg-yellow-100 text-yellow-800',
+            'completed': 'bg-green-100 text-green-800',
+            'failed': 'bg-red-100 text-red-800',
+            'cancelled': 'bg-gray-100 text-gray-800',
+            'refunded': 'bg-blue-100 text-blue-800'
+        }[payment.status] || 'bg-gray-100 text-gray-800';
+        
+        return `
+            <div class="p-4 hover:bg-gray-50 cursor-pointer" onclick="paymentManager.showPaymentDetails('${payment.id}')">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <h3 class="text-lg font-semibold text-gray-900">${payment.product_name}</h3>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                ${payment.status_display}
+                            </span>
+                        </div>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <p>결제 ID: ${payment.payment_id}</p>
+                            <p>학원: ${payment.academy_name}</p>
+                            <p>서비스: ${payment.service_type_display}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-bold text-gray-900">${payment.final_amount.toLocaleString()}원</div>
+                        <div class="text-sm text-gray-500">${new Date(payment.created_at).toLocaleString()}</div>
+                        ${payment.payment_method_name ? `<div class="text-sm text-gray-500">${payment.payment_method_name}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    async showPaymentDetails(paymentId) {
+        try {
+            const response = await fetch(`/payment/api/payments/${paymentId}/`, {
+                headers: {
+                    'Authorization': `Token ${this.getAuthToken()}`
+                }
+            });
+            const payment = await response.json();
+            
+            if (response.ok) {
+                this.renderPaymentDetails(payment);
+                this.showModal();
+            } else {
+                throw new Error('결제 상세 정보를 불러올 수 없습니다.');
+            }
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+    
+    renderPaymentDetails(payment) {
+        const detailsContainer = document.getElementById('paymentDetails');
+        
+        detailsContainer.innerHTML = `
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">결제 ID</label>
+                        <p class="text-sm text-gray-900">${payment.payment_id}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">상태</label>
+                        <p class="text-sm text-gray-900">${payment.status_display}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">상품명</label>
+                        <p class="text-sm text-gray-900">${payment.product_name}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">결제금액</label>
+                        <p class="text-sm text-gray-900">${payment.final_amount.toLocaleString()}원</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">학원</label>
+                        <p class="text-sm text-gray-900">${payment.academy_name}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">결제수단</label>
+                        <p class="text-sm text-gray-900">${payment.payment_method_name || '미설정'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">결제일시</label>
+                        <p class="text-sm text-gray-900">${new Date(payment.created_at).toLocaleString()}</p>
+                    </div>
+                    ${payment.paid_at ? `
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">완료일시</label>
+                        <p class="text-sm text-gray-900">${new Date(payment.paid_at).toLocaleString()}</p>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                ${payment.can_cancel ? `
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button onclick="paymentManager.cancelPayment('${payment.id}')" 
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                        결제 취소
+                    </button>
+                    <button onclick="paymentManager.requestRefund('${payment.id}')" 
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg">
+                        환불 요청
+                    </button>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    async showStatistics() {
+        try {
+            const response = await fetch('/payment/api/payments/statistics/', {
+                headers: {
+                    'Authorization': `Token ${this.getAuthToken()}`
+                }
+            });
+            const stats = await response.json();
+            
+            if (response.ok) {
+                alert(`결제 통계\n총 결제 수: ${stats.total_payments}건\n성공률: ${stats.success_rate.toFixed(1)}%\n총 결제금액: ${stats.total_amount.toLocaleString()}원`);
+            } else {
+                throw new Error('통계 정보를 불러올 수 없습니다.');
+            }
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+    
+    updatePagination(data) {
+        const pagination = document.getElementById('pagination');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        
+        if (data.count > 0) {
+            pagination.classList.remove('hidden');
+            
+            const startItem = (this.currentPage - 1) * this.pageSize + 1;
+            const endItem = Math.min(this.currentPage * this.pageSize, data.count);
+            
+            pageInfo.textContent = `${startItem}-${endItem} / ${data.count}개`;
+            
+            this.totalPages = Math.ceil(data.count / this.pageSize);
+            
+            prevBtn.disabled = this.currentPage <= 1;
+            nextBtn.disabled = this.currentPage >= this.totalPages;
+        } else {
+            pagination.classList.add('hidden');
+        }
+    }
+    
+    showLoading() {
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('emptyState').classList.add('hidden');
+    }
+    
+    hideLoading() {
+        document.getElementById('loadingState').classList.add('hidden');
+    }
+    
+    showModal() {
+        document.getElementById('paymentModal').classList.remove('hidden');
+    }
+    
+    hideModal() {
+        document.getElementById('paymentModal').classList.add('hidden');
+    }
+    
+    showError(message) {
+        alert(message);
+    }
+    
+    getAuthToken() {
+        // 실제 구현에서는 사용자의 인증 토큰을 반환
+        return localStorage.getItem('authToken') || '';
+    }
+}
+
+// 초기화
+let paymentManager;
+document.addEventListener('DOMContentLoaded', () => {
+    paymentManager = new PaymentManager();
+});
+</script>
+{% endblock %}
