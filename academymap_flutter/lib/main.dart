@@ -9,16 +9,6 @@ import 'dart:ui_web' as ui_web;
 import 'package:geolocator/geolocator.dart';
 
 void main() {
-  // 네이버 지도 iframe 등록
-  ui_web.platformViewRegistry.registerViewFactory(
-    'naverMapIframe',
-    (int viewId) => html.IFrameElement()
-      ..src = 'map.html'
-      ..style.border = 'none'
-      ..style.width = '100%'
-      ..style.height = '100%',
-  );
-  
   runApp(const AcademyMapApp());
 }
 
@@ -87,9 +77,51 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   @override
   void initState() {
     super.initState();
-    loadAcademies();
     scrollController.addListener(_onScroll);
-    _getCurrentLocation();
+    _setupMessageListener();
+    // 위치를 먼저 가져온 다음 지도와 데이터를 초기화
+    _initializeAppWithLocation();
+  }
+
+  Future<void> _initializeAppWithLocation() async {
+    // 먼저 위치 정보 획득 시도
+    await _getCurrentLocation();
+    
+    // 위치 정보를 포함하여 지도 iframe 등록
+    _registerMapIframe();
+    
+    // 그 다음 학원 데이터 로드
+    await loadAcademies();
+  }
+
+  void _registerMapIframe() {
+    // 네이버 지도 iframe 등록 (위치 정보 포함)
+    ui_web.platformViewRegistry.registerViewFactory(
+      'naverMapIframe',
+      (int viewId) {
+        final iframe = html.IFrameElement()
+          ..src = 'map.html'
+          ..style.border = 'none'
+          ..style.width = '100%'
+          ..style.height = '100%';
+        
+        // iframe 로드 완료 후 위치 정보 전송
+        iframe.onLoad.listen((_) {
+          if (currentPosition != null) {
+            // 지도가 완전히 초기화될 때까지 더 긴 지연시간 설정
+            Future.delayed(Duration(milliseconds: 2000), () {
+              _sendLocationToMap();
+              // 확실하게 하기 위해 한 번 더 전송
+              Future.delayed(Duration(milliseconds: 1000), () {
+                _sendLocationToMap();
+              });
+            });
+          }
+        });
+        
+        return iframe;
+      },
+    );
   }
   
   @override
@@ -191,6 +223,200 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       }
     } catch (e) {
       print('위치 전송 오류: $e');
+    }
+  }
+
+  void _setupMessageListener() {
+    // iframe에서 오는 메시지 수신
+    html.window.addEventListener('message', (event) {
+      final messageEvent = event as html.MessageEvent;
+      if (messageEvent.data != null && messageEvent.data is Map) {
+        final data = messageEvent.data as Map;
+        if (data['type'] == 'requestLocation') {
+          print('📍 지도에서 현재 위치 요청');
+          _getCurrentLocation().then((_) {
+            if (currentPosition != null) {
+              _sendLocationToMap();
+            }
+          });
+        } else if (data['type'] == 'requestMarkersInBounds') {
+          print('🗺️ 지도 영역 내 마커 요청');
+          final boundsData = data['data'] as Map;
+          _loadMarkersInBounds(
+            boundsData['sw_lat'],
+            boundsData['sw_lng'], 
+            boundsData['ne_lat'],
+            boundsData['ne_lng'],
+          );
+        } else if (data['type'] == 'currentBoundsResponse') {
+          print('🗺️ 현재 지도 영역 응답 받음');
+          final boundsData = data['data'] as Map;
+          _loadMarkersInBounds(
+            boundsData['sw_lat'],
+            boundsData['sw_lng'], 
+            boundsData['ne_lat'],
+            boundsData['ne_lng'],
+          );
+        } else if (data['type'] == 'requestClustersInBounds') {
+          print('🏘️ 지도 영역 내 클러스터 요청');
+          final boundsData = data['data'] as Map;
+          _loadClustersInBounds(
+            boundsData['sw_lat'],
+            boundsData['sw_lng'], 
+            boundsData['ne_lat'],
+            boundsData['ne_lng'],
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _loadMarkersInBounds(double swLat, double swLng, double neLat, double neLng) async {
+    try {
+      final Uri uri = Uri.parse('http://127.0.0.1:8000/map_api/academies/').replace(queryParameters: {
+        'sw_lat': swLat.toString(),
+        'sw_lng': swLng.toString(),
+        'ne_lat': neLat.toString(),
+        'ne_lng': neLng.toString(),
+        'limit': '200', // 지도 영역 내에서는 더 많은 마커 표시
+        ...getFilterParams(),
+      });
+
+      print('🌐 지도 영역 API 요청: $uri');
+      final response = await http.get(uri);
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final boundsAcademies = data['results'] ?? [];
+        
+        print('📍 지도 영역 내 학원: ${boundsAcademies.length}개');
+        
+        // iframe에 마커 업데이트 메시지 전송
+        _sendMarkersToMap(boundsAcademies);
+      }
+    } catch (e) {
+      print('지도 영역 마커 로드 오류: $e');
+    }
+  }
+
+  Map<String, String> getFilterParams() {
+    Map<String, String> params = {};
+    
+    // 과목 카테고리 필터
+    if (selectedSubject != '전체') {
+      params['category'] = selectedSubject;
+    }
+    
+    // 가격 범위 필터
+    if (priceRange.start > 0 || priceRange.end < 2000000) {
+      params['priceMin'] = priceRange.start.toString();
+      params['priceMax'] = priceRange.end >= 2000000 ? '999999999' : priceRange.end.toString();
+    }
+    
+    // 연령대 필터
+    if (selectedAgeGroups.isNotEmpty) {
+      for (String ageGroup in selectedAgeGroups) {
+        params['ageGroups[]'] = ageGroup;
+      }
+    }
+    
+    // 셔틀버스 필터
+    if (shuttleFilter) {
+      params['shuttleFilter'] = 'true';
+    }
+    
+    // 검색어 필터
+    if (searchQuery.isNotEmpty) {
+      params['search'] = searchQuery;
+    }
+    
+    return params;
+  }
+
+  Future<void> _loadClustersInBounds(double swLat, double swLng, double neLat, double neLng) async {
+    try {
+      final Uri uri = Uri.parse('http://127.0.0.1:8000/map_api/clusters/').replace(queryParameters: {
+        'sw_lat': swLat.toString(),
+        'sw_lng': swLng.toString(),
+        'ne_lat': neLat.toString(),
+        'ne_lng': neLng.toString(),
+        ...getFilterParams(),
+      });
+
+      print('🏘️ 클러스터 API 요청: $uri');
+      final response = await http.get(uri);
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final clusters = data['clusters'] ?? [];
+        
+        print('🏘️ 지도 영역 내 클러스터: ${clusters.length}개');
+        
+        // iframe에 클러스터 업데이트 메시지 전송
+        _sendClustersToMap(clusters);
+      }
+    } catch (e) {
+      print('클러스터 로드 오류: $e');
+    }
+  }
+
+  void _sendClustersToMap(List<dynamic> clustersData) {
+    try {
+      // iframe에 postMessage로 클러스터 데이터 전달
+      final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
+      if (iframe?.contentWindow != null) {
+        iframe!.contentWindow!.postMessage({
+          'type': 'updateClusters',
+          'clusters': clustersData,
+        }, '*');
+        print('✅ 지도 영역 클러스터 업데이트: ${clustersData.length}개');
+      } else {
+        print('❌ iframe을 찾을 수 없습니다');
+      }
+    } catch (e) {
+      print('클러스터 전송 오류: $e');
+    }
+  }
+
+  void _sendMarkersToMap(List<dynamic> academiesData) {
+    try {
+      // 학원 데이터를 지도 마커로 변환
+      final markersData = academiesData.map((academy) {
+        return {
+          'name': academy['상호명'] ?? '학원',
+          'lat': academy['위도'],
+          'lng': academy['경도'], 
+          'address': academy['도로명주소'] ?? '',
+          'subject': _getAcademySubjects(academy),
+        };
+      }).where((marker) => 
+        marker['lat'] != null && marker['lng'] != null
+      ).toList();
+
+      // iframe에 postMessage로 마커 데이터 전달
+      final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
+      if (iframe?.contentWindow != null) {
+        iframe!.contentWindow!.postMessage({
+          'type': 'updateMarkers',
+          'academies': markersData,
+        }, '*');
+        print('✅ 지도 영역 마커 업데이트: ${markersData.length}개');
+      } else {
+        print('❌ iframe을 찾을 수 없습니다');
+      }
+    } catch (e) {
+      print('지도 마커 전송 오류: $e');
+    }
+  }
+
+  void applyFiltersWithinMapBounds() {
+    // iframe에 현재 지도 영역의 마커 요청 (필터가 적용된)
+    final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
+    if (iframe?.contentWindow != null) {
+      iframe!.contentWindow!.postMessage({
+        'type': 'requestCurrentBounds',
+      }, '*');
+      print('🔍 현재 지도 영역에서 필터 적용 요청');
     }
   }
 
@@ -762,9 +988,9 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                           setState(() {
                             selectedSubject = subject;
                           });
-                          // 약간의 지연을 두어 UI 업데이트 후 API 호출
+                          // 약간의 지연을 두어 UI 업데이트 후 현재 지도 영역에서 필터 적용
                           Future.delayed(Duration(milliseconds: 100), () {
-                            loadAcademies();
+                            applyFiltersWithinMapBounds();
                           });
                         }
                       },
@@ -832,7 +1058,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                         },
                         onChangeEnd: (RangeValues values) {
                           Future.delayed(Duration(milliseconds: 300), () {
-                            loadAcademies();
+                            applyFiltersWithinMapBounds();
                           });
                         },
                       ),
@@ -868,7 +1094,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                 }
                               });
                               Future.delayed(Duration(milliseconds: 200), () {
-                                loadAcademies();
+                                applyFiltersWithinMapBounds();
                               });
                             },
                             selectedColor: Colors.green[100],
@@ -899,7 +1125,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                             shuttleFilter = value;
                           });
                           Future.delayed(Duration(milliseconds: 200), () {
-                            loadAcademies();
+                            applyFiltersWithinMapBounds();
                           });
                         },
                         activeColor: Colors.green,

@@ -15,20 +15,113 @@
     #map {
       width: 100%;
       height: 100vh;
+      position: relative;
+    }
+    
+    /* 커스텀 지도 컨트롤 */
+    .map-controls {
+      position: absolute;
+      right: 1.2rem;
+      bottom: 8rem;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    /* 내 위치 버튼 */
+    .location-btn {
+      width: 2.7rem;
+      height: 2.7rem;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 0.4rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+    }
+    
+    .location-btn:hover {
+      background: #f5f5f5;
+      transform: scale(1.05);
+    }
+    
+    .location-btn:active {
+      transform: scale(0.95);
+    }
+    
+    /* 줌 컨트롤 */
+    .zoom-controls {
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: 0.4rem;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    
+    .zoom-btn {
+      width: 2.7rem;
+      height: 2.5rem;
+      background: white;
+      border: none;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    
+    .zoom-btn:last-child {
+      border-bottom: none;
+    }
+    
+    .zoom-btn:hover {
+      background: #f5f5f5;
+    }
+    
+    .zoom-btn:active {
+      transform: scale(0.95);
+      background: #e5e5e5;
     }
   </style>
   <!-- 네이버 지도 API -->
   <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=qcf9quj1gi"></script>
 </head>
 <body>
-  <div id="map"></div>
+  <div id="map">
+    <!-- 지도 컨트롤 버튼들 -->
+    <div class="map-controls">
+      <!-- 내 위치 버튼 -->
+      <button class="location-btn" id="myLocationBtn" title="내 위치로 이동">
+        📍
+      </button>
+      
+      <!-- 줌 컨트롤 -->
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomInBtn" title="확대">+</button>
+        <button class="zoom-btn" id="zoomOutBtn" title="축소">−</button>
+      </div>
+    </div>
+  </div>
   
   <script>
     let map = null;
     let markers = [];
+    let clusterMarkers = []; // 클러스터 마커들
+    let userLocationMarker = null; // 사용자 위치 마커
     let mapCenter = { lat: 37.5665, lng: 126.978 }; // 기본값: 서울 시청
+    let currentZoomLevel = 11; // 현재 줌 레벨
 
-    // 지도 초기화
+    // 지도 초기화 
     function initMap(centerLat = null, centerLng = null) {
       if (typeof naver === 'undefined') {
         console.error('네이버 지도 API가 로드되지 않았습니다.');
@@ -40,14 +133,14 @@
         mapCenter = { lat: centerLat, lng: centerLng };
         console.log('🎯 사용자 위치로 지도 초기화:', mapCenter);
       } else {
-        console.log('📍 기본 위치(서울 시청)로 지도 초기화:', mapCenter);
+        console.log('📍 기본 위치(서울 시청)로 지도 초기화 - 사용자 위치 대기 중:', mapCenter);
       }
 
       const mapOptions = {
         center: new naver.maps.LatLng(mapCenter.lat, mapCenter.lng),
         zoom: centerLat && centerLng ? 13 : 11, // 사용자 위치면 더 확대
         mapTypeControl: false,
-        zoomControl: true,
+        zoomControl: false, // 기본 줌 컨트롤 비활성화
         logoControl: false,
         scaleControl: false,
         mapDataControl: false
@@ -56,11 +149,67 @@
       map = new naver.maps.Map('map', mapOptions);
       console.log('네이버 지도 iframe 초기화 완료');
       
+      // 지도 이동 완료 이벤트 리스너 추가
+      naver.maps.Event.addListener(map, 'idle', function() {
+        console.log('지도 이동 완료, 새로운 마커 요청');
+        currentZoomLevel = map.getZoom();
+        updateMarkersBasedOnZoom();
+      });
+      
+      // 줌 변경 이벤트 리스너 추가
+      naver.maps.Event.addListener(map, 'zoom_changed', function() {
+        const newZoom = map.getZoom();
+        console.log(`🔍 줌 레벨 변경: ${currentZoomLevel} → ${newZoom}`);
+        currentZoomLevel = newZoom;
+        updateMarkersBasedOnZoom();
+      });
+      
       // Flutter에 초기화 완료 알림
       window.parent.postMessage({
         type: 'mapInitialized',
         data: { success: true }
       }, '*');
+
+      // 커스텀 버튼 이벤트 리스너 추가
+      setupCustomControls();
+    }
+
+    // 커스텀 컨트롤 설정
+    function setupCustomControls() {
+      // 내 위치 버튼
+      const myLocationBtn = document.getElementById('myLocationBtn');
+      if (myLocationBtn) {
+        myLocationBtn.addEventListener('click', function() {
+          // Flutter에 현재 위치 요청
+          window.parent.postMessage({
+            type: 'requestLocation',
+          }, '*');
+        });
+      }
+
+      // 줌 인 버튼
+      const zoomInBtn = document.getElementById('zoomInBtn');
+      if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', function() {
+          if (map) {
+            const currentZoom = map.getZoom();
+            map.setZoom(currentZoom + 1);
+            console.log('🔍 줌 인:', currentZoom + 1);
+          }
+        });
+      }
+
+      // 줌 아웃 버튼
+      const zoomOutBtn = document.getElementById('zoomOutBtn');
+      if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', function() {
+          if (map) {
+            const currentZoom = map.getZoom();
+            map.setZoom(currentZoom - 1);
+            console.log('🔍 줌 아웃:', currentZoom - 1);
+          }
+        });
+      }
     }
 
     // 지도 중심 변경
@@ -68,13 +217,48 @@
       console.log('setMapCenter 호출:', lat, lng, typeof lat, typeof lng);
       if (map && lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
         const newCenter = new naver.maps.LatLng(parseFloat(lat), parseFloat(lng));
-        map.setCenter(newCenter);
-        map.setZoom(13); // 사용자 위치로 이동 시 확대
+        
+        // 사용자 위치로 이동 시에는 더 높은 줌 레벨로 설정
+        const targetZoom = 16; // 사용자 위치에 적합한 줌 레벨
+        
+        // 지도 중심과 줌 레벨을 한번에 설정
+        map.morph(newCenter, targetZoom);
+        
         mapCenter = { lat: parseFloat(lat), lng: parseFloat(lng) };
-        console.log('✅ 지도 중심 이동 완료:', lat, lng);
+        currentZoomLevel = targetZoom;
+        
+        // 사용자 위치 마커 추가/업데이트
+        updateUserLocationMarker(parseFloat(lat), parseFloat(lng));
+        
+        console.log('✅ 지도 중심 이동 완료:', lat, lng, '줌:', targetZoom);
       } else {
         console.log('❌ 지도 중심 이동 실패 - 유효하지 않은 좌표:', lat, lng);
       }
+    }
+
+    // 사용자 위치 마커 업데이트
+    function updateUserLocationMarker(lat, lng) {
+      if (!map) return;
+      
+      // 기존 사용자 위치 마커 제거
+      if (userLocationMarker) {
+        userLocationMarker.setMap(null);
+      }
+      
+      // 새 사용자 위치 마커 생성
+      const userPosition = new naver.maps.LatLng(lat, lng);
+      userLocationMarker = new naver.maps.Marker({
+        position: userPosition,
+        map: map,
+        title: '내 위치',
+        icon: {
+          content: '<div style="background: #FF4444; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 3px solid white; box-shadow: 0 2px 8px rgba(255,68,68,0.3);">📍</div>',
+          size: new naver.maps.Size(26, 26),
+          anchor: new naver.maps.Point(13, 13)
+        }
+      });
+      
+      console.log('📍 사용자 위치 마커 업데이트:', lat, lng);
     }
 
     // 마커 업데이트
@@ -86,11 +270,8 @@
 
       console.log('마커 업데이트 시작:', academyData.length + '개');
 
-      // 기존 마커 제거
-      markers.forEach(marker => {
-        marker.setMap(null);
-      });
-      markers = [];
+      // 기존 마커들 제거 (개별 마커 + 클러스터 마커)
+      clearAllMarkers();
 
       // 새 마커 추가
       academyData.forEach(academy => {
@@ -146,14 +327,198 @@
       }
     }
 
+    // 줌 레벨에 따른 마커 업데이트 결정
+    function updateMarkersBasedOnZoom() {
+      if (!map) return;
+      
+      if (currentZoomLevel <= 13) {
+        // 클러스터 모드
+        requestClustersForCurrentView();
+      } else {
+        // 개별 마커 모드
+        requestMarkersForCurrentView();
+      }
+    }
+
+    // 현재 지도 화면 영역의 마커 요청 (개별 마커)
+    function requestMarkersForCurrentView() {
+      if (!map) return;
+      
+      const bounds = map.getBounds();
+      const sw = bounds.getSW(); // 남서쪽 좌표
+      const ne = bounds.getNE(); // 북동쪽 좌표
+      
+      // Flutter에 현재 지도 영역 정보 전송
+      window.parent.postMessage({
+        type: 'requestMarkersInBounds',
+        data: {
+          sw_lat: sw.lat(),
+          sw_lng: sw.lng(),
+          ne_lat: ne.lat(),
+          ne_lng: ne.lng(),
+          zoom: map.getZoom()
+        }
+      }, '*');
+      
+      console.log('지도 영역 마커 요청:', {
+        sw: {lat: sw.lat(), lng: sw.lng()},
+        ne: {lat: ne.lat(), lng: ne.lng()},
+        zoom: map.getZoom()
+      });
+    }
+
+    // 현재 지도 화면 영역의 클러스터 요청
+    function requestClustersForCurrentView() {
+      if (!map) return;
+      
+      const bounds = map.getBounds();
+      const sw = bounds.getSW(); // 남서쪽 좌표
+      const ne = bounds.getNE(); // 북동쪽 좌표
+      
+      // Flutter에 현재 지도 영역 클러스터 요청
+      window.parent.postMessage({
+        type: 'requestClustersInBounds', 
+        data: {
+          sw_lat: sw.lat(),
+          sw_lng: sw.lng(),
+          ne_lat: ne.lat(),
+          ne_lng: ne.lng(),
+          zoom: map.getZoom()
+        }
+      }, '*');
+      
+      console.log('지도 영역 클러스터 요청:', {
+        sw: {lat: sw.lat(), lng: sw.lng()},
+        ne: {lat: ne.lat(), lng: ne.lng()},
+        zoom: map.getZoom()
+      });
+    }
+
+    // 클러스터 마커 업데이트
+    function updateClusterMarkers(clusterData) {
+      if (!map) {
+        console.error('지도가 초기화되지 않았습니다.');
+        return;
+      }
+
+      console.log('클러스터 마커 업데이트 시작:', clusterData.length + '개');
+
+      // 기존 마커들 제거
+      clearAllMarkers();
+
+      // 새 클러스터 마커 추가
+      clusterData.forEach(cluster => {
+        if (cluster.lat && cluster.lng) {
+          const position = new naver.maps.LatLng(cluster.lat, cluster.lng);
+          
+          // 학원 수에 따른 클러스터 크기 결정
+          let size = 40;
+          let bgColor = '#007bff';
+          if (cluster.count > 50) {
+            size = 60;
+            bgColor = '#dc3545';
+          } else if (cluster.count > 20) {
+            size = 50;
+            bgColor = '#fd7e14';
+          } else if (cluster.count > 5) {
+            size = 45;
+            bgColor = '#ffc107';
+          }
+          
+          const clusterMarker = new naver.maps.Marker({
+            position: position,
+            map: map,
+            title: `${cluster.name}: ${cluster.count}개 학원`,
+            icon: {
+              content: `<div style="
+                background: ${bgColor}; 
+                color: white; 
+                width: ${size}px; 
+                height: ${size}px; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                font-size: ${size > 45 ? '14px' : '12px'}; 
+                font-weight: bold;
+                border: 3px solid white; 
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                cursor: pointer;
+              ">${cluster.count}</div>`,
+              size: new naver.maps.Size(size + 6, size + 6),
+              anchor: new naver.maps.Point((size + 6) / 2, (size + 6) / 2)
+            }
+          });
+
+          // 클러스터 클릭 이벤트 (해당 동으로 줌인)
+          naver.maps.Event.addListener(clusterMarker, 'click', function() {
+            map.setCenter(position);
+            map.setZoom(15); // 클러스터 클릭 시 개별 마커가 보이는 줌 레벨로
+            console.log(`📍 클러스터 클릭: ${cluster.name} (${cluster.count}개)`);
+          });
+
+          clusterMarkers.push(clusterMarker);
+        }
+      });
+
+      console.log(`지도에 ${clusterMarkers.length}개 클러스터 마커 추가 완료`);
+    }
+
+    // 모든 마커 제거 (개별 마커 + 클러스터 마커)
+    function clearAllMarkers() {
+      // 기존 개별 마커 제거
+      markers.forEach(marker => {
+        marker.setMap(null);
+      });
+      markers = [];
+      
+      // 기존 클러스터 마커 제거
+      clusterMarkers.forEach(marker => {
+        marker.setMap(null);
+      });
+      clusterMarkers = [];
+    }
+
+    // 현재 지도 영역을 Flutter로 전송
+    function sendCurrentBounds() {
+      if (!map) return;
+      
+      const bounds = map.getBounds();
+      const sw = bounds.getSW(); // 남서쪽 좌표
+      const ne = bounds.getNE(); // 북동쪽 좌표
+      
+      // Flutter에 현재 지도 영역 전송 (필터 적용용)
+      window.parent.postMessage({
+        type: 'currentBoundsResponse',
+        data: {
+          sw_lat: sw.lat(),
+          sw_lng: sw.lng(),
+          ne_lat: ne.lat(),
+          ne_lng: ne.lng(),
+          zoom: map.getZoom()
+        }
+      }, '*');
+      
+      console.log('현재 지도 영역 전송:', {
+        sw: {lat: sw.lat(), lng: sw.lng()},
+        ne: {lat: ne.lat(), lng: ne.lng()},
+        zoom: map.getZoom()
+      });
+    }
+
     // Flutter로부터 메시지 수신
     window.addEventListener('message', function(event) {
       console.log('iframe에서 메시지 수신:', event.data);
       if (event.data.type === 'updateMarkers') {
         updateMarkers(event.data.academies);
+      } else if (event.data.type === 'updateClusters') {
+        updateClusterMarkers(event.data.clusters);
       } else if (event.data.type === 'setMapCenter') {
         console.log('setMapCenter 메시지 받음:', event.data);
         setMapCenter(event.data.lat, event.data.lng);
+      } else if (event.data.type === 'requestCurrentBounds') {
+        console.log('현재 지도 영역 요청');
+        sendCurrentBounds();
       }
     });
 
