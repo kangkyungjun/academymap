@@ -69,6 +69,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   Position? currentPosition;
   bool isLocationLoading = false;
 
+  // 오류 상태
+  String? errorMessage;
+  bool hasNetworkError = false;
+
   final List<String> subjects = [
     '전체', '수학', '영어', '과학', '외국어', '예체능', '컴퓨터', '논술', '기타', '독서실스터디카페'
   ];
@@ -282,7 +286,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   Future<void> _loadMarkersInBounds(double swLat, double swLng, double neLat, double neLng) async {
     try {
-      final Uri uri = Uri.parse('$apiBaseUrl/api/academies/').replace(queryParameters: {
+      final Uri uri = Uri.parse('$apiBaseUrl/api/v1/academies/').replace(queryParameters: {
         'sw_lat': swLat.toString(),
         'sw_lng': swLng.toString(),
         'ne_lat': neLat.toString(),
@@ -542,6 +546,8 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     
     setState(() {
       isLoading = true;
+      errorMessage = null;
+      hasNetworkError = false;
     });
 
     print('🔍 필터링 시작: $selectedSubject'); // 디버깅용
@@ -551,10 +557,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         Uri.parse('$apiBaseUrl/api/filtered_academies'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'swLat': 37.4,  // 서울 남쪽
-          'swLng': 126.8, // 서울 서쪽  
-          'neLat': 37.7,  // 서울 북쪽
-          'neLng': 127.2, // 서울 동쪽
+          'swLat': _getDynamicBounds()['swLat'],
+          'swLng': _getDynamicBounds()['swLng'],
+          'neLat': _getDynamicBounds()['neLat'],
+          'neLng': _getDynamicBounds()['neLng'],
           'subjects': [selectedSubject],
           'priceMin': priceRange.start.toString(),
           'priceMax': priceRange.end >= 2000000 ? '999999999' : priceRange.end.toString(),
@@ -590,19 +596,46 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           });
         }
       } else {
-        throw Exception('API 오류: ${response.statusCode}');
+        throw Exception('서버 오류: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ 오류 발생: $e'); // 디버깅용
       if (!mounted) return;
+
       setState(() {
         isLoading = false;
+        hasNetworkError = true;
+
+        if (e.toString().contains('SocketException') ||
+            e.toString().contains('TimeoutException') ||
+            e.toString().contains('ClientException')) {
+          errorMessage = '네트워크 연결을 확인해주세요';
+        } else if (e.toString().contains('404')) {
+          errorMessage = '서비스를 찾을 수 없습니다';
+        } else if (e.toString().contains('500')) {
+          errorMessage = '서버에 일시적인 문제가 발생했습니다';
+        } else {
+          errorMessage = '데이터를 불러오는 중 오류가 발생했습니다';
+        }
       });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('오류: $e'),
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text(errorMessage!)),
+              ],
+            ),
             backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: '재시도',
+              textColor: Colors.white,
+              onPressed: () => loadAcademies(),
+            ),
+            duration: Duration(seconds: 5),
           ),
         );
       }
@@ -1396,23 +1429,34 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                       ),
                     )
                   : academies.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.school_outlined,
+                                hasNetworkError ? Icons.wifi_off : Icons.school_outlined,
                                 size: 64,
-                                color: Colors.grey,
+                                color: hasNetworkError ? Colors.red : Colors.grey,
                               ),
                               SizedBox(height: 16),
                               Text(
-                                '학원이 없습니다',
+                                hasNetworkError
+                                  ? (errorMessage ?? '연결 오류가 발생했습니다')
+                                  : '조건에 맞는 학원이 없습니다',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: Colors.grey,
+                                  color: hasNetworkError ? Colors.red : Colors.grey,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
+                              if (hasNetworkError) ...[
+                                SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: loadAcademies,
+                                  icon: Icon(Icons.refresh),
+                                  label: Text('다시 시도'),
+                                ),
+                              ],
                             ],
                           ),
                         )
@@ -1586,5 +1630,30 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   String _safeSubstring(String? str, int maxLength) {
     if (str == null || str.isEmpty) return 'N/A';
     return str.length <= maxLength ? str : str.substring(0, maxLength);
+  }
+
+  // 동적 지역 범위 계산 헬퍼 함수
+  Map<String, double> _getDynamicBounds() {
+    if (currentPosition != null) {
+      // 사용자 위치 기준 반경 약 50km 범위
+      final lat = currentPosition!.latitude;
+      final lng = currentPosition!.longitude;
+      const radius = 0.45; // 약 50km에 해당하는 위도/경도 차이
+
+      return {
+        'swLat': lat - radius,
+        'swLng': lng - radius,
+        'neLat': lat + radius,
+        'neLng': lng + radius,
+      };
+    } else {
+      // 전국 범위 (한국 전체)
+      return {
+        'swLat': 33.0,  // 제주도 남쪽
+        'swLng': 125.0, // 한국 서쪽 경계
+        'neLat': 38.7,  // 한국 북쪽 경계
+        'neLng': 132.0, // 울릉도 포함 동쪽
+      };
+    }
   }
 }
