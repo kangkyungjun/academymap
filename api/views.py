@@ -37,26 +37,67 @@ class AcademyListAPIView(generics.ListAPIView):
             경도__isnull=False
         )
         
-        # 위치 기반 필터링
+        # 🚀 위치 기반 필터링 (두 가지 모드 지원)
+        # Mode 1: Geographic bounds (지도 뷰포트 기반) - 우선 순위
+        sw_lat = self.request.GET.get('sw_lat')
+        sw_lng = self.request.GET.get('sw_lng')
+        ne_lat = self.request.GET.get('ne_lat')
+        ne_lng = self.request.GET.get('ne_lng')
+
+        # Mode 2: Radius-based (사용자 위치 기준 반경)
         lat = self.request.GET.get('lat')
         lon = self.request.GET.get('lon')
         radius = float(self.request.GET.get('radius', 10))  # 기본 10km
-        
-        if lat and lon:
-            # 사용자 위치를 request에 저장하여 serializer에서 활용
-            self.request.user_lat = float(lat)
-            self.request.user_lon = float(lon)
-            
-            # 대략적인 위도/경도 범위로 1차 필터링 (성능 최적화)
-            lat_range = radius / 111  # 1도 ≈ 111km
-            lon_range = radius / (111 * math.cos(math.radians(float(lat))))
-            
-            queryset = queryset.filter(
-                위도__gte=float(lat) - lat_range,
-                위도__lte=float(lat) + lat_range,
-                경도__gte=float(lon) - lon_range,
-                경도__lte=float(lon) + lon_range
-            )
+
+        if sw_lat and sw_lng and ne_lat and ne_lng:
+            # Geographic bounds 모드 (지도 영역 기반)
+            try:
+                sw_lat = float(sw_lat)
+                sw_lng = float(sw_lng)
+                ne_lat = float(ne_lat)
+                ne_lng = float(ne_lng)
+
+                queryset = queryset.filter(
+                    위도__gte=sw_lat,
+                    위도__lte=ne_lat,
+                    경도__gte=sw_lng,
+                    경도__lte=ne_lng
+                )
+
+                # 사용자 위치가 있으면 거리순 정렬을 위해 저장
+                if lat and lon:
+                    self.request.user_lat = float(lat)
+                    self.request.user_lon = float(lon)
+
+                print(f"🗺️ 지도 영역 필터링: ({sw_lat}, {sw_lng}) ~ ({ne_lat}, {ne_lng})")
+                if lat and lon:
+                    print(f"📍 사용자 위치: ({lat}, {lon}) - 거리순 정렬 적용")
+
+            except ValueError:
+                print("❌ 지도 영역 좌표 변환 실패")
+
+        elif lat and lon:
+            # Radius-based 모드 (사용자 위치 기준 반경)
+            try:
+                # 사용자 위치를 request에 저장하여 serializer에서 활용
+                self.request.user_lat = float(lat)
+                self.request.user_lon = float(lon)
+
+                # 대략적인 위도/경도 범위로 1차 필터링 (성능 최적화)
+                lat_range = radius / 111  # 1도 ≈ 111km
+                lon_range = radius / (111 * math.cos(math.radians(float(lat))))
+
+                queryset = queryset.filter(
+                    위도__gte=float(lat) - lat_range,
+                    위도__lte=float(lat) + lat_range,
+                    경도__gte=float(lon) - lon_range,
+                    경도__lte=float(lon) + lon_range
+                )
+
+                print(f"📍 반경 기반 필터링: 중심({lat}, {lon}), 반경 {radius}km")
+
+            except ValueError:
+                print("❌ 사용자 위치 좌표 변환 실패")
         
         # 과목 필터링
         category = self.request.GET.get('category')
@@ -106,8 +147,44 @@ class AcademyListAPIView(generics.ListAPIView):
         # 셔틀버스 필터링
         if self.request.GET.get('shuttle') == 'true':
             queryset = queryset.exclude(셔틀버스__isnull=True).exclude(셔틀버스='')
-        
+
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        """🚀 거리순 정렬 지원을 위한 커스텀 list 메서드"""
+        queryset = self.get_queryset()
+
+        # 사용자 위치가 있고 거리순 정렬이 필요한 경우
+        if hasattr(request, 'user_lat') and hasattr(request, 'user_lon'):
+            user_lat = request.user_lat
+            user_lng = request.user_lon
+
+            # 거리 계산 및 정렬을 위해 Python에서 처리
+            academies_with_distance = []
+
+            for academy in queryset:
+                if academy.위도 and academy.경도:
+                    distance = calculate_distance(user_lat, user_lng, academy.위도, academy.경도)
+                    if distance is not None:
+                        academies_with_distance.append((academy, distance))
+
+            # 거리순으로 정렬
+            academies_with_distance.sort(key=lambda x: x[1])
+
+            # 정렬된 순서로 academy 객체만 추출
+            sorted_academies = [item[0] for item in academies_with_distance]
+
+            # 페이지네이션 적용
+            page = self.paginate_queryset(sorted_academies)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(sorted_academies, many=True)
+            return Response(serializer.data)
+
+        # 기본 동작 (거리순 정렬이 필요하지 않은 경우)
+        return super().list(request, *args, **kwargs)
 
 class AcademyDetailAPIView(generics.RetrieveAPIView):
     """학원 상세 정보 조회"""

@@ -358,14 +358,18 @@
     // 줌 레벨에 따른 마커 업데이트 결정
     function updateMarkersBasedOnZoom() {
       if (!map) return;
-      
-      if (currentZoomLevel < 13) {
-        // 클러스터 모드
-        requestClustersForCurrentView();
-      } else {
-        // 개별 마커 모드 (줌 레벨 13 이상)
-        requestMarkersForCurrentView();
-      }
+
+      // 🚀 임시 수정: 클러스터 데이터가 없으므로 항상 개별 마커 표시
+      requestMarkersForCurrentView();
+
+      // 원래 로직 (클러스터 API 수정 후 활성화 예정)
+      // if (currentZoomLevel < 13) {
+      //   // 클러스터 모드
+      //   requestClustersForCurrentView();
+      // } else {
+      //   // 개별 마커 모드 (줌 레벨 13 이상)
+      //   requestMarkersForCurrentView();
+      // }
     }
 
     // 현재 지도 화면 영역의 마커 요청 (개별 마커)
