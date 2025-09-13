@@ -60,14 +60,27 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   List<dynamic> academies = [];
   bool isLoading = false;
-  String selectedSubject = '전체';
+  List<String> selectedSubjects = ['전체']; // 다중 선택 지원
   int totalCount = 0;
+
+  // 🚀 Cache Manager 관련 변수들
+  List<dynamic> _cachedNearbyAcademies = []; // 초기 로드된 가까운 학원들 (최대 2000개)
+  Map<String, List<dynamic>> _regionCache = {}; // 지역별 학원 캐시 {regionKey: academyList}
+  Map<String, DateTime> _cacheTimestamps = {}; // 캐시 생성 시간 추적
+  Set<String> _loadedRegions = {}; // 이미 로드된 지역들 추적
+  bool _isInitialCacheLoaded = false; // 초기 캐시 로딩 완료 여부
+
+  // 캐시 관리 설정
+  static const int _maxCacheSize = 5000; // 최대 캐시 크기
+  static const Duration _cacheExpireTime = Duration(minutes: 30); // 캐시 만료 시간
+  static const double _regionGridSize = 0.05; // 지역 그리드 크기 (약 5km)
 
   // 고급 필터링 변수들
   RangeValues priceRange = const RangeValues(0.0, 2000000.0);
   List<String> selectedAgeGroups = [];
   bool shuttleFilter = false;
   bool showAdvancedFilters = false;
+  bool isAndMode = false; // OR/AND 조합 모드 (false: OR, true: AND)
   
   // 무한 스크롤 변수들
   bool isLoadingMore = false;
@@ -303,45 +316,226 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     });
   }
 
-  Future<void> _loadMarkersInBounds(double swLat, double swLng, double neLat, double neLng) async {
-    try {
-      final Uri uri = Uri.parse('$apiBaseUrl/api/v1/academies/').replace(queryParameters: {
-        'sw_lat': swLat.toString(),
-        'sw_lng': swLng.toString(),
-        'ne_lat': neLat.toString(),
-        'ne_lng': neLng.toString(),
-        'limit': _maxMarkersPerRequest.toString(), // 지도 영역 내에서는 더 많은 마커 표시
-        ...getFilterParams(),
-      });
+  // 🚀 Cache Management Methods
 
-      DebugLog.log('🌐 지도 영역 API 요청: $uri');
-      final response = await http.get(uri);
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final allAcademies = data['results'] ?? [];
-        
-        // 스마트 범위 확장으로 클라이언트 사이드 필터링
-        final expandedBounds = _calculateExpandedBounds(swLat, swLng, neLat, neLng);
-        final boundsAcademies = _filterAcademiesInBounds(allAcademies, expandedBounds);
-        
-        DebugLog.log('📍 지도 영역 내 학원: ${boundsAcademies.length}개 (전체: ${allAcademies.length}개)');
-        DebugLog.log('✅ 지도 영역 마커 업데이트: ${boundsAcademies.length}개');
-        
-        // iframe에 마커 업데이트 메시지 전송 (성능을 위해 제한)
-        _sendMarkersToMap(boundsAcademies.take(_maxMarkersPerRequest).toList());
-      } else {
-        DebugLog.log('❌ API 응답 오류: ${response.statusCode}');
-        DebugLog.log('📄 응답 내용: ${response.body}');
-        
-        // 에러 상황에서도 빈 배열로 마커 클리어
-        if (response.statusCode == 429) {
-          DebugLog.log('🚨 API Throttling 발생 - 잠시 후 다시 시도됩니다');
+  /// 지역 키 생성 (그리드 기반)
+  String _generateRegionKey(double lat, double lng) {
+    int gridLat = (lat / _regionGridSize).round();
+    int gridLng = (lng / _regionGridSize).round();
+    return '${gridLat}_${gridLng}';
+  }
+
+  /// 초기 캐시에서 지역 데이터 검색
+  List<dynamic> _getCachedAcademiesInBounds(double swLat, double swLng, double neLat, double neLng) {
+    List<dynamic> cachedResults = [];
+
+    // 초기 캐시에서 영역 내 학원 찾기
+    for (var academy in _cachedNearbyAcademies) {
+      double? lat = academy['위도'];
+      double? lng = academy['경도'];
+
+      if (lat != null && lng != null &&
+          lat >= swLat && lat <= neLat &&
+          lng >= swLng && lng <= neLng) {
+        cachedResults.add(academy);
+      }
+    }
+
+    DebugLog.log('📦 캐시에서 찾은 학원: ${cachedResults.length}개 (범위: ${swLat.toStringAsFixed(4)},${swLng.toStringAsFixed(4)} ~ ${neLat.toStringAsFixed(4)},${neLng.toStringAsFixed(4)})');
+    return cachedResults;
+  }
+
+  /// 지역별 캐시에서 데이터 검색
+  List<dynamic> _getRegionCachedAcademies(double swLat, double swLng, double neLat, double neLng) {
+    List<dynamic> regionResults = [];
+    Set<String> checkedRegions = {};
+
+    // 해당 영역의 모든 그리드 키 생성
+    double latStep = _regionGridSize;
+    double lngStep = _regionGridSize;
+
+    for (double lat = swLat; lat <= neLat; lat += latStep) {
+      for (double lng = swLng; lng <= neLng; lng += lngStep) {
+        String regionKey = _generateRegionKey(lat, lng);
+
+        if (checkedRegions.contains(regionKey)) continue;
+        checkedRegions.add(regionKey);
+
+        if (_regionCache.containsKey(regionKey)) {
+          // 캐시 만료 검사
+          if (_cacheTimestamps[regionKey] != null &&
+              DateTime.now().difference(_cacheTimestamps[regionKey]!) < _cacheExpireTime) {
+
+            List<dynamic> regionData = _regionCache[regionKey]!;
+            for (var academy in regionData) {
+              double? aLat = academy['위도'];
+              double? aLng = academy['경도'];
+
+              if (aLat != null && aLng != null &&
+                  aLat >= swLat && aLat <= neLat &&
+                  aLng >= swLng && aLng <= neLng) {
+                regionResults.add(academy);
+              }
+            }
+          } else {
+            // 만료된 캐시 제거
+            _regionCache.remove(regionKey);
+            _cacheTimestamps.remove(regionKey);
+          }
         }
-        _sendMarkersToMap([]);
+      }
+    }
+
+    DebugLog.log('🏘️ 지역 캐시에서 찾은 학원: ${regionResults.length}개');
+    return regionResults;
+  }
+
+  /// 캐시에 데이터 저장
+  void _cacheRegionData(double centerLat, double centerLng, List<dynamic> academies) {
+    String regionKey = _generateRegionKey(centerLat, centerLng);
+
+    // 캐시 크기 제한
+    if (_regionCache.length >= 20) { // 최대 20개 지역 캐시 유지
+      // 가장 오래된 캐시 제거
+      String? oldestKey;
+      DateTime? oldestTime;
+
+      for (String key in _cacheTimestamps.keys) {
+        DateTime? time = _cacheTimestamps[key];
+        if (time != null && (oldestTime == null || time.isBefore(oldestTime))) {
+          oldestTime = time;
+          oldestKey = key;
+        }
+      }
+
+      if (oldestKey != null) {
+        _regionCache.remove(oldestKey);
+        _cacheTimestamps.remove(oldestKey);
+        DebugLog.log('🧹 오래된 캐시 제거: $oldestKey');
+      }
+    }
+
+    _regionCache[regionKey] = List<dynamic>.from(academies);
+    _cacheTimestamps[regionKey] = DateTime.now();
+    DebugLog.log('💾 지역 캐시 저장: $regionKey (${academies.length}개 학원)');
+  }
+
+  /// 초기 캐시 데이터 설정
+  void _setInitialCache(List<dynamic> nearbyAcademies) {
+    _cachedNearbyAcademies = List<dynamic>.from(nearbyAcademies);
+    _isInitialCacheLoaded = true;
+    DebugLog.log('🚀 초기 캐시 설정 완료: ${_cachedNearbyAcademies.length}개 학원');
+  }
+
+  /// 🚀 Hybrid Loading: Cache-First with Progressive Enhancement
+  Future<void> _loadMarkersInBounds(double swLat, double swLng, double neLat, double neLng) async {
+    DebugLog.log('🗺️ 지도 영역 마커 로드 요청: (${swLat.toStringAsFixed(4)},${swLng.toStringAsFixed(4)}) ~ (${neLat.toStringAsFixed(4)},${neLng.toStringAsFixed(4)})');
+
+    // Phase 1: 캐시된 데이터로 즉시 마커 표시
+    List<dynamic> cachedMarkers = [];
+
+    // 초기 캐시에서 검색
+    if (_isInitialCacheLoaded) {
+      cachedMarkers.addAll(_getCachedAcademiesInBounds(swLat, swLng, neLat, neLng));
+    }
+
+    // 지역 캐시에서 추가 검색
+    cachedMarkers.addAll(_getRegionCachedAcademies(swLat, swLng, neLat, neLng));
+
+    // 중복 제거 (ID 기준)
+    Map<String, dynamic> uniqueMarkers = {};
+    for (var academy in cachedMarkers) {
+      String id = academy['id']?.toString() ?? academy.hashCode.toString();
+      uniqueMarkers[id] = academy;
+    }
+
+    List<dynamic> finalCachedMarkers = uniqueMarkers.values.toList();
+
+    // 캐시된 마커가 있으면 즉시 표시
+    if (finalCachedMarkers.isNotEmpty) {
+      DebugLog.log('⚡ 캐시에서 즉시 마커 표시: ${finalCachedMarkers.length}개');
+      _sendMarkersToMap(finalCachedMarkers.take(_maxMarkersPerRequest).toList());
+    }
+
+    // Phase 2: 백그라운드에서 해당 지역의 추가 데이터 로드
+    try {
+      // 지역 중심점 계산
+      double centerLat = (swLat + neLat) / 2;
+      double centerLng = (swLng + neLng) / 2;
+      String regionKey = _generateRegionKey(centerLat, centerLng);
+
+      // 이미 로드된 지역인지 확인
+      bool needsApiCall = true;
+      if (_loadedRegions.contains(regionKey) && _regionCache.containsKey(regionKey)) {
+        // 캐시 유효성 검증
+        if (_cacheTimestamps[regionKey] != null &&
+            DateTime.now().difference(_cacheTimestamps[regionKey]!) < _cacheExpireTime) {
+          needsApiCall = false;
+          DebugLog.log('✅ 지역 캐시 유효함, API 호출 생략: $regionKey');
+        }
+      }
+
+      if (needsApiCall) {
+        // 사용자 위치 정보 포함하여 API 호출 (거리순 정렬을 위해)
+        Map<String, String> queryParams = {
+          'sw_lat': swLat.toString(),
+          'sw_lng': swLng.toString(),
+          'ne_lat': neLat.toString(),
+          'ne_lng': neLng.toString(),
+          'limit': (_maxMarkersPerRequest * 2).toString(), // 더 많은 데이터 요청
+        };
+
+        // 사용자 위치 정보 추가 (거리순 정렬)
+        if (currentPosition != null) {
+          queryParams['lat'] = currentPosition!.latitude.toString();
+          queryParams['lon'] = currentPosition!.longitude.toString();
+        }
+
+        queryParams.addAll(getFilterParams());
+
+        final Uri uri = Uri.parse('$apiBaseUrl/api/v1/academies/').replace(queryParameters: queryParams);
+        DebugLog.log('🌐 백그라운드 API 요청: $uri');
+
+        final response = await http.get(uri);
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final allAcademies = data['results'] ?? [];
+
+          // 지역 캐시에 저장
+          _cacheRegionData(centerLat, centerLng, allAcademies);
+          _loadedRegions.add(regionKey);
+
+          // 범위 내 필터링
+          final expandedBounds = _calculateExpandedBounds(swLat, swLng, neLat, neLng);
+          final boundsAcademies = _filterAcademiesInBounds(allAcademies, expandedBounds);
+
+          DebugLog.log('🔄 백그라운드 로드 완료: ${boundsAcademies.length}개 (API: ${allAcademies.length}개)');
+
+          // 새로운 데이터가 캐시된 것보다 많다면 업데이트
+          if (boundsAcademies.length > finalCachedMarkers.length) {
+            DebugLog.log('📈 더 많은 마커 발견, 업데이트: ${boundsAcademies.length}개');
+            _sendMarkersToMap(boundsAcademies.take(_maxMarkersPerRequest).toList());
+          }
+        } else {
+          DebugLog.log('❌ API 응답 오류: ${response.statusCode}');
+
+          // 캐시된 마커도 없다면 빈 배열 전송
+          if (finalCachedMarkers.isEmpty) {
+            if (response.statusCode == 429) {
+              DebugLog.log('🚨 API Throttling 발생 - 잠시 후 다시 시도됩니다');
+            }
+            _sendMarkersToMap([]);
+          }
+        }
       }
     } catch (e) {
-      DebugLog.log('지도 영역 마커 로드 오류: $e');
+      DebugLog.log('백그라운드 마커 로드 오류: $e');
+
+      // 에러가 발생했지만 캐시된 마커가 없다면 빈 배열 전송
+      if (finalCachedMarkers.isEmpty) {
+        _sendMarkersToMap([]);
+      }
     }
   }
 
@@ -389,10 +583,12 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   Map<String, String> getFilterParams() {
     Map<String, String> params = {};
-    
-    // 과목 카테고리 필터
-    if (selectedSubject != '전체') {
-      params['category'] = selectedSubject;
+
+    // 다중 과목 필터 - '전체'가 선택되지 않은 경우에만 필터 적용
+    if (!selectedSubjects.contains('전체') && selectedSubjects.isNotEmpty) {
+      // 다중 과목을 JSON 문자열로 전송
+      params['subjects'] = jsonEncode(selectedSubjects);
+      params['filterMode'] = isAndMode ? 'AND' : 'OR';
     }
     
     // 가격 범위 필터
@@ -599,7 +795,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       hasNetworkError = false;
     });
 
-    DebugLog.log('🔍 필터링 시작: $selectedSubject'); // 디버깅용
+    DebugLog.log('🔍 필터링 시작: ${selectedSubjects.join(", ")} (${isAndMode ? "AND" : "OR"} 모드)'); // 디버깅용
     final bounds = _getDynamicBounds();
     DebugLog.log('🌏 검색 범위: SW(${bounds['swLat']}, ${bounds['swLng']}) NE(${bounds['neLat']}, ${bounds['neLng']})');
 
@@ -612,12 +808,16 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           'swLng': _getDynamicBounds()['swLng'],
           'neLat': _getDynamicBounds()['neLat'],
           'neLng': _getDynamicBounds()['neLng'],
-          'subjects': [selectedSubject],
+          'subjects': selectedSubjects,
           'priceMin': priceRange.start.toString(),
           'priceMax': priceRange.end >= _defaultMaxPrice ? '999999999' : priceRange.end.toString(),
+          'filterMode': isAndMode ? 'AND' : 'OR',
           'ageGroups': selectedAgeGroups,
           'shuttleFilter': shuttleFilter,
           'searchQuery': searchQuery.trim(),
+          // 📍 사용자 위치 정보 추가 (거리순 정렬을 위해)
+          'userLat': currentPosition?.latitude,
+          'userLng': currentPosition?.longitude,
         }),
       );
 
@@ -645,7 +845,12 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           hasMoreData = data.length > 50;
           isLoading = false;
         });
-        
+
+        // 🚀 초기 캐시 설정 (거리순으로 정렬된 가까운 학원들)
+        if (!_isInitialCacheLoaded) {
+          _setInitialCache(data);
+        }
+
         DebugLog.log('✅ UI 업데이트 완료: ${academies.length}개 표시'); // 디버깅용
         
         // 지도가 활성화되어 있으면 마커 업데이트
@@ -1228,26 +1433,136 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                   spacing: MediaQuery.of(context).size.width > 600 ? 8.0 : 6.0,
                   runSpacing: 4.0,
                   children: subjects.map((subject) {
+                    bool isSelected = selectedSubjects.contains(subject);
                     return FilterChip(
                       label: Text(subject),
-                      selected: selectedSubject == subject,
+                      selected: isSelected,
                       onSelected: (bool selected) {
-                        if (selected && selectedSubject != subject) {
-                          DebugLog.log('🎯 과목 선택: $selectedSubject → $subject'); // 디버깅용
-                          setState(() {
-                            selectedSubject = subject;
-                          });
-                          // 약간의 지연을 두어 UI 업데이트 후 현재 지도 영역에서 필터 적용
-                          Future.delayed(Duration(milliseconds: 100), () {
-                            applyFiltersWithinMapBounds();
-                          });
-                        }
+                        setState(() {
+                          if (subject == '전체') {
+                            // '전체' 선택 시 다른 모든 선택 해제
+                            if (selected) {
+                              selectedSubjects = ['전체'];
+                            } else {
+                              selectedSubjects = [];
+                            }
+                          } else {
+                            // 개별 과목 선택/해제
+                            if (selected) {
+                              // '전체' 선택되어 있으면 제거하고 새 과목 추가
+                              selectedSubjects.remove('전체');
+                              if (!selectedSubjects.contains(subject)) {
+                                selectedSubjects.add(subject);
+                              }
+                            } else {
+                              selectedSubjects.remove(subject);
+                              // 아무것도 선택되지 않았으면 '전체' 자동 선택
+                              if (selectedSubjects.isEmpty) {
+                                selectedSubjects.add('전체');
+                              }
+                            }
+                          }
+                        });
+
+                        DebugLog.log('🎯 과목 선택: ${selectedSubjects.join(", ")}'); // 디버깅용
+
+                        // UI 업데이트 후 필터 적용
+                        Future.delayed(Duration(milliseconds: 100), () {
+                          applyFiltersWithinMapBounds();
+                        });
                       },
                       selectedColor: Colors.blue[100],
                       checkmarkColor: Colors.blue[800],
                     );
                   }).toList(),
                 ),
+
+                // OR/AND 조합 모드 토글 (다중 선택 시만 표시)
+                if (!selectedSubjects.contains('전체') && selectedSubjects.length > 1) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '필터 모드: ',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.grey[100],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (isAndMode) {
+                                  setState(() {
+                                    isAndMode = false;
+                                  });
+                                  applyFiltersWithinMapBounds();
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: !isAndMode ? Colors.blue : Colors.transparent,
+                                ),
+                                child: Text(
+                                  'OR',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: !isAndMode ? Colors.white : Colors.grey[600],
+                                    fontWeight: !isAndMode ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                if (!isAndMode) {
+                                  setState(() {
+                                    isAndMode = true;
+                                  });
+                                  applyFiltersWithinMapBounds();
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: isAndMode ? Colors.blue : Colors.transparent,
+                                ),
+                                child: Text(
+                                  'AND',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isAndMode ? Colors.white : Colors.grey[600],
+                                    fontWeight: isAndMode ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isAndMode ? '모든 과목 동시 제공' : '선택 과목 중 하나 이상',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
                 if (totalCount > 0) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -1257,7 +1572,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '📊 "$selectedSubject" 학원 $totalCount개 중 ${academies.length}개 표시${hasMoreData ? ' (스크롤하여 더 보기)' : ''}',
+                      '📊 "${selectedSubjects.join(", ")}" 학원 $totalCount개 중 ${academies.length}개 표시${hasMoreData ? ' (스크롤하여 더 보기)' : ''}',
                       style: TextStyle(
                         color: Colors.blue[700],
                         fontSize: 13,
@@ -1628,17 +1943,39 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
+                                        // 📍 거리 정보 표시 (우선 순위)
+                                        if (academy['distance'] != null && _formatDistance(academy['distance']).isNotEmpty) ...[
+                                          Icon(
+                                            Icons.near_me,
+                                            size: 16,
+                                            color: Colors.blue[600],
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _formatDistance(academy['distance']),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.blue[700],
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                        ],
+                                        // 기존 위치 정보 (축약)
                                         Icon(
                                           Icons.location_on,
                                           size: 16,
-                                          color: Colors.red[400],
+                                          color: Colors.grey[400],
                                         ),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          '${_safeSubstring(academy['위도']?.toString(), 7)}, ${_safeSubstring(academy['경도']?.toString(), 8)}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[500],
+                                        Expanded(
+                                          child: Text(
+                                            '${_safeSubstring(academy['위도']?.toString(), 7)}, ${_safeSubstring(academy['경도']?.toString(), 8)}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey[500],
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
@@ -1691,13 +2028,53 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     return str.length <= maxLength ? str : str.substring(0, maxLength);
   }
 
+  // 📍 거리 포맷 함수
+  String _formatDistance(dynamic distanceValue) {
+    if (distanceValue == null) return '';
+
+    double distance;
+    if (distanceValue is int) {
+      distance = distanceValue.toDouble();
+    } else if (distanceValue is double) {
+      distance = distanceValue;
+    } else if (distanceValue is String) {
+      distance = double.tryParse(distanceValue) ?? double.infinity;
+    } else {
+      return '';
+    }
+
+    if (distance == double.infinity) return '';
+
+    if (distance < 1.0) {
+      return '${(distance * 1000).round()}m';
+    } else {
+      return '${distance.toStringAsFixed(1)}km';
+    }
+  }
+
   // 동적 지역 범위 계산 헬퍼 함수
   Map<String, double> _getDynamicBounds() {
     if (currentPosition != null) {
-      // 사용자 위치 기준 반경 약 100km 범위 (수도권 전체 커버)
       final lat = currentPosition!.latitude;
       final lng = currentPosition!.longitude;
-      const radius = 1.0; // 약 100km에 해당하는 위도/경도 차이
+
+      // 🚀 개선: 위치 정확도에 따른 동적 반경 조정
+      double radius;
+
+      // 위치 정확도가 높을 때 (GPS 정확도 < 50m)
+      if (currentPosition!.accuracy < 50) {
+        radius = 0.05; // 약 5km - 매우 정확한 위치일 때 가장 가까운 뷰
+      }
+      // 위치 정확도가 보통일 때 (GPS 정확도 < 100m)
+      else if (currentPosition!.accuracy < 100) {
+        radius = 0.09; // 약 10km - 일반적인 경우
+      }
+      // 위치 정확도가 낮을 때 (GPS 정확도 >= 100m)
+      else {
+        radius = 0.15; // 약 17km - 정확도가 낮을 때 조금 더 넓은 범위
+      }
+
+      DebugLog.log('📍 위치 정확도: ${currentPosition!.accuracy.toStringAsFixed(1)}m, 지도 반경: ${(radius * 111).toStringAsFixed(1)}km');
 
       return {
         'swLat': lat - radius,
@@ -1706,7 +2083,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         'neLng': lng + radius,
       };
     } else {
-      // 전국 범위 (한국 전체)
+      // 전국 범위 (한국 전체) - 위치 정보 없을 때만 사용
       return {
         'swLat': 33.0,  // 제주도 남쪽
         'swLng': 125.0, // 한국 서쪽 경계

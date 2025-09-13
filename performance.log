@@ -1,2 +1,7 @@
 WARNING 2025-08-31 19:38:37,870 performance_middleware 38329 13341061120 Slow request: GET /performance/metrics/ took 1.012s
 WARNING 2025-09-13 22:07:49,517 performance_middleware 2053 12918484992 Slow request: GET /data_update took 13.971s
+WARNING 2025-09-13 22:20:51,670 performance_middleware 8990 13323235328 Slow request: POST /api/filtered_academies took 1.528s
+WARNING 2025-09-13 22:30:33,731 performance_middleware 12422 12952039424 High query count: 9000 queries for /data_update
+WARNING 2025-09-13 22:30:33,881 performance_middleware 12422 12952039424 Potential N+1 query detected: SELECT ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.?, ?.? (4499 times)
+WARNING 2025-09-13 22:30:33,881 performance_middleware 12422 12952039424 Potential N+1 query detected: INSERT INTO ? (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? (4499 times)
+WARNING 2025-09-13 22:30:33,881 performance_middleware 12422 12952039424 Slow request: GET /data_update took 88.635s

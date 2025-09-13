@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import math
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
@@ -11,6 +12,30 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Data
 from .forms import AcademyForm
 from django.db.models import Q, FloatField
+
+
+def calculate_distance(lat1, lng1, lat2, lng2):
+    """
+    두 지점 간의 거리를 계산 (Haversine formula)
+    결과: km 단위
+    """
+    if not all([lat1, lng1, lat2, lng2]):
+        return float('inf')
+
+    R = 6371  # 지구 반지름 (km)
+
+    lat1_rad = math.radians(float(lat1))
+    lng1_rad = math.radians(float(lng1))
+    lat2_rad = math.radians(float(lat2))
+    lng2_rad = math.radians(float(lng2))
+
+    dlat = lat2_rad - lat1_rad
+    dlng = lng2_rad - lng1_rad
+
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+    return R * c
 
 
 
@@ -295,24 +320,32 @@ def filtered_academies(request):
     ne_lat = body.get('neLat')
     ne_lng = body.get('neLng')
     subjects = body.get('subjects', [])  # ✅ 수정됨
+    filterMode = body.get('filterMode', 'OR')  # 기본값: OR 모드
 
     # 🔍 디버깅: Flutter에서 보내는 파라미터 확인
     import sys
     print(f"🔍 Flutter 요청 파라미터:", file=sys.stderr, flush=True)
     print(f"   - 위치 범위: SW({sw_lat}, {sw_lng}) NE({ne_lat}, {ne_lng})", file=sys.stderr, flush=True)
-    print(f"   - 과목: {subjects}", file=sys.stderr, flush=True)
+    print(f"   - 과목: {subjects} ({filterMode} 모드)", file=sys.stderr, flush=True)
     print(f"   - 가격: {body.get('priceMin')} ~ {body.get('priceMax')}", file=sys.stderr, flush=True)
     print(f"   - 연령: {body.get('ageGroups', [])}", file=sys.stderr, flush=True)
     print(f"   - 셔틀: {body.get('shuttleFilter', False)}", file=sys.stderr, flush=True)
 
-    queryset = Data.objects.filter(
-        위도__gte=sw_lat,
-        위도__lte=ne_lat,
-        경도__gte=sw_lng,
-        경도__lte=ne_lng,
+    # 🚀 수정: 전국 데이터 반환 (지역 제한 제거)
+    queryset = Data.objects.all()
+
+    # 필요시 한국 전체 범위로 제한 (위도: 33-39, 경도: 124-132)
+    queryset = queryset.filter(
+        위도__gte=33.0,
+        위도__lte=39.0,
+        경도__gte=124.0,
+        경도__lte=132.0,
+        위도__isnull=False,
+        경도__isnull=False,
     )
 
-    # ✅ 다중 과목 필터 적용
+    # ✅ 다중 과목 필터 적용 (OR/AND 모드 지원)
+
     subject_mapping = {
         '종합': '과목_종합',
         '수학': '과목_수학',
@@ -327,11 +360,19 @@ def filtered_academies(request):
     }
 
     if subjects and '전체' not in subjects:
-        subject_q = Q()
-        for subject in subjects:
-            if subject in subject_mapping:
-                subject_q |= Q(**{subject_mapping[subject]: True})
-        queryset = queryset.filter(subject_q)
+        if filterMode == 'AND':
+            # AND 모드: 선택된 모든 과목을 동시에 제공하는 학원만 표시
+            for subject in subjects:
+                if subject in subject_mapping:
+                    field_filter = {subject_mapping[subject]: True}
+                    queryset = queryset.filter(**field_filter)
+        else:
+            # OR 모드: 선택된 과목 중 하나 이상을 제공하는 학원 표시
+            subject_q = Q()
+            for subject in subjects:
+                if subject in subject_mapping:
+                    subject_q |= Q(**{subject_mapping[subject]: True})
+            queryset = queryset.filter(subject_q)
 
     # 가격 필터
     priceMin = body.get('priceMin')
@@ -372,11 +413,43 @@ def filtered_academies(request):
         '시군구명', '상권업종소분류명', '셔틀버스', '영업시간', '별점'
     ))
 
+    # 📍 사용자 위치 기반 거리 계산 및 정렬
+    user_lat = body.get('userLat')
+    user_lng = body.get('userLng')
+
+    if user_lat and user_lng:
+        # 각 학원까지의 거리 계산
+        for academy in data:
+            academy_lat = academy.get('위도')
+            academy_lng = academy.get('경도')
+
+            if academy_lat and academy_lng:
+                distance = calculate_distance(user_lat, user_lng, academy_lat, academy_lng)
+                academy['distance'] = round(distance, 2)  # km, 소수점 2자리
+            else:
+                academy['distance'] = float('inf')  # 위치 정보 없는 경우 맨 뒤로
+
+        # 거리순으로 정렬 (가까운 곳부터)
+        data.sort(key=lambda x: x.get('distance', float('inf')))
+
+        # 🚀 성능 최적화: 가까운 학원 상위 2000개만 반환
+        data = data[:2000]
+
     # 🔍 디버깅: 반환되는 데이터 확인
     print(f"🔍 Django 응답:", file=sys.stderr, flush=True)
+    print(f"   - 전체 필터된 학원: {len(list(queryset.values('id')))}개", file=sys.stderr, flush=True)
     print(f"   - 반환된 학원 수: {len(data)}개", file=sys.stderr, flush=True)
-    for item in data:
-        print(f"   - ID: {item['id']}, 이름: {item['상호명']}", file=sys.stderr, flush=True)
+    if user_lat and user_lng:
+        print(f"   - 사용자 위치: ({user_lat}, {user_lng})", file=sys.stderr, flush=True)
+        print(f"   - 거리순 정렬 후 상위 2000개 반환", file=sys.stderr, flush=True)
+
+    # 상위 5개 학원 정보만 출력 (너무 많으면 로그가 길어짐)
+    for i, item in enumerate(data[:5]):
+        distance_info = f", 거리: {item.get('distance', 'N/A')}km" if 'distance' in item else ""
+        print(f"   - [{i+1}] ID: {item['id']}, 이름: {item['상호명']}{distance_info}", file=sys.stderr, flush=True)
+
+    if len(data) > 5:
+        print(f"   - ... 및 {len(data) - 5}개 더", file=sys.stderr, flush=True)
 
     return JsonResponse(data, safe=False)
 ###### 기존 map 용 ######
@@ -540,74 +613,130 @@ def delete_academy(request, pk):
 
 
 def data_update(request):
+    print("=== 데이터 업데이트 시작 ===")
     n_data = pd.read_excel('n_data.xlsx')
+    print(f"Excel에서 읽은 총 레코드 수: {len(n_data)}")
+
+    # 기존 데이터 백업을 위한 카운트
+    existing_count = Data.objects.count()
+    print(f"기존 DB 레코드 수: {existing_count}")
+
+    success_count = 0
+    error_count = 0
 
     for i in range(len(n_data)):
-        row = n_data.iloc[i]
+        try:
+            row = n_data.iloc[i]
 
-        # 상가업소번호가 없는 경우 인덱스를 기반으로 고유 ID 생성
-        상가업소번호 = clean_value(row['상가업소번호'])
-        if 상가업소번호 is None:
-            상가업소번호 = f"AUTO_ID_{i:08d}"  # AUTO_ID_00000001 형태로 생성
+            # 고유 식별자 생성 (상호명 + 도로명주소 + 좌표 조합)
+            상호명 = clean_value(row['상호명']) or f"학원_{i}"
+            도로명주소 = clean_value(row['도로명주소']) or ""
+            경도 = clean_value(row['경도']) or 0
+            위도 = clean_value(row['위도']) or 0
 
-        # 공통 데이터 준비
-        defaults_data = {
-            '상호명': clean_value(row['상호명']),
-            '상권업종대분류코드': clean_value(row['상권업종대분류코드']),
-            '상권업종대분류명': clean_value(row['상권업종대분류명']),
-            '상권업종중분류명': clean_value(row['상권업종중분류명']),
-            '상권업종소분류명': clean_value(row['상권업종소분류명']),
-            '시도명': clean_value(row['시도명']),
-            '시군구명': clean_value(row['시군구명']),
-            '행정동명': clean_value(row['행정동명']),
-            '법정동명': clean_value(row['법정동명']),
-            '지번주소': clean_value(row['지번주소']),
-            '도로명주소': clean_value(row['도로명주소']),
-            '경도': clean_value(row['경도']),
-            '위도': clean_value(row['위도']),
-            '학원사진': clean_value(row['학원사진']),
-            '대표원장': clean_value(row['대표원장']),
-            '레벨테스트': clean_value(row['레벨테스트']),
-            '강사': clean_value(row['강사']),
+            # 복합 고유 키 생성 (데이터 손실 방지)
+            unique_key = f"{상호명}_{도로명주소}_{경도}_{위도}_{i}"
 
-            # Boolean 필드 변환
-            '대상_유아': convert_to_boolean(row['대상_유아']),
-            '대상_초등': convert_to_boolean(row['대상_초등']),
-            '대상_중등': convert_to_boolean(row['대상_중등']),
-            '대상_고등': convert_to_boolean(row['대상_고등']),
-            '대상_특목고': convert_to_boolean(row['대상_특목고']),
-            '대상_일반': convert_to_boolean(row['대상_일반']),
-            '대상_기타': convert_to_boolean(row['대상_기타']),
+            # 상가업소번호 처리 (원본 데이터 보존)
+            상가업소번호 = clean_value(row['상가업소번호'])
+            if 상가업소번호 is None or str(상가업소번호).strip() == '':
+                상가업소번호 = f"AUTO_ID_{i:08d}"
 
-            '인증_명문대': convert_to_boolean(row['인증_명문대']),
-            '인증_경력': convert_to_boolean(row['인증_경력']),
+            # 공통 데이터 준비
+            defaults_data = {
+                '상가업소번호': 상가업소번호,
+                '상호명': 상호명,
+                '상권업종대분류코드': clean_value(row['상권업종대분류코드']),
+                '상권업종대분류명': clean_value(row['상권업종대분류명']),
+                '상권업종중분류명': clean_value(row['상권업종중분류명']),
+                '상권업종소분류명': clean_value(row['상권업종소분류명']),
+                '시도명': clean_value(row['시도명']),
+                '시군구명': clean_value(row['시군구명']),
+                '행정동명': clean_value(row['행정동명']),
+                '법정동명': clean_value(row['법정동명']),
+                '지번주소': clean_value(row['지번주소']),
+                '도로명주소': 도로명주소,
+                '경도': 경도,
+                '위도': 위도,
+                '학원사진': clean_value(row['학원사진']),
+                '대표원장': clean_value(row['대표원장']),
+                '레벨테스트': clean_value(row['레벨테스트']),
+                '강사': clean_value(row['강사']),
 
-            '소개글': clean_value(row['소개글']),
+                # Boolean 필드 변환
+                '대상_유아': convert_to_boolean(row['대상_유아']),
+                '대상_초등': convert_to_boolean(row['대상_초등']),
+                '대상_중등': convert_to_boolean(row['대상_중등']),
+                '대상_고등': convert_to_boolean(row['대상_고등']),
+                '대상_특목고': convert_to_boolean(row['대상_특목고']),
+                '대상_일반': convert_to_boolean(row['대상_일반']),
+                '대상_기타': convert_to_boolean(row['대상_기타']),
 
-            '과목_종합': convert_to_boolean(row['과목_종합']),
-            '과목_수학': convert_to_boolean(row['과목_수학']),
-            '과목_영어': convert_to_boolean(row['과목_영어']),
-            '과목_과학': convert_to_boolean(row['과목_과학']),
-            '과목_외국어': convert_to_boolean(row['과목_외국어']),
-            '과목_예체능': convert_to_boolean(row['과목_예체능']),
-            '과목_컴퓨터': convert_to_boolean(row['과목_컴퓨터']),
-            '과목_논술': convert_to_boolean(row['과목_논술']),
-            '과목_기타': convert_to_boolean(row['과목_기타']),
-            '과목_독서실스터디카페': convert_to_boolean(row['과목_독서실스터디카페']),
+                '인증_명문대': convert_to_boolean(row['인증_명문대']),
+                '인증_경력': convert_to_boolean(row['인증_경력']),
 
-            '별점': clean_value(row['별점']),
-            '전화번호': clean_value(row['전화번호']),
-            '영업시간': clean_value(row['영업시간']),
-            '셔틀버스': convert_to_boolean(row['셔틀버스']),
-            '수강료': clean_value(row['수강료']),
-            '수강료_평균': clean_value(row['수강료_평균']),
-        }
+                '소개글': clean_value(row['소개글']),
 
-        # 상가업소번호로 update_or_create 수행
-        data, created = Data.objects.update_or_create(
-            상가업소번호=상가업소번호,
-            defaults=defaults_data
-        )
+                '과목_종합': convert_to_boolean(row['과목_종합']),
+                '과목_수학': convert_to_boolean(row['과목_수학']),
+                '과목_영어': convert_to_boolean(row['과목_영어']),
+                '과목_과학': convert_to_boolean(row['과목_과학']),
+                '과목_외국어': convert_to_boolean(row['과목_외국어']),
+                '과목_예체능': convert_to_boolean(row['과목_예체능']),
+                '과목_컴퓨터': convert_to_boolean(row['과목_컴퓨터']),
+                '과목_논술': convert_to_boolean(row['과목_논술']),
+                '과목_기타': convert_to_boolean(row['과목_기타']),
+                '과목_독서실스터디카페': convert_to_boolean(row['과목_독서실스터디카페']),
 
-    return render(request, 'main/data_update.html')
+                '별점': clean_value(row['별점']),
+                '전화번호': clean_value(row['전화번호']),
+                '영업시간': clean_value(row['영업시간']),
+                '셔틀버스': convert_to_boolean(row['셔틀버스']),
+                '수강료': clean_value(row['수강료']),
+                '수강료_평균': clean_value(row['수강료_평균']),
+            }
+
+            # 단순하게 새 레코드 생성 (모든 데이터 보존)
+            # 중복 검사: 동일한 상호명, 도로명주소, 좌표를 가진 기존 레코드가 있는지 확인
+            existing = Data.objects.filter(
+                상호명=상호명,
+                도로명주소=도로명주소,
+                경도=경도,
+                위도=위도
+            ).first()
+
+            if existing:
+                # 기존 레코드 업데이트
+                for key, value in defaults_data.items():
+                    setattr(existing, key, value)
+                existing.save()
+                created = False
+                data = existing
+            else:
+                # 새 레코드 생성
+                data = Data.objects.create(**defaults_data)
+                created = True
+
+            if created:
+                success_count += 1
+
+            # 진행 상황 출력 (1000개마다)
+            if i % 1000 == 0:
+                print(f"진행 중... {i+1}/{len(n_data)} ({((i+1)/len(n_data)*100):.1f}%)")
+
+        except Exception as e:
+            error_count += 1
+            print(f"에러 발생 (행 {i+1}): {e}")
+            continue
+
+    print(f"=== 데이터 업데이트 완료 ===")
+    print(f"성공: {success_count}개")
+    print(f"에러: {error_count}개")
+    print(f"최종 DB 레코드 수: {Data.objects.count()}")
+
+    return render(request, 'main/data_update.html', {
+        'success_count': success_count,
+        'error_count': error_count,
+        'total_records': Data.objects.count()
+    })
 
