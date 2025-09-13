@@ -103,8 +103,8 @@ class AcademyListView(APIView):
             # 보안: limit 범위 제한 (DoS 방지)
             if limit < 1:
                 limit = 50
-            elif limit > 500:  # 최대 500개로 제한
-                limit = 500
+            elif limit > 200000:  # 최대 200,000개로 제한 (전체 데이터 로드 가능)
+                limit = 200000
                 
             # 보안: offset 범위 제한 
             if offset < 0:

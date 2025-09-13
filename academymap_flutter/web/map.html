@@ -175,6 +175,27 @@
         const newZoom = map.getZoom();
         debugLog(`🔍 줌 레벨 변경: ${currentZoomLevel} → ${newZoom}`);
         currentZoomLevel = newZoom;
+
+        // 🎯 Flutter로 줌 레벨 변경 알림
+        if (window.parent) {
+          const bounds = map.getBounds();
+          const sw = bounds.getSW();
+          const ne = bounds.getNE();
+
+          window.parent.postMessage({
+            type: 'zoomChanged',
+            data: {
+              zoom: newZoom,
+              bounds: {
+                sw_lat: sw.lat(),
+                sw_lng: sw.lng(),
+                ne_lat: ne.lat(),
+                ne_lng: ne.lng()
+              }
+            }
+          }, '*');
+        }
+
         debouncedUpdateMarkers();
       });
       
