@@ -1,12 +1,20 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:html' as html;
-import 'dart:js' as js;
 import 'dart:async';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:ui_web' as ui_web;
+import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+
+class DebugLog {
+  static void log(String message) {
+    if (kDebugMode) {
+      print(message);
+    }
+  }
+}
 
 void main() {
   runApp(const AcademyMapApp());
@@ -39,13 +47,24 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   // API 설정
   static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://127.0.0.1:8000');
 
+  // 지도 범위 확장 설정
+  static const double _defaultBoundsExpansion = 0.1; // ±0.1도 = 약 11km
+  static const double _maxBoundsExpansion = 0.5; // ±0.5도 = 약 55km
+  static const int _maxMarkersPerRequest = 200;
+
+  // UI 상수
+  static const int _scrollLoadThreshold = 200; // 스크롤 로딩 임계값 (px)
+  static const int _mapInitDelay = 2000; // 지도 초기화 지연 시간 (ms)
+  static const int _markerUpdateDelay = 300; // 마커 업데이트 지연 시간 (ms)
+  static const int _defaultMaxPrice = 2000000; // 기본 최대 가격 (원)
+
   List<dynamic> academies = [];
   bool isLoading = false;
   String selectedSubject = '전체';
   int totalCount = 0;
 
   // 고급 필터링 변수들
-  RangeValues priceRange = const RangeValues(0, 2000000);
+  RangeValues priceRange = const RangeValues(0.0, 2000000.0);
   List<String> selectedAgeGroups = [];
   bool shuttleFilter = false;
   bool showAdvancedFilters = false;
@@ -116,7 +135,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         iframe.onLoad.listen((_) {
           if (currentPosition != null) {
             // 지도가 완전히 초기화될 때까지 더 긴 지연시간 설정
-            Future.delayed(Duration(milliseconds: 2000), () {
+            Future.delayed(Duration(milliseconds: _mapInitDelay), () {
               _sendLocationToMap();
               // 확실하게 하기 위해 한 번 더 전송
               Future.delayed(Duration(milliseconds: 1000), () {
@@ -140,7 +159,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   }
   
   void _onScroll() {
-    if (scrollController.position.pixels >= scrollController.position.maxScrollExtent - 200) {
+    if (scrollController.position.pixels >= scrollController.position.maxScrollExtent - _scrollLoadThreshold) {
       // 스크롤이 끝에서 200px 전에 도달하면 더 로드
       if (!isLoadingMore && hasMoreData) {
         loadMoreAcademies();
@@ -157,7 +176,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       // 위치 서비스 활성화 확인
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        print('🔍 위치 서비스가 비활성화되어 있습니다');
+        DebugLog.log('🔍 위치 서비스가 비활성화되어 있습니다');
         setState(() {
           isLocationLoading = false;
         });
@@ -169,7 +188,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          print('🚫 위치 권한이 거부되었습니다');
+          DebugLog.log('🚫 위치 권한이 거부되었습니다');
           setState(() {
             isLocationLoading = false;
           });
@@ -178,7 +197,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        print('🚫 위치 권한이 영구적으로 거부되었습니다');
+        DebugLog.log('🚫 위치 권한이 영구적으로 거부되었습니다');
         setState(() {
           isLocationLoading = false;
         });
@@ -195,7 +214,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         isLocationLoading = false;
       });
 
-      print('📍 현재 위치 획득: ${position.latitude}, ${position.longitude}');
+      DebugLog.log('📍 현재 위치 획득: ${position.latitude}, ${position.longitude}');
 
       // 지도가 이미 표시 중이면 위치 업데이트
       if (isMapView) {
@@ -203,7 +222,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       }
 
     } catch (e) {
-      print('❌ 위치 획득 실패: $e');
+      DebugLog.log('❌ 위치 획득 실패: $e');
       setState(() {
         isLocationLoading = false;
       });
@@ -213,7 +232,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   void _sendLocationToMap() {
     try {
       final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
-      print('🔍 iframe 확인: ${iframe != null}, contentWindow: ${iframe?.contentWindow != null}, currentPosition: ${currentPosition != null}');
+      DebugLog.log('🔍 iframe 확인: ${iframe != null}, contentWindow: ${iframe?.contentWindow != null}, currentPosition: ${currentPosition != null}');
       
       if (iframe?.contentWindow != null && currentPosition != null) {
         final message = {
@@ -221,15 +240,15 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           'lat': currentPosition!.latitude,
           'lng': currentPosition!.longitude,
         };
-        print('📤 전송할 메시지: $message');
+        DebugLog.log('📤 전송할 메시지: $message');
         
         iframe!.contentWindow!.postMessage(message, '*');
-        print('📍 현재 위치를 지도에 전송 완료: ${currentPosition!.latitude}, ${currentPosition!.longitude}');
+        DebugLog.log('📍 현재 위치를 지도에 전송 완료: ${currentPosition!.latitude}, ${currentPosition!.longitude}');
       } else {
-        print('❌ iframe 또는 위치 정보가 없습니다. iframe: ${iframe != null}, position: ${currentPosition != null}');
+        DebugLog.log('❌ iframe 또는 위치 정보가 없습니다. iframe: ${iframe != null}, position: ${currentPosition != null}');
       }
     } catch (e) {
-      print('위치 전송 오류: $e');
+      DebugLog.log('위치 전송 오류: $e');
     }
   }
 
@@ -240,14 +259,14 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       if (messageEvent.data != null && messageEvent.data is Map) {
         final data = messageEvent.data as Map;
         if (data['type'] == 'requestLocation') {
-          print('📍 지도에서 현재 위치 요청');
+          DebugLog.log('📍 지도에서 현재 위치 요청');
           _getCurrentLocation().then((_) {
             if (currentPosition != null) {
               _sendLocationToMap();
             }
           });
         } else if (data['type'] == 'requestMarkersInBounds') {
-          print('🗺️ 지도 영역 내 마커 요청');
+          DebugLog.log('🗺️ 지도 영역 내 마커 요청');
           final boundsData = data['data'] as Map;
           _loadMarkersInBounds(
             boundsData['sw_lat'],
@@ -256,7 +275,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             boundsData['ne_lng'],
           );
         } else if (data['type'] == 'currentBoundsResponse') {
-          print('🗺️ 현재 지도 영역 응답 받음');
+          DebugLog.log('🗺️ 현재 지도 영역 응답 받음');
           final boundsData = data['data'] as Map;
           _loadMarkersInBounds(
             boundsData['sw_lat'],
@@ -265,7 +284,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             boundsData['ne_lng'],
           );
         } else if (data['type'] == 'requestClustersInBounds') {
-          print('🏘️ 지도 영역 내 클러스터 요청');
+          DebugLog.log('🏘️ 지도 영역 내 클러스터 요청');
           final boundsData = data['data'] as Map;
           _loadClustersInBounds(
             boundsData['sw_lat'],
@@ -274,9 +293,9 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             boundsData['ne_lng'],
           );
         } else if (data['type'] == 'mapInitialized') {
-          print('ℹ️ 지도 초기화 완료 이벤트 수신');
+          DebugLog.log('ℹ️ 지도 초기화 완료 이벤트 수신');
           if (currentPosition != null) {
-            print('📍 지도 초기화 완료 - 사용자 위치로 중심 이동');
+            DebugLog.log('📍 지도 초기화 완료 - 사용자 위치로 중심 이동');
             _sendLocationToMap();
           }
         }
@@ -291,51 +310,81 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         'sw_lng': swLng.toString(),
         'ne_lat': neLat.toString(),
         'ne_lng': neLng.toString(),
-        'limit': '200', // 지도 영역 내에서는 더 많은 마커 표시
+        'limit': _maxMarkersPerRequest.toString(), // 지도 영역 내에서는 더 많은 마커 표시
         ...getFilterParams(),
       });
 
-      print('🌐 지도 영역 API 요청: $uri');
+      DebugLog.log('🌐 지도 영역 API 요청: $uri');
       final response = await http.get(uri);
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final allAcademies = data['results'] ?? [];
         
-        // 클라이언트 사이드에서 bounds 필터링 (임시로 범위 확대)
-        final boundsAcademies = allAcademies.where((academy) {
-          final lat = academy['위도'];
-          final lng = academy['경도'];
-          
-          if (lat == null || lng == null) return false;
-          
-          // 임시로 bounds 범위를 크게 확장 (±0.5도 = 약 55km)
-          final expandedSwLat = swLat - 0.5;
-          final expandedNeLat = neLat + 0.5;
-          final expandedSwLng = swLng - 0.5;
-          final expandedNeLng = neLng + 0.5;
-          
-          return lat >= expandedSwLat && lat <= expandedNeLat && lng >= expandedSwLng && lng <= expandedNeLng;
-        }).toList();
+        // 스마트 범위 확장으로 클라이언트 사이드 필터링
+        final expandedBounds = _calculateExpandedBounds(swLat, swLng, neLat, neLng);
+        final boundsAcademies = _filterAcademiesInBounds(allAcademies, expandedBounds);
         
-        print('📍 지도 영역 내 학원: ${boundsAcademies.length}개 (전체: ${allAcademies.length}개)');
-        print('✅ 지도 영역 마커 업데이트: ${boundsAcademies.length}개');
+        DebugLog.log('📍 지도 영역 내 학원: ${boundsAcademies.length}개 (전체: ${allAcademies.length}개)');
+        DebugLog.log('✅ 지도 영역 마커 업데이트: ${boundsAcademies.length}개');
         
-        // iframe에 마커 업데이트 메시지 전송
-        _sendMarkersToMap(boundsAcademies.take(200).toList()); // 최대 200개로 제한
+        // iframe에 마커 업데이트 메시지 전송 (성능을 위해 제한)
+        _sendMarkersToMap(boundsAcademies.take(_maxMarkersPerRequest).toList());
       } else {
-        print('❌ API 응답 오류: ${response.statusCode}');
-        print('📄 응답 내용: ${response.body}');
+        DebugLog.log('❌ API 응답 오류: ${response.statusCode}');
+        DebugLog.log('📄 응답 내용: ${response.body}');
         
         // 에러 상황에서도 빈 배열로 마커 클리어
         if (response.statusCode == 429) {
-          print('🚨 API Throttling 발생 - 잠시 후 다시 시도됩니다');
+          DebugLog.log('🚨 API Throttling 발생 - 잠시 후 다시 시도됩니다');
         }
         _sendMarkersToMap([]);
       }
     } catch (e) {
-      print('지도 영역 마커 로드 오류: $e');
+      DebugLog.log('지도 영역 마커 로드 오류: $e');
     }
+  }
+
+  /// 지도 범위 확장 알고리즘
+  /// 줌 레벨과 Academy 밀도에 따라 동적으로 범위를 계산
+  Map<String, double> _calculateExpandedBounds(double swLat, double swLng, double neLat, double neLng, {double? customExpansion}) {
+    double expansion = customExpansion ?? _defaultBoundsExpansion;
+
+    // 지도 범위의 크기에 따라 확장 비율 조정
+    final latSpan = (neLat - swLat).abs();
+    final lngSpan = (neLng - swLng).abs();
+    final avgSpan = (latSpan + lngSpan) / 2;
+
+    // 작은 범위일수록 더 많이 확장 (최소 가시성 보장)
+    if (avgSpan < 0.01) { // 매우 작은 범위 (약 1km)
+      expansion = _maxBoundsExpansion;
+    } else if (avgSpan < 0.05) { // 작은 범위 (약 5km)
+      expansion = _defaultBoundsExpansion * 3;
+    } else if (avgSpan < 0.1) { // 중간 범위 (약 10km)
+      expansion = _defaultBoundsExpansion * 2;
+    }
+
+    return {
+      'swLat': swLat - expansion,
+      'swLng': swLng - expansion,
+      'neLat': neLat + expansion,
+      'neLng': neLng + expansion,
+    };
+  }
+
+  /// 지도 영역 내 학원 필터링
+  List<dynamic> _filterAcademiesInBounds(List<dynamic> academies, Map<String, double> bounds) {
+    return academies.where((academy) {
+      final lat = academy['위도'];
+      final lng = academy['경도'];
+
+      if (lat == null || lng == null) return false;
+
+      return lat >= bounds['swLat']! &&
+             lat <= bounds['neLat']! &&
+             lng >= bounds['swLng']! &&
+             lng <= bounds['neLng']!;
+    }).toList();
   }
 
   Map<String, String> getFilterParams() {
@@ -347,9 +396,9 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     }
     
     // 가격 범위 필터
-    if (priceRange.start > 0 || priceRange.end < 2000000) {
+    if (priceRange.start > 0 || priceRange.end < _defaultMaxPrice) {
       params['priceMin'] = priceRange.start.toString();
-      params['priceMax'] = priceRange.end >= 2000000 ? '999999999' : priceRange.end.toString();
+      params['priceMax'] = priceRange.end >= _defaultMaxPrice ? '999999999' : priceRange.end.toString();
     }
     
     // 연령대 필터 (Django API 호환)
@@ -382,30 +431,30 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         ...getFilterParams(),
       });
 
-      print('🏘️ 클러스터 API 요청: $uri');
+      DebugLog.log('🏘️ 클러스터 API 요청: $uri');
       final response = await http.get(uri);
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final clusters = data['clusters'] ?? [];
         
-        print('🏘️ 지도 영역 내 클러스터: ${clusters.length}개');
-        print('✅ 지도 영역 클러스터 업데이트: ${clusters.length}개');
+        DebugLog.log('🏘️ 지도 영역 내 클러스터: ${clusters.length}개');
+        DebugLog.log('✅ 지도 영역 클러스터 업데이트: ${clusters.length}개');
         
         // iframe에 클러스터 업데이트 메시지 전송
         _sendClustersToMap(clusters);
       } else {
-        print('❌ 클러스터 API 응답 오류: ${response.statusCode}');
-        print('📄 응답 내용: ${response.body}');
+        DebugLog.log('❌ 클러스터 API 응답 오류: ${response.statusCode}');
+        DebugLog.log('📄 응답 내용: ${response.body}');
         
         // 에러 상황에서도 빈 배열로 클러스터 클리어
         if (response.statusCode == 429) {
-          print('🚨 클러스터 API Throttling 발생 - 잠시 후 다시 시도됩니다');
+          DebugLog.log('🚨 클러스터 API Throttling 발생 - 잠시 후 다시 시도됩니다');
         }
         _sendClustersToMap([]);
       }
     } catch (e) {
-      print('클러스터 로드 오류: $e');
+      DebugLog.log('클러스터 로드 오류: $e');
     }
   }
 
@@ -418,12 +467,12 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           'type': 'updateClusters',
           'clusters': clustersData,
         }, '*');
-        print('✅ 지도 영역 클러스터 업데이트: ${clustersData.length}개');
+        DebugLog.log('✅ 지도 영역 클러스터 업데이트: ${clustersData.length}개');
       } else {
-        print('❌ iframe을 찾을 수 없습니다');
+        DebugLog.log('❌ iframe을 찾을 수 없습니다');
       }
     } catch (e) {
-      print('클러스터 전송 오류: $e');
+      DebugLog.log('클러스터 전송 오류: $e');
     }
   }
 
@@ -449,19 +498,19 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           'type': 'updateMarkers',
           'academies': markersData,
         }, '*');
-        print('✅ 지도 영역 마커 업데이트: ${markersData.length}개');
+        DebugLog.log('✅ 지도 영역 마커 업데이트: ${markersData.length}개');
       } else {
-        print('❌ iframe을 찾을 수 없습니다');
+        DebugLog.log('❌ iframe을 찾을 수 없습니다');
       }
     } catch (e) {
-      print('지도 마커 전송 오류: $e');
+      DebugLog.log('지도 마커 전송 오류: $e');
     }
   }
 
   bool _hasActiveFilters() {
     return selectedSubject != '전체' ||
            priceRange.start > 0 ||
-           priceRange.end < 2000000 ||
+           priceRange.end < _defaultMaxPrice ||
            selectedAgeGroups.isNotEmpty ||
            shuttleFilter;
   }
@@ -482,10 +531,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     }
 
     // 가격 필터
-    if (priceRange.start > 0 || priceRange.end < 2000000) {
+    if (priceRange.start > 0 || priceRange.end < _defaultMaxPrice) {
       String priceText = '💰 ';
-      if (priceRange.start > 0 && priceRange.end < 2000000) {
-        priceText += '${(priceRange.start / 10000).toInt()}만~${priceRange.end >= 2000000 ? '200만+' : '${(priceRange.end / 10000).toInt()}만'}원';
+      if (priceRange.start > 0 && priceRange.end < _defaultMaxPrice) {
+        priceText += '${(priceRange.start / 10000).toInt()}만~${priceRange.end >= _defaultMaxPrice ? '${(_defaultMaxPrice / 10000).toInt()}만+' : '${(priceRange.end / 10000).toInt()}만'}원';
       } else if (priceRange.start > 0) {
         priceText += '${(priceRange.start / 10000).toInt()}만원 이상';
       } else {
@@ -537,7 +586,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       iframe!.contentWindow!.postMessage({
         'type': 'requestCurrentBounds',
       }, '*');
-      print('🔍 현재 지도 영역에서 필터 적용 요청');
+      DebugLog.log('🔍 현재 지도 영역에서 필터 적용 요청');
     }
   }
 
@@ -550,7 +599,9 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       hasNetworkError = false;
     });
 
-    print('🔍 필터링 시작: $selectedSubject'); // 디버깅용
+    DebugLog.log('🔍 필터링 시작: $selectedSubject'); // 디버깅용
+    final bounds = _getDynamicBounds();
+    DebugLog.log('🌏 검색 범위: SW(${bounds['swLat']}, ${bounds['swLng']}) NE(${bounds['neLat']}, ${bounds['neLng']})');
 
     try {
       final response = await http.post(
@@ -563,18 +614,26 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           'neLng': _getDynamicBounds()['neLng'],
           'subjects': [selectedSubject],
           'priceMin': priceRange.start.toString(),
-          'priceMax': priceRange.end >= 2000000 ? '999999999' : priceRange.end.toString(),
+          'priceMax': priceRange.end >= _defaultMaxPrice ? '999999999' : priceRange.end.toString(),
           'ageGroups': selectedAgeGroups,
           'shuttleFilter': shuttleFilter,
           'searchQuery': searchQuery.trim(),
         }),
       );
 
-      print('📡 API 응답 코드: ${response.statusCode}'); // 디버깅용
+      DebugLog.log('📡 API 응답 코드: ${response.statusCode}'); // 디버깅용
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
-        print('📊 받은 데이터 수: ${data.length}개'); // 디버깅용
+        final String responseBody = utf8.decode(response.bodyBytes);
+        DebugLog.log('🔍 원시 응답 길이: ${responseBody.length}');
+        DebugLog.log('🔍 원시 응답 샘플: ${responseBody.substring(0, math.min(200, responseBody.length))}...');
+
+        final List<dynamic> data = json.decode(responseBody);
+        DebugLog.log('📊 받은 데이터 수: ${data.length}개'); // 디버깅용
+
+        // 받은 데이터의 ID 목록 로깅
+        final ids = data.map((item) => item['id']).toList();
+        DebugLog.log('🔍 받은 학원 ID: $ids');
         
         if (!mounted) return;
         setState(() {
@@ -587,11 +646,11 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           isLoading = false;
         });
         
-        print('✅ UI 업데이트 완료: ${academies.length}개 표시'); // 디버깅용
+        DebugLog.log('✅ UI 업데이트 완료: ${academies.length}개 표시'); // 디버깅용
         
         // 지도가 활성화되어 있으면 마커 업데이트
         if (isMapView) {
-          Future.delayed(Duration(milliseconds: 300), () {
+          Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
             _addAcademyMarkersToMap();
           });
         }
@@ -599,7 +658,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         throw Exception('서버 오류: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ 오류 발생: $e'); // 디버깅용
+      DebugLog.log('❌ 오류 발생: $e'); // 디버깅용
       if (!mounted) return;
 
       setState(() {
@@ -674,10 +733,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         isLoadingMore = false;
       });
       
-      print('📄 페이지 $currentPage 로드: ${newAcademies.length}개 추가 (총 ${academies.length}개)');
+      DebugLog.log('📄 페이지 $currentPage 로드: ${newAcademies.length}개 추가 (총 ${academies.length}개)');
       
     } catch (e) {
-      print('❌ 추가 로딩 오류: $e');
+      DebugLog.log('❌ 추가 로딩 오류: $e');
       if (!mounted) return;
       setState(() {
         isLoadingMore = false;
@@ -969,12 +1028,12 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           'type': 'updateMarkers',
           'academies': markersData,
         }, '*');
-        print('✅ iframe에 ${markersData.length}개 마커 데이터 전송');
+        DebugLog.log('✅ iframe에 ${markersData.length}개 마커 데이터 전송');
       } else {
-        print('❌ iframe을 찾을 수 없습니다');
+        DebugLog.log('❌ iframe을 찾을 수 없습니다');
       }
     } catch (e) {
-      print('마커 업데이트 오류: $e');
+      DebugLog.log('마커 업데이트 오류: $e');
     }
   }
 
@@ -1131,7 +1190,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                       onPressed: _hasActiveFilters() ? () {
                         setState(() {
                           selectedSubject = '전체';
-                          priceRange = const RangeValues(0, 2000000);
+                          priceRange = const RangeValues(0.0, 2000000.0);
                           selectedAgeGroups.clear();
                           shuttleFilter = false;
                         });
@@ -1141,7 +1200,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                             duration: Duration(seconds: 2),
                           ),
                         );
-                        Future.delayed(Duration(milliseconds: 300), () {
+                        Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
                           applyFiltersWithinMapBounds();
                         });
                       } : null,
@@ -1174,7 +1233,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                       selected: selectedSubject == subject,
                       onSelected: (bool selected) {
                         if (selected && selectedSubject != subject) {
-                          print('🎯 과목 선택: $selectedSubject → $subject'); // 디버깅용
+                          DebugLog.log('🎯 과목 선택: $selectedSubject → $subject'); // 디버깅용
                           setState(() {
                             selectedSubject = subject;
                           });
@@ -1265,7 +1324,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${priceRange.start.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원 - ${priceRange.end >= 2000000 ? '200만원 이상' : '${priceRange.end.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원'}',
+                        '${priceRange.start.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원 - ${priceRange.end >= _defaultMaxPrice ? '${(_defaultMaxPrice / 10000).toInt()}만원 이상' : '${priceRange.end.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원'}',
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 14,
@@ -1274,11 +1333,11 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                       RangeSlider(
                         values: priceRange,
                         min: 0,
-                        max: 2000000,
+                        max: _defaultMaxPrice.toDouble(),
                         divisions: 20,
                         labels: RangeLabels(
                           '${(priceRange.start / 10000).toInt()}만원',
-                          priceRange.end >= 2000000 ? '200만원+' : '${(priceRange.end / 10000).toInt()}만원',
+                          priceRange.end >= _defaultMaxPrice ? '${(_defaultMaxPrice / 10000).toInt()}만원+' : '${(priceRange.end / 10000).toInt()}만원',
                         ),
                         onChanged: (RangeValues values) {
                           setState(() {
@@ -1286,7 +1345,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                           });
                         },
                         onChangeEnd: (RangeValues values) {
-                          Future.delayed(Duration(milliseconds: 300), () {
+                          Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
                             applyFiltersWithinMapBounds();
                           });
                         },
@@ -1635,10 +1694,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   // 동적 지역 범위 계산 헬퍼 함수
   Map<String, double> _getDynamicBounds() {
     if (currentPosition != null) {
-      // 사용자 위치 기준 반경 약 50km 범위
+      // 사용자 위치 기준 반경 약 100km 범위 (수도권 전체 커버)
       final lat = currentPosition!.latitude;
       final lng = currentPosition!.longitude;
-      const radius = 0.45; // 약 50km에 해당하는 위도/경도 차이
+      const radius = 1.0; // 약 100km에 해당하는 위도/경도 차이
 
       return {
         'swLat': lat - radius,
