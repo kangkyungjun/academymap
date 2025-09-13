@@ -1,9 +1,4 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// AcademyMap Flutter 앱 테스트
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,20 +6,33 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:academymap_flutter/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('AcademyMap 앱 테스트', () {
+    testWidgets('앱이 정상적으로 시작되는지 확인', (WidgetTester tester) async {
+      // 앱 빌드 및 프레임 트리거
+      await tester.pumpWidget(const AcademyMapApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      // 앱 제목 확인
+      expect(find.text('🏫 AcademyMap'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+      // 주요 UI 요소들이 존재하는지 확인
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    testWidgets('지도/리스트 토글 버튼이 존재하는지 확인', (WidgetTester tester) async {
+      await tester.pumpWidget(const AcademyMapApp());
+      await tester.pump();
+
+      // 토글 버튼들이 존재하는지 확인
+      expect(find.byType(ToggleButtons), findsOneWidget);
+    });
+
+    testWidgets('검색 필드가 존재하는지 확인', (WidgetTester tester) async {
+      await tester.pumpWidget(const AcademyMapApp());
+      await tester.pump();
+
+      // 검색 관련 UI 요소 확인
+      expect(find.byType(TextField), findsWidgets);
+    });
   });
 }

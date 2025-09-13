@@ -296,6 +296,15 @@ def filtered_academies(request):
     ne_lng = body.get('neLng')
     subjects = body.get('subjects', [])  # ✅ 수정됨
 
+    # 🔍 디버깅: Flutter에서 보내는 파라미터 확인
+    import sys
+    print(f"🔍 Flutter 요청 파라미터:", file=sys.stderr, flush=True)
+    print(f"   - 위치 범위: SW({sw_lat}, {sw_lng}) NE({ne_lat}, {ne_lng})", file=sys.stderr, flush=True)
+    print(f"   - 과목: {subjects}", file=sys.stderr, flush=True)
+    print(f"   - 가격: {body.get('priceMin')} ~ {body.get('priceMax')}", file=sys.stderr, flush=True)
+    print(f"   - 연령: {body.get('ageGroups', [])}", file=sys.stderr, flush=True)
+    print(f"   - 셔틀: {body.get('shuttleFilter', False)}", file=sys.stderr, flush=True)
+
     queryset = Data.objects.filter(
         위도__gte=sw_lat,
         위도__lte=ne_lat,
@@ -329,15 +338,17 @@ def filtered_academies(request):
     priceMax = body.get('priceMax')
     queryset = queryset.annotate(수강료평균_float=Cast('수강료_평균', FloatField()))
 
-    if priceMin:
+    if priceMin and float(priceMin) > 0:
         try:
-            queryset = queryset.filter(수강료평균_float__gte=float(priceMin))
+            # null 값을 가진 학원도 포함 (가격 정보 없는 학원도 표시)
+            queryset = queryset.filter(Q(수강료평균_float__gte=float(priceMin)) | Q(수강료평균_float__isnull=True))
         except ValueError:
             pass
 
     if priceMax:
         try:
-            queryset = queryset.filter(수강료평균_float__lte=float(priceMax))
+            # null 값을 가진 학원도 포함 (가격 정보 없는 학원도 표시)
+            queryset = queryset.filter(Q(수강료평균_float__lte=float(priceMax)) | Q(수강료평균_float__isnull=True))
         except ValueError:
             pass
 
@@ -360,6 +371,13 @@ def filtered_academies(request):
         'id', '상호명', '위도', '경도', '도로명주소', '전화번호',
         '시군구명', '상권업종소분류명', '셔틀버스', '영업시간', '별점'
     ))
+
+    # 🔍 디버깅: 반환되는 데이터 확인
+    print(f"🔍 Django 응답:", file=sys.stderr, flush=True)
+    print(f"   - 반환된 학원 수: {len(data)}개", file=sys.stderr, flush=True)
+    for item in data:
+        print(f"   - ID: {item['id']}, 이름: {item['상호명']}", file=sys.stderr, flush=True)
+
     return JsonResponse(data, safe=False)
 ###### 기존 map 용 ######
 # def filtered_academies(request):
@@ -527,59 +545,68 @@ def data_update(request):
     for i in range(len(n_data)):
         row = n_data.iloc[i]
 
+        # 상가업소번호가 없는 경우 인덱스를 기반으로 고유 ID 생성
+        상가업소번호 = clean_value(row['상가업소번호'])
+        if 상가업소번호 is None:
+            상가업소번호 = f"AUTO_ID_{i:08d}"  # AUTO_ID_00000001 형태로 생성
+
+        # 공통 데이터 준비
+        defaults_data = {
+            '상호명': clean_value(row['상호명']),
+            '상권업종대분류코드': clean_value(row['상권업종대분류코드']),
+            '상권업종대분류명': clean_value(row['상권업종대분류명']),
+            '상권업종중분류명': clean_value(row['상권업종중분류명']),
+            '상권업종소분류명': clean_value(row['상권업종소분류명']),
+            '시도명': clean_value(row['시도명']),
+            '시군구명': clean_value(row['시군구명']),
+            '행정동명': clean_value(row['행정동명']),
+            '법정동명': clean_value(row['법정동명']),
+            '지번주소': clean_value(row['지번주소']),
+            '도로명주소': clean_value(row['도로명주소']),
+            '경도': clean_value(row['경도']),
+            '위도': clean_value(row['위도']),
+            '학원사진': clean_value(row['학원사진']),
+            '대표원장': clean_value(row['대표원장']),
+            '레벨테스트': clean_value(row['레벨테스트']),
+            '강사': clean_value(row['강사']),
+
+            # Boolean 필드 변환
+            '대상_유아': convert_to_boolean(row['대상_유아']),
+            '대상_초등': convert_to_boolean(row['대상_초등']),
+            '대상_중등': convert_to_boolean(row['대상_중등']),
+            '대상_고등': convert_to_boolean(row['대상_고등']),
+            '대상_특목고': convert_to_boolean(row['대상_특목고']),
+            '대상_일반': convert_to_boolean(row['대상_일반']),
+            '대상_기타': convert_to_boolean(row['대상_기타']),
+
+            '인증_명문대': convert_to_boolean(row['인증_명문대']),
+            '인증_경력': convert_to_boolean(row['인증_경력']),
+
+            '소개글': clean_value(row['소개글']),
+
+            '과목_종합': convert_to_boolean(row['과목_종합']),
+            '과목_수학': convert_to_boolean(row['과목_수학']),
+            '과목_영어': convert_to_boolean(row['과목_영어']),
+            '과목_과학': convert_to_boolean(row['과목_과학']),
+            '과목_외국어': convert_to_boolean(row['과목_외국어']),
+            '과목_예체능': convert_to_boolean(row['과목_예체능']),
+            '과목_컴퓨터': convert_to_boolean(row['과목_컴퓨터']),
+            '과목_논술': convert_to_boolean(row['과목_논술']),
+            '과목_기타': convert_to_boolean(row['과목_기타']),
+            '과목_독서실스터디카페': convert_to_boolean(row['과목_독서실스터디카페']),
+
+            '별점': clean_value(row['별점']),
+            '전화번호': clean_value(row['전화번호']),
+            '영업시간': clean_value(row['영업시간']),
+            '셔틀버스': convert_to_boolean(row['셔틀버스']),
+            '수강료': clean_value(row['수강료']),
+            '수강료_평균': clean_value(row['수강료_평균']),
+        }
+
+        # 상가업소번호로 update_or_create 수행
         data, created = Data.objects.update_or_create(
-            상가업소번호=clean_value(row['상가업소번호']),
-            defaults={
-                '상호명': clean_value(row['상호명']),
-                '상권업종대분류코드': clean_value(row['상권업종대분류코드']),
-                '상권업종대분류명': clean_value(row['상권업종대분류명']),
-                '상권업종중분류명': clean_value(row['상권업종중분류명']),
-                '상권업종소분류명': clean_value(row['상권업종소분류명']),
-                '시도명': clean_value(row['시도명']),
-                '시군구명': clean_value(row['시군구명']),
-                '행정동명': clean_value(row['행정동명']),
-                '법정동명': clean_value(row['법정동명']),
-                '지번주소': clean_value(row['지번주소']),
-                '도로명주소': clean_value(row['도로명주소']),
-                '경도': clean_value(row['경도']),
-                '위도': clean_value(row['위도']),
-                '학원사진': clean_value(row['학원사진']),
-                '대표원장': clean_value(row['대표원장']),
-                '레벨테스트': clean_value(row['레벨테스트']),
-                '강사': clean_value(row['강사']),
-
-                # Boolean 필드 변환
-                '대상_유아': convert_to_boolean(row['대상_유아']),
-                '대상_초등': convert_to_boolean(row['대상_초등']),
-                '대상_중등': convert_to_boolean(row['대상_중등']),
-                '대상_고등': convert_to_boolean(row['대상_고등']),
-                '대상_특목고': convert_to_boolean(row['대상_특목고']),
-                '대상_일반': convert_to_boolean(row['대상_일반']),
-                '대상_기타': convert_to_boolean(row['대상_기타']),
-
-                '인증_명문대': convert_to_boolean(row['인증_명문대']),
-                '인증_경력': convert_to_boolean(row['인증_경력']),
-
-                '소개글': clean_value(row['소개글']),
-
-                '과목_종합': convert_to_boolean(row['과목_종합']),
-                '과목_수학': convert_to_boolean(row['과목_수학']),
-                '과목_영어': convert_to_boolean(row['과목_영어']),
-                '과목_과학': convert_to_boolean(row['과목_과학']),
-                '과목_외국어': convert_to_boolean(row['과목_외국어']),
-                '과목_예체능': convert_to_boolean(row['과목_예체능']),
-                '과목_컴퓨터': convert_to_boolean(row['과목_컴퓨터']),
-                '과목_논술': convert_to_boolean(row['과목_논술']),
-                '과목_기타': convert_to_boolean(row['과목_기타']),
-                '과목_독서실스터디카페': convert_to_boolean(row['과목_독서실스터디카페']),
-
-                '별점': clean_value(row['별점']),
-                '전화번호': clean_value(row['전화번호']),
-                '영업시간': clean_value(row['영업시간']),
-                '셔틀버스': convert_to_boolean(row['셔틀버스']),
-                '수강료': clean_value(row['수강료']),
-                '수강료_평균': clean_value(row['수강료_평균']),
-            }
+            상가업소번호=상가업소번호,
+            defaults=defaults_data
         )
 
     return render(request, 'main/data_update.html')
