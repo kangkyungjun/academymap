@@ -346,11 +346,11 @@
     function updateMarkersBasedOnZoom() {
       if (!map) return;
       
-      if (currentZoomLevel <= 13) {
+      if (currentZoomLevel < 13) {
         // 클러스터 모드
         requestClustersForCurrentView();
       } else {
-        // 개별 마커 모드
+        // 개별 마커 모드 (줌 레벨 13 이상)
         requestMarkersForCurrentView();
       }
     }

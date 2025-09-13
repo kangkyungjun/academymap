@@ -36,6 +36,9 @@ class AcademyMapHomePage extends StatefulWidget {
 }
 
 class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
+  // API 설정
+  static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://127.0.0.1:8000');
+
   List<dynamic> academies = [];
   bool isLoading = false;
   String selectedSubject = '전체';
@@ -262,10 +265,16 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           final boundsData = data['data'] as Map;
           _loadClustersInBounds(
             boundsData['sw_lat'],
-            boundsData['sw_lng'], 
+            boundsData['sw_lng'],
             boundsData['ne_lat'],
             boundsData['ne_lng'],
           );
+        } else if (data['type'] == 'mapInitialized') {
+          print('ℹ️ 지도 초기화 완료 이벤트 수신');
+          if (currentPosition != null) {
+            print('📍 지도 초기화 완료 - 사용자 위치로 중심 이동');
+            _sendLocationToMap();
+          }
         }
       }
     });
@@ -273,7 +282,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   Future<void> _loadMarkersInBounds(double swLat, double swLng, double neLat, double neLng) async {
     try {
-      final Uri uri = Uri.parse('http://127.0.0.1:8000/api/academies/').replace(queryParameters: {
+      final Uri uri = Uri.parse('$apiBaseUrl/api/academies/').replace(queryParameters: {
         'sw_lat': swLat.toString(),
         'sw_lng': swLng.toString(),
         'ne_lat': neLat.toString(),
@@ -361,7 +370,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   Future<void> _loadClustersInBounds(double swLat, double swLng, double neLat, double neLng) async {
     try {
-      final Uri uri = Uri.parse('http://127.0.0.1:8000/map_api/clusters/').replace(queryParameters: {
+      final Uri uri = Uri.parse('$apiBaseUrl/map_api/clusters/').replace(queryParameters: {
         'sw_lat': swLat.toString(),
         'sw_lng': swLng.toString(),
         'ne_lat': neLat.toString(),
@@ -539,7 +548,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/api/filtered_academies'),
+        Uri.parse('$apiBaseUrl/api/filtered_academies'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'swLat': 37.4,  // 서울 남쪽
@@ -1523,7 +1532,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          '${academy['위도']?.toString().substring(0, 7) ?? 'N/A'}, ${academy['경도']?.toString().substring(0, 8) ?? 'N/A'}',
+                                          '${_safeSubstring(academy['위도']?.toString(), 7)}, ${_safeSubstring(academy['경도']?.toString(), 8)}',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey[500],
@@ -1571,5 +1580,11 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         backgroundColor: isLoading ? Colors.grey : null,
       ),
     );
+  }
+
+  // 안전한 substring 처리를 위한 헬퍼 함수
+  String _safeSubstring(String? str, int maxLength) {
+    if (str == null || str.isEmpty) return 'N/A';
+    return str.length <= maxLength ? str : str.substring(0, maxLength);
   }
 }
