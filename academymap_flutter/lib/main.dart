@@ -56,7 +56,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   static const int _scrollLoadThreshold = 200; // 스크롤 로딩 임계값 (px)
   static const int _mapInitDelay = 2000; // 지도 초기화 지연 시간 (ms)
   static const int _markerUpdateDelay = 300; // 마커 업데이트 지연 시간 (ms)
-  static const int _defaultMaxPrice = 2000000; // 기본 최대 가격 (원)
+  static const double _defaultMaxPrice = 2000000.0; // 기본 최대 가격 (원)
 
   List<dynamic> academies = [];
   bool isLoading = false;
@@ -928,7 +928,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       late http.Response response;
 
       if (!_isInitialCacheLoaded) {
-        // 🌍 초기 로드: 98,651개 전체 데이터 요청 (전국 범위)
+        // 🌍 초기 로드: 제한된 데이터 요청 (전국 범위)
         response = await http.post(
           Uri.parse('$apiBaseUrl/api/filtered_academies'),
           headers: {'Content-Type': 'application/json'},
@@ -944,9 +944,13 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             'ageGroups': [],
             'shuttleFilter': false,
             'searchQuery': '',
+            'limit': 1000,  // 초기 로드 시 데이터 제한
+            // 📍 사용자 위치 정보 추가 (거리순 정렬을 위해)
+            'userLat': currentPosition?.latitude ?? 37.5665,
+            'userLng': currentPosition?.longitude ?? 126.9780,
           }),
         );
-        DebugLog.log('🚀 전체 데이터 로드 요청: 98,651개 전국 데이터');
+        DebugLog.log('🚀 초기 데이터 로드 요청: 최대 1000개');
       } else {
         // 🔍 이후 필터링: 기존 방식 사용
         response = await http.post(
@@ -1525,11 +1529,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       ),
       body: Stack(
         children: [
-          // 메인 컨텐츠
           Column(
             children: [
-          // 필터 섹션
-          Container(
+              // 필터 섹션
+              Container(
             padding: EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 16.0 : 12.0),
             decoration: BoxDecoration(
               color: Colors.grey[50],
@@ -1895,13 +1898,12 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                     ],
                   ),
                 ],
-              ],
-            ], // Column children 끝
-          ), // Column 끝
-
-          // 학원 목록 또는 지도
-          Expanded(
-            child: isMapView
+                  ],
+                ),
+              ),
+              // 학원 목록 또는 지도
+              Expanded(
+                child: isMapView
               ? _buildNaverMapWidget()
               : isLoading
                   ? Center(
@@ -2154,8 +2156,9 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                           },
                         ),
                       ),
+              ),
+            ],
           ),
-
           // 🎯 반투명 줌 알림 모달
           if (showZoomAlert)
             Container(

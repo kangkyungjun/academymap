@@ -322,14 +322,11 @@ def filtered_academies(request):
     subjects = body.get('subjects', [])  # ✅ 수정됨
     filterMode = body.get('filterMode', 'OR')  # 기본값: OR 모드
 
-    # 🔍 디버깅: Flutter에서 보내는 파라미터 확인
-    import sys
-    print(f"🔍 Flutter 요청 파라미터:", file=sys.stderr, flush=True)
-    print(f"   - 위치 범위: SW({sw_lat}, {sw_lng}) NE({ne_lat}, {ne_lng})", file=sys.stderr, flush=True)
-    print(f"   - 과목: {subjects} ({filterMode} 모드)", file=sys.stderr, flush=True)
-    print(f"   - 가격: {body.get('priceMin')} ~ {body.get('priceMax')}", file=sys.stderr, flush=True)
-    print(f"   - 연령: {body.get('ageGroups', [])}", file=sys.stderr, flush=True)
-    print(f"   - 셔틀: {body.get('shuttleFilter', False)}", file=sys.stderr, flush=True)
+    # 🔍 디버깅: Flutter에서 보내는 파라미터 확인 (print 문 제거 - BrokenPipe 오류 방지)
+    # 필요시 로깅 사용
+    # import logging
+    # logger = logging.getLogger(__name__)
+    # logger.debug(f"Flutter 요청 - 위치: SW({sw_lat}, {sw_lng}) NE({ne_lat}, {ne_lng})")
 
     # 🚀 수정: 전국 데이터 반환 (지역 제한 제거)
     queryset = Data.objects.all()
@@ -435,21 +432,8 @@ def filtered_academies(request):
         # 🚀 성능 최적화: 가까운 학원 상위 2000개만 반환
         data = data[:2000]
 
-    # 🔍 디버깅: 반환되는 데이터 확인
-    print(f"🔍 Django 응답:", file=sys.stderr, flush=True)
-    print(f"   - 전체 필터된 학원: {len(list(queryset.values('id')))}개", file=sys.stderr, flush=True)
-    print(f"   - 반환된 학원 수: {len(data)}개", file=sys.stderr, flush=True)
-    if user_lat and user_lng:
-        print(f"   - 사용자 위치: ({user_lat}, {user_lng})", file=sys.stderr, flush=True)
-        print(f"   - 거리순 정렬 후 상위 2000개 반환", file=sys.stderr, flush=True)
-
-    # 상위 5개 학원 정보만 출력 (너무 많으면 로그가 길어짐)
-    for i, item in enumerate(data[:5]):
-        distance_info = f", 거리: {item.get('distance', 'N/A')}km" if 'distance' in item else ""
-        print(f"   - [{i+1}] ID: {item['id']}, 이름: {item['상호명']}{distance_info}", file=sys.stderr, flush=True)
-
-    if len(data) > 5:
-        print(f"   - ... 및 {len(data) - 5}개 더", file=sys.stderr, flush=True)
+    # 🔍 디버깅: 반환되는 데이터 확인 (print 문 제거 - BrokenPipe 오류 방지)
+    # 필요시 로깅 사용
 
     return JsonResponse(data, safe=False)
 ###### 기존 map 용 ######
