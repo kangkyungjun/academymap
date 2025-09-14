@@ -135,6 +135,50 @@
     let currentZoomLevel = 11; // 현재 줌 레벨
     let debounceTimer = null; // 디바운싱 타이머
 
+    // 과목별 마커 스타일 정의
+    const subjectStyles = {
+      '수학': {
+        color: '#DC3545', // 빨간색
+        icon: '➕',
+        name: '수학'
+      },
+      '영어': {
+        color: '#007BFF', // 파란색
+        icon: '📚',
+        name: '영어'
+      },
+      '과학': {
+        color: '#28A745', // 초록색
+        icon: '🔬',
+        name: '과학'
+      },
+      '예체능': {
+        color: '#FD7E14', // 주황색
+        icon: '🎨',
+        name: '예체능'
+      },
+      '컴퓨터': {
+        color: '#17A2B8', // 청록색
+        icon: '💻',
+        name: '컴퓨터'
+      },
+      '외국어': {
+        color: '#6F42C1', // 보라색
+        icon: '🌍',
+        name: '외국어'
+      },
+      '논술': {
+        color: '#795548', // 갈색
+        icon: '✏️',
+        name: '논술'
+      },
+      '기타': {
+        color: '#6C757D', // 회색
+        icon: '📖',
+        name: '기타'
+      }
+    };
+
     // 지도 초기화 
     function initMap(centerLat = null, centerLng = null) {
       if (typeof naver === 'undefined') {
@@ -152,7 +196,7 @@
 
       const mapOptions = {
         center: new naver.maps.LatLng(mapCenter.lat, mapCenter.lng),
-        zoom: centerLat && centerLng ? 13 : 11, // 사용자 위치면 더 확대
+        zoom: centerLat && centerLng ? 17 : 15, // 사용자 위치면 더 확대 (동네 수준)
         mapTypeControl: false,
         zoomControl: false, // 기본 줌 컨트롤 비활성화
         logoControl: false,
@@ -312,24 +356,66 @@
       academyData.forEach(academy => {
         if (academy.lat && academy.lng) {
           const position = new naver.maps.LatLng(academy.lat, academy.lng);
-          
+
+          // 과목별 스타일 적용
+          const style = subjectStyles[academy.primarySubject] || subjectStyles['기타'];
+
           const marker = new naver.maps.Marker({
             position: position,
             map: map,
             title: academy.name,
             icon: {
-              content: '<div style="background: #007bff; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); min-width: 20px; text-align: center;">🏫</div>',
-              size: new naver.maps.Size(28, 28),
-              anchor: new naver.maps.Point(14, 14)
+              content: `<div style="
+                background: ${style.color};
+                color: white;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                min-width: 20px;
+                text-align: center;
+                font-weight: bold;
+              ">${style.icon}</div>`,
+              size: new naver.maps.Size(32, 32),
+              anchor: new naver.maps.Point(16, 16)
             }
           });
 
           // 마커 클릭 이벤트
+          // 대상 연령 표시 생성
+          let ageGroups = [];
+          if (academy['대상_유아']) ageGroups.push('<span style="display: inline-block; padding: 2px 6px; background: #E91E63; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">유아</span>');
+          if (academy['대상_초등']) ageGroups.push('<span style="display: inline-block; padding: 2px 6px; background: #2196F3; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">초등</span>');
+          if (academy['대상_중등']) ageGroups.push('<span style="display: inline-block; padding: 2px 6px; background: #4CAF50; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">중등</span>');
+          if (academy['대상_고등']) ageGroups.push('<span style="display: inline-block; padding: 2px 6px; background: #FF9800; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">고등</span>');
+          if (academy['대상_특목고']) ageGroups.push('<span style="display: inline-block; padding: 2px 6px; background: #9C27B0; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">특목고</span>');
+          if (academy['대상_일반']) ageGroups.push('<span style="display: inline-block; padding: 2px 6px; background: #9E9E9E; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">일반</span>');
+          if (academy['대상_기타']) ageGroups.push('<span style="display: inline-block; padding: 2px 6px; background: #795548; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">기타</span>');
+
+          // 과목 표시 생성
+          let subjects = [];
+          if (academy['과목_수학']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #F44336; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">수학</span>');
+          if (academy['과목_영어']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #2196F3; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">영어</span>');
+          if (academy['과목_과학']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #4CAF50; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">과학</span>');
+          if (academy['과목_외국어']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #9C27B0; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">외국어</span>');
+          if (academy['과목_예체능']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #FF9800; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">예체능</span>');
+          if (academy['과목_컴퓨터']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #00BCD4; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">컴퓨터</span>');
+          if (academy['과목_논술']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #795548; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">논술</span>');
+          if (academy['과목_기타']) subjects.push('<span style="display: inline-block; padding: 2px 6px; background: #9E9E9E; color: white; border-radius: 8px; font-size: 10px; margin: 2px;">기타</span>');
+
           const infoWindow = new naver.maps.InfoWindow({
-            content: '<div style="padding: 12px; min-width: 200px; max-width: 300px;">' +
-                    '<h4 style="margin: 0 0 8px 0; color: #333; font-size: 14px;">' + academy.name + '</h4>' +
+            content: '<div style="padding: 12px; min-width: 250px; max-width: 350px;">' +
+                    '<h4 style="margin: 0 0 8px 0; color: #333; font-size: 16px; font-weight: bold;">' + academy.name + '</h4>' +
                     '<p style="margin: 0 0 4px 0; color: #666; font-size: 12px;">📍 ' + academy.address + '</p>' +
-                    (academy.subject ? '<p style="margin: 4px 0 0 0; color: #007bff; font-size: 11px;">📚 ' + academy.subject + '</p>' : '') +
+                    (academy['전화번호'] && academy['전화번호'] !== 'null' ? '<p style="margin: 0 0 4px 0; color: #666; font-size: 12px;">📞 ' + academy['전화번호'] + '</p>' : '') +
+                    (academy['별점'] ? '<p style="margin: 0 0 4px 0; color: #666; font-size: 12px;">⭐ ' + academy['별점'] + '</p>' : '') +
+                    (academy['수강료_평균'] ? '<p style="margin: 0 0 4px 0; color: #666; font-size: 12px;">💰 ' + academy['수강료_평균'] + '원</p>' : '') +
+                    (academy['영업시간'] ? '<p style="margin: 0 0 4px 0; color: #666; font-size: 12px;">🕒 ' + academy['영업시간'] + '</p>' : '') +
+                    (academy['셔틀버스'] === 'true' ? '<p style="margin: 0 0 8px 0; color: #4CAF50; font-size: 12px; font-weight: bold;">🚌 셔틀버스 운행</p>' : '') +
+                    (ageGroups.length > 0 ? '<div style="margin: 8px 0;"><strong style="font-size: 12px;">👶 대상 연령:</strong><br>' + ageGroups.join('') + '</div>' : '') +
+                    (subjects.length > 0 ? '<div style="margin: 8px 0;"><strong style="font-size: 12px;">📚 과목:</strong><br>' + subjects.join('') + '</div>' : '') +
+                    '<button id="detailBtn_' + academy.id + '" style="margin-top: 8px; padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; font-weight: bold;">상세정보 보기</button>' +
                     '</div>',
             maxWidth: 300,
             backgroundColor: '#fff',
@@ -343,6 +429,23 @@
               infoWindow.close();
             } else {
               infoWindow.open(map, marker);
+              // 상세보기 버튼 클릭 이벤트 추가
+              setTimeout(() => {
+                const detailBtn = document.getElementById('detailBtn_' + academy.id);
+                if (detailBtn) {
+                  detailBtn.onclick = function() {
+                    console.log('🔵 상세보기 버튼 클릭됨:', academy.name);
+                    console.log('📤 전송할 academy 데이터:', academy);
+                    window.parent.postMessage({
+                      type: 'markerClicked',
+                      data: academy
+                    }, '*');
+                    console.log('✅ postMessage 전송 완료');
+                  };
+                } else {
+                  console.error('❌ 상세보기 버튼을 찾을 수 없음:', 'detailBtn_' + academy.id);
+                }
+              }, 100);
             }
           });
 

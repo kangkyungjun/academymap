@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:ui_web' as ui_web;
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+import 'academy_detail_page.dart';
 
 class DebugLog {
   static void log(String message) {
@@ -281,6 +282,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       final messageEvent = event as html.MessageEvent;
       if (messageEvent.data != null && messageEvent.data is Map) {
         final data = messageEvent.data as Map;
+        DebugLog.log('📩 Message received - Type: ${data['type']}');
         if (data['type'] == 'requestLocation') {
           DebugLog.log('📍 지도에서 현재 위치 요청');
           _getCurrentLocation().then((_) {
@@ -326,6 +328,16 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           final zoomData = data['data'] as Map;
           final newZoomLevel = (zoomData['zoom'] as num).toDouble();
           _handleZoomChange(newZoomLevel, zoomData);
+        } else if (data['type'] == 'markerClicked') {
+          // 📍 마커 클릭 이벤트 처리 - 상세 페이지로 네비게이션
+          DebugLog.log('🎯 markerClicked 이벤트 수신됨');
+          // LinkedMap을 Map<String, dynamic>으로 안전하게 변환
+          final academyData = data['data'] as Map;
+          final academy = Map<String, dynamic>.from(academyData);
+          DebugLog.log('📍 학원 정보: ${academy['상호명'] ?? academy['name']}');
+          DebugLog.log('📋 전체 데이터: $academy');
+          _navigateToDetailPage(academy);
+          DebugLog.log('✅ _navigateToDetailPage 호출 완료');
         }
       }
     });
@@ -800,13 +812,17 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       // 학원 데이터를 지도 마커로 변환
       final markersData = academiesData.map((academy) {
         return {
+          'id': academy['id']?.toString() ?? academy.hashCode.toString(),
           'name': academy['상호명'] ?? '학원',
           'lat': academy['위도'],
-          'lng': academy['경도'], 
+          'lng': academy['경도'],
           'address': academy['도로명주소'] ?? '',
           'subject': _getAcademySubjects(academy),
+          'primarySubject': _getPrimarySubject(academy),
+          // 상세페이지를 위한 전체 데이터 포함
+          ...academy,
         };
-      }).where((marker) => 
+      }).where((marker) =>
         marker['lat'] != null && marker['lng'] != null
       ).toList();
 
@@ -928,7 +944,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       late http.Response response;
 
       if (!_isInitialCacheLoaded) {
-        // 🌍 초기 로드: 제한된 데이터 요청 (전국 범위)
+        // 🌍 초기 로드: 제한된 데이터 요청 (전국 범위) - 현재 필터 값 사용
         response = await http.post(
           Uri.parse('$apiBaseUrl/api/filtered_academies'),
           headers: {'Content-Type': 'application/json'},
@@ -937,20 +953,20 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             'swLng': 124.0, // 한국 서쪽 경계
             'neLat': 39.0,  // 한국 북쪽 경계
             'neLng': 132.0, // 울릉도 포함 동쪽
-            'subjects': ['전체'],
-            'filterMode': 'OR',
-            'priceMin': '0',
-            'priceMax': '999999999',
-            'ageGroups': [],
-            'shuttleFilter': false,
-            'searchQuery': '',
+            'subjects': selectedSubjects.isEmpty ? ['전체'] : selectedSubjects,
+            'filterMode': isAndMode ? 'AND' : 'OR',
+            'priceMin': priceRange.start.toString(),
+            'priceMax': priceRange.end >= _defaultMaxPrice ? '999999999' : priceRange.end.toString(),
+            'ageGroups': selectedAgeGroups,
+            'shuttleFilter': shuttleFilter,
+            'searchQuery': searchQuery.trim(),
             'limit': 1000,  // 초기 로드 시 데이터 제한
             // 📍 사용자 위치 정보 추가 (거리순 정렬을 위해)
             'userLat': currentPosition?.latitude ?? 37.5665,
             'userLng': currentPosition?.longitude ?? 126.9780,
           }),
         );
-        DebugLog.log('🚀 초기 데이터 로드 요청: 최대 1000개');
+        DebugLog.log('🚀 초기 데이터 로드 요청: 최대 1000개, 필터: ${selectedSubjects.join(", ")}, 가격: ${priceRange.start}-${priceRange.end}');
       } else {
         // 🔍 이후 필터링: 기존 방식 사용
         response = await http.post(
@@ -1334,6 +1350,23 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     );
   }
 
+  // 학원 상세 페이지로 네비게이션
+  void _navigateToDetailPage(Map<String, dynamic> academy) {
+    DebugLog.log('🚀 _navigateToDetailPage 함수 시작');
+    DebugLog.log('📱 학원명: ${academy['상호명'] ?? 'Unknown'}');
+    try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AcademyDetailPage(academy: academy),
+        ),
+      );
+      DebugLog.log('✅ Navigator.push 성공');
+    } catch (e) {
+      DebugLog.log('❌ Navigation 오류: $e');
+    }
+  }
+
   Widget _buildNaverMapWidget() {
     return Container(
       height: double.infinity,
@@ -1371,17 +1404,21 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   void _addAcademyMarkersToMap() {
     if (academies.isEmpty) return;
-    
+
     // 학원 데이터를 지도 마커로 변환
     final markersData = academies.map((academy) {
       return {
+        'id': academy['id']?.toString() ?? academy.hashCode.toString(),
         'name': academy['상호명'] ?? '학원',
         'lat': academy['위도'],
-        'lng': academy['경도'], 
+        'lng': academy['경도'],
         'address': academy['도로명주소'] ?? '',
         'subject': _getAcademySubjects(academy),
+        'primarySubject': _getPrimarySubject(academy), // 주요 과목 추가
+        // 상세페이지를 위한 전체 데이터 포함
+        ...academy,
       };
-    }).where((marker) => 
+    }).where((marker) =>
       marker['lat'] != null && marker['lng'] != null
     ).toList();
 
@@ -1413,6 +1450,47 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     if (academy['과목_논술'] == true) subjects.add('논술');
     if (academy['과목_기타'] == true) subjects.add('기타');
     return subjects.join(', ');
+  }
+
+  // 학원의 주요 과목을 판단 (첫 번째 과목 또는 우선순위)
+  String _getPrimarySubject(Map<String, dynamic> academy) {
+    if (academy['과목_수학'] == true) return '수학';
+    if (academy['과목_영어'] == true) return '영어';
+    if (academy['과목_과학'] == true) return '과학';
+    if (academy['과목_예체능'] == true) return '예체능';
+    if (academy['과목_컴퓨터'] == true) return '컴퓨터';
+    if (academy['과목_외국어'] == true) return '외국어';
+    if (academy['과목_논술'] == true) return '논술';
+    if (academy['과목_기타'] == true) return '기타';
+    return '기타'; // 과목 정보가 없는 경우
+  }
+
+  // 과목별 색상 반환
+  Color _getSubjectColor(String subject) {
+    switch (subject) {
+      case '수학': return const Color(0xFFDC3545);
+      case '영어': return const Color(0xFF007BFF);
+      case '과학': return const Color(0xFF28A745);
+      case '예체능': return const Color(0xFFFD7E14);
+      case '컴퓨터': return const Color(0xFF17A2B8);
+      case '외국어': return const Color(0xFF6F42C1);
+      case '논술': return const Color(0xFF795548);
+      default: return const Color(0xFF6C757D);
+    }
+  }
+
+  // 과목별 아이콘 반환
+  String _getSubjectIcon(String subject) {
+    switch (subject) {
+      case '수학': return '➕';
+      case '영어': return '📚';
+      case '과학': return '🔬';
+      case '예체능': return '🎨';
+      case '컴퓨터': return '💻';
+      case '외국어': return '🌍';
+      case '논술': return '✏️';
+      default: return '📖';
+    }
   }
 
   @override
@@ -1568,7 +1646,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                           ),
                         );
                         Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
-                          applyFiltersWithinMapBounds();
+                          loadAcademies();  // 리스트와 맵 모두 업데이트
                         });
                       } : null,
                       icon: Icon(
@@ -1630,7 +1708,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
                         // UI 업데이트 후 필터 적용
                         Future.delayed(Duration(milliseconds: 100), () {
-                          applyFiltersWithinMapBounds();
+                          loadAcademies();  // 리스트와 맵 모두 업데이트
                         });
                       },
                       selectedColor: Colors.blue[100],
@@ -1666,7 +1744,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                   setState(() {
                                     isAndMode = false;
                                   });
-                                  applyFiltersWithinMapBounds();
+                                  loadAcademies();  // 리스트와 맵 모두 업데이트
                                 }
                               },
                               child: Container(
@@ -1691,7 +1769,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                   setState(() {
                                     isAndMode = true;
                                   });
-                                  applyFiltersWithinMapBounds();
+                                  loadAcademies();  // 리스트와 맵 모두 업데이트
                                 }
                               },
                               child: Container(
@@ -1823,7 +1901,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                         },
                         onChangeEnd: (RangeValues values) {
                           Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
-                            applyFiltersWithinMapBounds();
+                            loadAcademies();  // 리스트와 맵 모두 업데이트
                           });
                         },
                       ),
@@ -1859,7 +1937,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                 }
                               });
                               Future.delayed(Duration(milliseconds: 200), () {
-                                applyFiltersWithinMapBounds();
+                                loadAcademies();  // 리스트와 맵 모두 업데이트
                               });
                             },
                             selectedColor: Colors.green[100],
@@ -1890,7 +1968,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                             shuttleFilter = value;
                           });
                           Future.delayed(Duration(milliseconds: 200), () {
-                            applyFiltersWithinMapBounds();
+                            loadAcademies();  // 리스트와 맵 모두 업데이트
                           });
                         },
                         activeColor: Colors.green,
@@ -2079,17 +2157,31 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                 vertical: 4.0,
                               ),
                               child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.blue[100],
-                                  child: const Icon(
-                                    Icons.school,
-                                    color: Colors.blue,
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: _getSubjectColor(_getPrimarySubject(academy)),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _getSubjectIcon(_getPrimarySubject(academy)),
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
                                   ),
                                 ),
-                                title: Text(
-                                  academy['상호명'] ?? '이름 없음',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                title: InkWell(
+                                  onTap: () {
+                                    _navigateToDetailPage(academy);
+                                  },
+                                  child: Text(
+                                    academy['상호명'] ?? '이름 없음',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                      decoration: TextDecoration.underline,
+                                    ),
                                   ),
                                 ),
                                 subtitle: Column(
@@ -2149,7 +2241,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                   color: Colors.grey[400],
                                 ),
                                 onTap: () {
-                                  _showAcademyDetail(academy);
+                                  _navigateToDetailPage(academy);
                                 },
                               ),
                             );
@@ -2246,27 +2338,6 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
             ),
         ],
       ), // body: Stack 끝
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: isLoading ? null : () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('🔄 데이터 새로고침 중...'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-          loadAcademies();
-        },
-        tooltip: '새로고침',
-        icon: isLoading 
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.refresh),
-        label: Text(isLoading ? '로딩 중' : '새로고침'),
-        backgroundColor: isLoading ? Colors.grey : null,
-      ),
     );
   }
 

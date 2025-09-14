@@ -405,6 +405,15 @@ def filtered_academies(request):
     if shuttleFilter:
         queryset = queryset.filter(Q(셔틀버스__icontains='있음') | Q(셔틀버스__iexact='true'))
 
+    # 검색 필터 추가
+    searchQuery = body.get('searchQuery', '')
+    if searchQuery:
+        queryset = queryset.filter(
+            Q(상호명__icontains=searchQuery) |
+            Q(도로명주소__icontains=searchQuery) |
+            Q(시군구명__icontains=searchQuery)
+        )
+
     data = list(queryset.values(
         'id', '상호명', '위도', '경도', '도로명주소', '전화번호',
         '시군구명', '상권업종소분류명', '셔틀버스', '영업시간', '별점'
