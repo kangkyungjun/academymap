@@ -2223,17 +2223,62 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                               ),
                               child: ListTile(
                                 leading: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: _getSubjectColor(_getPrimarySubject(academy)),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      _getSubjectIcon(_getPrimarySubject(academy)),
-                                      style: const TextStyle(fontSize: 20),
-                                    ),
+                                  width: 60,
+                                  height: 60,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: academy['학원사진'] != null &&
+                                           academy['학원사진'] != '' &&
+                                           academy['학원사진'] != 'null'
+                                      ? Image.network(
+                                          academy['학원사진'],
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            // 이미지 로드 실패 시 기본 아이콘 표시
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                color: _getSubjectColor(_getPrimarySubject(academy)),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  _getSubjectIcon(_getPrimarySubject(academy)),
+                                                  style: const TextStyle(fontSize: 24),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          loadingBuilder: (context, child, loadingProgress) {
+                                            if (loadingProgress == null) return child;
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[200],
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Center(
+                                                child: CircularProgressIndicator(
+                                                  value: loadingProgress.expectedTotalBytes != null
+                                                      ? loadingProgress.cumulativeBytesLoaded /
+                                                          loadingProgress.expectedTotalBytes!
+                                                      : null,
+                                                  strokeWidth: 2,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          decoration: BoxDecoration(
+                                            color: _getSubjectColor(_getPrimarySubject(academy)),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              _getSubjectIcon(_getPrimarySubject(academy)),
+                                              style: const TextStyle(fontSize: 24),
+                                            ),
+                                          ),
+                                        ),
                                   ),
                                 ),
                                 title: InkWell(

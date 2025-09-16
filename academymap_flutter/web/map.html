@@ -135,45 +135,45 @@
     let currentZoomLevel = 11; // 현재 줌 레벨
     let debounceTimer = null; // 디바운싱 타이머
 
-    // 과목별 마커 스타일 정의
+    // 과목별 마커 스타일 정의 - 더 선명한 색상으로 개선
     const subjectStyles = {
       '수학': {
-        color: '#DC3545', // 빨간색
+        color: '#FF0000', // 선명한 빨강
         icon: '➕',
         name: '수학'
       },
       '영어': {
-        color: '#007BFF', // 파란색
+        color: '#0066FF', // 진한 파랑
         icon: '📚',
         name: '영어'
       },
       '과학': {
-        color: '#28A745', // 초록색
+        color: '#00CC00', // 밝은 초록
         icon: '🔬',
         name: '과학'
       },
       '예체능': {
-        color: '#FD7E14', // 주황색
+        color: '#FF6600', // 진한 주황
         icon: '🎨',
         name: '예체능'
       },
       '컴퓨터': {
-        color: '#17A2B8', // 청록색
+        color: '#00CCCC', // 밝은 청록
         icon: '💻',
         name: '컴퓨터'
       },
       '외국어': {
-        color: '#6F42C1', // 보라색
+        color: '#9933FF', // 선명한 보라
         icon: '🌍',
         name: '외국어'
       },
       '논술': {
-        color: '#795548', // 갈색
+        color: '#996633', // 구분되는 갈색
         icon: '✏️',
         name: '논술'
       },
       '기타': {
-        color: '#6C757D', // 회색
+        color: '#666666', // 진한 회색
         icon: '📖',
         name: '기타'
       }
@@ -368,17 +368,20 @@
               content: `<div style="
                 background: ${style.color};
                 color: white;
-                padding: 4px 8px;
-                border-radius: 12px;
-                font-size: 11px;
-                border: 2px solid white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                min-width: 20px;
+                padding: 5px 10px;
+                border-radius: 15px;
+                font-size: 13px;
+                border: 3px solid white;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+                min-width: 30px;
                 text-align: center;
                 font-weight: bold;
+                display: flex;
+                align-items: center;
+                justify-content: center;
               ">${style.icon}</div>`,
-              size: new naver.maps.Size(32, 32),
-              anchor: new naver.maps.Point(16, 16)
+              size: new naver.maps.Size(40, 40),
+              anchor: new naver.maps.Point(20, 20)
             }
           });
 
