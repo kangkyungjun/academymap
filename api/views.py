@@ -4,16 +4,17 @@ from rest_framework import status, generics, filters
 from rest_framework.decorators import api_view
 from django.core.cache import cache
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, Avg, Count
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import AcademyFilter, PopularAcademyFilter, NearbyAcademyFilter
 from .pagination import StandardResultsSetPagination, SmallResultsSetPagination
 import math
+from decimal import Decimal
 
 from main.models import Data
 from .serializers import (
-    AcademyListSerializer, 
-    AcademyDetailSerializer, 
+    AcademyListSerializer,
+    AcademyDetailSerializer,
     AcademySearchSerializer,
     AcademySerializer,
     calculate_distance
@@ -618,3 +619,169 @@ def api_info_view(request):
 class AcademyListAPIViewLegacy(AcademyListAPIView):
     """기존 API 호환성을 위한 뷰"""
     serializer_class = AcademySerializer
+
+
+class TuitionStatisticsAPIView(APIView):
+    """학원비 통계 API - 특정 학원의 수강료를 지역별 평균과 비교"""
+
+    def get(self, request, academy_id):
+        try:
+            # 1. 학원 정보 조회
+            academy = Data.objects.get(id=academy_id)
+
+            # 학원의 수강료 정보 파싱 (문자열로 저장되어 있을 수 있음)
+            academy_tuition = None
+            if academy.수강료_평균:
+                try:
+                    # 문자열에서 숫자만 추출
+                    tuition_str = str(academy.수강료_평균).replace(',', '').replace('원', '')
+                    academy_tuition = float(tuition_str) if tuition_str and tuition_str != 'None' else None
+                except (ValueError, AttributeError):
+                    academy_tuition = None
+
+            # 2. 지역별 평균 계산
+            # 동 단위 평균
+            dong_stats = None
+            if academy.행정동명:
+                dong_data = Data.objects.filter(
+                    행정동명=academy.행정동명,
+                    수강료_평균__isnull=False
+                ).exclude(수강료_평균='').exclude(수강료_평균='None')
+
+                dong_tuitions = []
+                for item in dong_data:
+                    try:
+                        tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
+                        if tuition_str and tuition_str != 'None':
+                            dong_tuitions.append(float(tuition_str))
+                    except (ValueError, AttributeError):
+                        continue
+
+                if dong_tuitions:
+                    dong_stats = {
+                        'name': academy.행정동명,
+                        'average': sum(dong_tuitions) / len(dong_tuitions),
+                        'count': len(dong_tuitions)
+                    }
+
+            # 시군구 단위 평균
+            sigungu_stats = None
+            if academy.시군구명:
+                sigungu_data = Data.objects.filter(
+                    시군구명=academy.시군구명,
+                    수강료_평균__isnull=False
+                ).exclude(수강료_평균='').exclude(수강료_평균='None')
+
+                sigungu_tuitions = []
+                for item in sigungu_data:
+                    try:
+                        tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
+                        if tuition_str and tuition_str != 'None':
+                            sigungu_tuitions.append(float(tuition_str))
+                    except (ValueError, AttributeError):
+                        continue
+
+                if sigungu_tuitions:
+                    sigungu_stats = {
+                        'name': academy.시군구명,
+                        'average': sum(sigungu_tuitions) / len(sigungu_tuitions),
+                        'count': len(sigungu_tuitions)
+                    }
+
+            # 시도 단위 평균
+            sido_stats = None
+            if academy.시도명:
+                sido_data = Data.objects.filter(
+                    시도명=academy.시도명,
+                    수강료_평균__isnull=False
+                ).exclude(수강료_평균='').exclude(수강료_평균='None')
+
+                sido_tuitions = []
+                for item in sido_data:
+                    try:
+                        tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
+                        if tuition_str and tuition_str != 'None':
+                            sido_tuitions.append(float(tuition_str))
+                    except (ValueError, AttributeError):
+                        continue
+
+                if sido_tuitions:
+                    sido_stats = {
+                        'name': academy.시도명,
+                        'average': sum(sido_tuitions) / len(sido_tuitions),
+                        'count': len(sido_tuitions)
+                    }
+
+            # 전국 평균
+            national_data = Data.objects.filter(
+                수강료_평균__isnull=False
+            ).exclude(수강료_평균='').exclude(수강료_평균='None')
+
+            national_tuitions = []
+            for item in national_data[:1000]:  # 성능을 위해 샘플링
+                try:
+                    tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
+                    if tuition_str and tuition_str != 'None':
+                        national_tuitions.append(float(tuition_str))
+                except (ValueError, AttributeError):
+                    continue
+
+            national_stats = None
+            if national_tuitions:
+                national_stats = {
+                    'average': sum(national_tuitions) / len(national_tuitions),
+                    'count': len(national_tuitions)
+                }
+
+            # 3. 과목별 정보 수집
+            subjects = []
+            if academy.과목_수학:
+                subjects.append('수학')
+            if academy.과목_영어:
+                subjects.append('영어')
+            if academy.과목_과학:
+                subjects.append('과학')
+            if academy.과목_외국어:
+                subjects.append('외국어')
+            if academy.과목_예체능:
+                subjects.append('예체능')
+            if academy.과목_컴퓨터:
+                subjects.append('컴퓨터')
+            if academy.과목_논술:
+                subjects.append('논술')
+            if academy.과목_종합:
+                subjects.append('종합')
+
+            # 응답 데이터 구성
+            response_data = {
+                'academy': {
+                    'id': academy.id,
+                    'name': academy.상호명,
+                    'tuition': academy_tuition,
+                    'subjects': subjects,
+                    'address': academy.도로명주소 or academy.지번주소
+                },
+                'statistics': {
+                    'dong': dong_stats,
+                    'sigungu': sigungu_stats,
+                    'sido': sido_stats,
+                    'national': national_stats
+                }
+            }
+
+            # 캐싱 (1시간)
+            cache_key = f'tuition_stats_{academy_id}'
+            cache.set(cache_key, response_data, 3600)
+
+            return Response(response_data)
+
+        except Data.DoesNotExist:
+            return Response(
+                {'error': '학원을 찾을 수 없습니다.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'통계 처리 중 오류가 발생했습니다: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

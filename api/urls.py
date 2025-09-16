@@ -7,6 +7,7 @@ from .views import (
     PopularAcademiesAPIView,
     RecommendedAcademiesAPIView,
     AcademyListAPIViewLegacy,
+    TuitionStatisticsAPIView,
     categories_view,
     regions_view,
     academy_stats_view,
@@ -36,6 +37,9 @@ urlpatterns = [
     path('regions/', regions_view, name='regions'),
     path('stats/', academy_stats_view, name='academy_stats'),
     path('autocomplete/', autocomplete_view, name='autocomplete'),
+
+    # 학원비 통계 API
+    path('academies/<int:academy_id>/tuition-statistics/', TuitionStatisticsAPIView.as_view(), name='tuition_statistics'),
     
     # 하위 호환성 (기존 API)
     path('legacy/academies/', AcademyListAPIViewLegacy.as_view(), name='academy_list_legacy'),

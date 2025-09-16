@@ -1351,19 +1351,66 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   }
 
   // 학원 상세 페이지로 네비게이션
-  void _navigateToDetailPage(Map<String, dynamic> academy) {
+  Future<void> _navigateToDetailPage(Map<String, dynamic> academy) async {
     DebugLog.log('🚀 _navigateToDetailPage 함수 시작');
     DebugLog.log('📱 학원명: ${academy['상호명'] ?? 'Unknown'}');
     try {
-      Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => AcademyDetailPage(academy: academy),
         ),
       );
       DebugLog.log('✅ Navigator.push 성공');
+
+      // 상세 페이지에서 지도보기를 눌러 돌아온 경우
+      if (result != null && result is Map) {
+        final lat = result['lat'];
+        final lng = result['lng'];
+        final name = result['name'];
+
+        DebugLog.log('📍 상세 페이지에서 지도 위치 요청: $name ($lat, $lng)');
+
+        // 리스트 뷰인 경우 지도 뷰로 전환
+        if (!isMapView) {
+          DebugLog.log('🔄 리스트 뷰에서 지도 뷰로 전환');
+          setState(() {
+            isMapView = true;
+          });
+
+          // 지도가 로드될 때까지 잠시 대기
+          Future.delayed(Duration(milliseconds: 500), () {
+            _centerMapOnAcademy(lat, lng);
+          });
+        } else {
+          // 이미 지도 뷰인 경우 바로 이동
+          _centerMapOnAcademy(lat, lng);
+        }
+      }
     } catch (e) {
       DebugLog.log('❌ Navigation 오류: $e');
+    }
+  }
+
+  // 지도를 특정 학원 위치로 중심 이동
+  void _centerMapOnAcademy(double lat, double lng) {
+    try {
+      final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
+
+      if (iframe?.contentWindow != null) {
+        final message = {
+          'type': 'setMapCenter',
+          'lat': lat,
+          'lng': lng,
+        };
+
+        iframe!.contentWindow!.postMessage(message, '*');
+        DebugLog.log('📍 학원 위치로 지도 중심 이동: $lat, $lng');
+      } else {
+        DebugLog.log('❌ iframe을 찾을 수 없습니다');
+      }
+    } catch (e) {
+      DebugLog.log('❌ 지도 중심 이동 오류: $e');
     }
   }
 
