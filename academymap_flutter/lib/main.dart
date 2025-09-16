@@ -101,6 +101,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   // 위치 정보
   Position? currentPosition;
   bool isLocationLoading = false;
+  bool isReturningFromDetail = false; // 상세 페이지에서 돌아온 상태
 
   // 오류 상태
   String? errorMessage;
@@ -1371,6 +1372,11 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
         DebugLog.log('📍 상세 페이지에서 지도 위치 요청: $name ($lat, $lng)');
 
+        // 상세 페이지에서 돌아온 상태 설정
+        setState(() {
+          isReturningFromDetail = true;
+        });
+
         // 리스트 뷰인 경우 지도 뷰로 전환
         if (!isMapView) {
           DebugLog.log('🔄 리스트 뷰에서 지도 뷰로 전환');
@@ -1386,6 +1392,15 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           // 이미 지도 뷰인 경우 바로 이동
           _centerMapOnAcademy(lat, lng);
         }
+
+        // 3초 후에 플래그 해제
+        Future.delayed(Duration(seconds: 3), () {
+          if (mounted) {
+            setState(() {
+              isReturningFromDetail = false;
+            });
+          }
+        });
       }
     } catch (e) {
       DebugLog.log('❌ Navigation 오류: $e');
@@ -1610,7 +1625,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                 if (isMapView) {
                   // 지도 뷰로 전환할 때 위치 및 마커 업데이트
                   Future.delayed(Duration(milliseconds: 500), () {
-                    _sendLocationToMap();
+                    // 상세 페이지에서 돌아온 경우가 아닐 때만 사용자 위치로 이동
+                    if (!isReturningFromDetail) {
+                      _sendLocationToMap();
+                    }
                     _addAcademyMarkersToMap();
                   });
                 }

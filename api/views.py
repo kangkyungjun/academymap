@@ -653,7 +653,9 @@ class TuitionStatisticsAPIView(APIView):
                     try:
                         tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
                         if tuition_str and tuition_str != 'None':
-                            dong_tuitions.append(float(tuition_str))
+                            tuition_value = float(tuition_str)
+                            if tuition_value > 0:  # 0보다 큰 값만 포함
+                                dong_tuitions.append(tuition_value)
                     except (ValueError, AttributeError):
                         continue
 
@@ -677,7 +679,9 @@ class TuitionStatisticsAPIView(APIView):
                     try:
                         tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
                         if tuition_str and tuition_str != 'None':
-                            sigungu_tuitions.append(float(tuition_str))
+                            tuition_value = float(tuition_str)
+                            if tuition_value > 0:  # 0보다 큰 값만 포함
+                                sigungu_tuitions.append(tuition_value)
                     except (ValueError, AttributeError):
                         continue
 
@@ -701,7 +705,9 @@ class TuitionStatisticsAPIView(APIView):
                     try:
                         tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
                         if tuition_str and tuition_str != 'None':
-                            sido_tuitions.append(float(tuition_str))
+                            tuition_value = float(tuition_str)
+                            if tuition_value > 0:  # 0보다 큰 값만 포함
+                                sido_tuitions.append(tuition_value)
                     except (ValueError, AttributeError):
                         continue
 
@@ -722,7 +728,9 @@ class TuitionStatisticsAPIView(APIView):
                 try:
                     tuition_str = str(item.수강료_평균).replace(',', '').replace('원', '')
                     if tuition_str and tuition_str != 'None':
-                        national_tuitions.append(float(tuition_str))
+                        tuition_value = float(tuition_str)
+                        if tuition_value > 0:  # 0보다 큰 값만 포함
+                            national_tuitions.append(tuition_value)
                 except (ValueError, AttributeError):
                     continue
 
