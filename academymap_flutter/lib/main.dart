@@ -1516,6 +1516,27 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   // 학원의 주요 과목을 판단 (첫 번째 과목 또는 우선순위)
   String _getPrimarySubject(Map<String, dynamic> academy) {
+    // API에서 subjects 배열로 과목 정보 제공
+    List<dynamic>? subjects = academy['subjects'];
+    if (subjects != null && subjects.isNotEmpty) {
+      String firstSubject = subjects[0].toString();
+
+      // 과목명 매칭 (contains 사용하여 부분 매칭)
+      if (firstSubject.contains('수학')) return '수학';
+      if (firstSubject.contains('영어')) return '영어';
+      if (firstSubject.contains('과학')) return '과학';
+      if (firstSubject.contains('예체능') || firstSubject.contains('음악') ||
+          firstSubject.contains('미술') || firstSubject.contains('체육')) return '예체능';
+      if (firstSubject.contains('컴퓨터') || firstSubject.contains('코딩')) return '컴퓨터';
+      if (firstSubject.contains('외국어') || firstSubject.contains('중국어') ||
+          firstSubject.contains('일본어')) return '외국어';
+      if (firstSubject.contains('논술')) return '논술';
+
+      // 정확한 매칭이 없으면 원본 반환
+      return firstSubject;
+    }
+
+    // subjects 필드가 없으면 기존 방식 시도 (하위 호환성)
     if (academy['과목_수학'] == true) return '수학';
     if (academy['과목_영어'] == true) return '영어';
     if (academy['과목_과학'] == true) return '과학';
@@ -1523,21 +1544,21 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     if (academy['과목_컴퓨터'] == true) return '컴퓨터';
     if (academy['과목_외국어'] == true) return '외국어';
     if (academy['과목_논술'] == true) return '논술';
-    if (academy['과목_기타'] == true) return '기타';
+
     return '기타'; // 과목 정보가 없는 경우
   }
 
-  // 과목별 색상 반환
+  // 과목별 색상 반환 (map.html과 동일한 색상)
   Color _getSubjectColor(String subject) {
     switch (subject) {
-      case '수학': return const Color(0xFFDC3545);
-      case '영어': return const Color(0xFF007BFF);
-      case '과학': return const Color(0xFF28A745);
-      case '예체능': return const Color(0xFFFD7E14);
-      case '컴퓨터': return const Color(0xFF17A2B8);
-      case '외국어': return const Color(0xFF6F42C1);
-      case '논술': return const Color(0xFF795548);
-      default: return const Color(0xFF6C757D);
+      case '수학': return const Color(0xFFFF0000);  // 선명한 빨강
+      case '영어': return const Color(0xFF0066FF);  // 진한 파랑
+      case '과학': return const Color(0xFF00CC00);  // 밝은 초록
+      case '예체능': return const Color(0xFFFF6600);  // 진한 주황
+      case '컴퓨터': return const Color(0xFF00CCCC);  // 밝은 청록
+      case '외국어': return const Color(0xFF9933FF);  // 선명한 보라
+      case '논술': return const Color(0xFF996633);  // 구분되는 갈색
+      default: return const Color(0xFF666666);  // 진한 회색
     }
   }
 
@@ -2225,60 +2246,77 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                                 leading: Container(
                                   width: 60,
                                   height: 60,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: academy['학원사진'] != null &&
-                                           academy['학원사진'] != '' &&
-                                           academy['학원사진'] != 'null'
-                                      ? Image.network(
-                                          academy['학원사진'],
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            // 이미지 로드 실패 시 기본 아이콘 표시
-                                            return Container(
-                                              decoration: BoxDecoration(
-                                                color: _getSubjectColor(_getPrimarySubject(academy)),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  _getSubjectIcon(_getPrimarySubject(academy)),
-                                                  style: const TextStyle(fontSize: 24),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          loadingBuilder: (context, child, loadingProgress) {
-                                            if (loadingProgress == null) return child;
-                                            return Container(
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey[200],
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Center(
-                                                child: CircularProgressIndicator(
-                                                  value: loadingProgress.expectedTotalBytes != null
-                                                      ? loadingProgress.cumulativeBytesLoaded /
-                                                          loadingProgress.expectedTotalBytes!
-                                                      : null,
-                                                  strokeWidth: 2,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      : Container(
+                                  child: Stack(
+                                    children: [
+                                      // 배경 레이어: 학원 사진 또는 회색 배경
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: academy['학원사진'] != null &&
+                                               academy['학원사진'] != '' &&
+                                               academy['학원사진'] != 'null'
+                                          ? Image.network(
+                                              academy['학원사진'],
+                                              fit: BoxFit.cover,
+                                              width: 60,
+                                              height: 60,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Container(
+                                                  color: Colors.grey[300],
+                                                  width: 60,
+                                                  height: 60,
+                                                );
+                                              },
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return Container(
+                                                  color: Colors.grey[200],
+                                                  width: 60,
+                                                  height: 60,
+                                                  child: Center(
+                                                    child: CircularProgressIndicator(
+                                                      value: loadingProgress.expectedTotalBytes != null
+                                                          ? loadingProgress.cumulativeBytesLoaded /
+                                                              loadingProgress.expectedTotalBytes!
+                                                          : null,
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            )
+                                          : Container(
+                                              color: Colors.grey[300],
+                                              width: 60,
+                                              height: 60,
+                                            ),
+                                      ),
+                                      // 아이콘 오버레이: 좌측 상단에 작게 표시
+                                      Positioned(
+                                        top: 4,
+                                        left: 4,
+                                        child: Container(
+                                          padding: EdgeInsets.all(4),
                                           decoration: BoxDecoration(
                                             color: _getSubjectColor(_getPrimarySubject(academy)),
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(4),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(0.3),
+                                                blurRadius: 2,
+                                                offset: Offset(0, 1),
+                                              ),
+                                            ],
                                           ),
-                                          child: Center(
-                                            child: Text(
-                                              _getSubjectIcon(_getPrimarySubject(academy)),
-                                              style: const TextStyle(fontSize: 24),
+                                          child: Text(
+                                            _getSubjectIcon(_getPrimarySubject(academy)),
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: Colors.white,
                                             ),
                                           ),
                                         ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 title: InkWell(

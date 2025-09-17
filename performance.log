@@ -11,3 +11,5 @@ WARNING 2025-09-14 19:43:45,030 performance_middleware 27797 13349924864 Slow re
 WARNING 2025-09-16 19:32:06,998 performance_middleware 12316 13321138176 Slow request: POST /api/filtered_academies took 1.016s
 WARNING 2025-09-16 20:04:43,554 performance_middleware 26203 6200799232 Slow request: POST /api/filtered_academies took 1.007s
 WARNING 2025-09-16 20:05:30,536 performance_middleware 26203 6200799232 Slow request: POST /api/filtered_academies took 1.847s
+WARNING 2025-09-16 20:52:34,165 performance_middleware 42917 13352431616 Slow request: POST /api/filtered_academies took 1.083s
+WARNING 2025-09-17 19:39:16,607 performance_middleware 55306 6294630400 Slow request: POST /api/filtered_academies took 1.016s

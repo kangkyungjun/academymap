@@ -7,30 +7,51 @@ class AcademyDetailPage extends StatelessWidget {
 
   const AcademyDetailPage({Key? key, required this.academy}) : super(key: key);
 
-  // 과목별 색상 반환
+  // 과목별 색상 반환 (map.html과 동일한 색상)
   Color _getSubjectColor(String subject) {
     switch (subject) {
       case '수학':
-        return const Color(0xFFDC3545);
+        return const Color(0xFFFF0000);  // 선명한 빨강
       case '영어':
-        return const Color(0xFF007BFF);
+        return const Color(0xFF0066FF);  // 진한 파랑
       case '과학':
-        return const Color(0xFF28A745);
+        return const Color(0xFF00CC00);  // 밝은 초록
       case '예체능':
-        return const Color(0xFFFD7E14);
+        return const Color(0xFFFF6600);  // 진한 주황
       case '컴퓨터':
-        return const Color(0xFF17A2B8);
+        return const Color(0xFF00CCCC);  // 밝은 청록
       case '외국어':
-        return const Color(0xFF6F42C1);
+        return const Color(0xFF9933FF);  // 선명한 보라
       case '논술':
-        return const Color(0xFF795548);
+        return const Color(0xFF996633);  // 구분되는 갈색
       default:
-        return const Color(0xFF6C757D);
+        return const Color(0xFF666666);  // 진한 회색
     }
   }
 
   // 학원의 주요 과목을 판단
   String _getPrimarySubject() {
+    // API에서 subjects 배열로 과목 정보 제공
+    List<dynamic>? subjects = academy['subjects'];
+    if (subjects != null && subjects.isNotEmpty) {
+      String firstSubject = subjects[0].toString();
+
+      // 과목명 매칭 (contains 사용하여 부분 매칭)
+      if (firstSubject.contains('수학')) return '수학';
+      if (firstSubject.contains('영어')) return '영어';
+      if (firstSubject.contains('과학')) return '과학';
+      if (firstSubject.contains('예체능') || firstSubject.contains('음악') ||
+          firstSubject.contains('미술') || firstSubject.contains('체육')) return '예체능';
+      if (firstSubject.contains('컴퓨터') || firstSubject.contains('코딩')) return '컴퓨터';
+      if (firstSubject.contains('외국어') || firstSubject.contains('중국어') ||
+          firstSubject.contains('일본어')) return '외국어';
+      if (firstSubject.contains('논술')) return '논술';
+
+      // 정확한 매칭이 없으면 원본 반환
+      return firstSubject;
+    }
+
+    // subjects 필드가 없으면 기존 방식 시도 (하위 호환성)
     if (academy['과목_수학'] == true) return '수학';
     if (academy['과목_영어'] == true) return '영어';
     if (academy['과목_과학'] == true) return '과학';
@@ -38,7 +59,7 @@ class AcademyDetailPage extends StatelessWidget {
     if (academy['과목_컴퓨터'] == true) return '컴퓨터';
     if (academy['과목_외국어'] == true) return '외국어';
     if (academy['과목_논술'] == true) return '논술';
-    if (academy['과목_기타'] == true) return '기타';
+
     return '기타';
   }
 
@@ -212,38 +233,67 @@ class AcademyDetailPage extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      _getSubjectColor(primarySubject).withOpacity(0.8),
-                      _getSubjectColor(primarySubject),
-                    ],
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 배경 레이어: 학원 사진 또는 회색 배경
+                  academy['학원사진'] != null &&
+                  academy['학원사진'] != '' &&
+                  academy['학원사진'] != 'null'
+                    ? Image.network(
+                        academy['학원사진'],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                          );
+                        },
+                      )
+                    : Container(
+                        color: Colors.grey[300],
+                      ),
+                  // 그라디언트 오버레이
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3),
+                          _getSubjectColor(primarySubject).withOpacity(0.5),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(40),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _getSubjectIcon(primarySubject),
-                            style: TextStyle(fontSize: 40),
+                  // 중앙 아이콘
+                  Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: _getSubjectColor(primarySubject),
+                        borderRadius: BorderRadius.circular(40),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          _getSubjectIcon(primarySubject),
+                          style: TextStyle(
+                            fontSize: 40,
+                            color: Colors.white,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
