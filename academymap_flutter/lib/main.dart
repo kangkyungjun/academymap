@@ -1514,38 +1514,79 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     return subjects.join(', ');
   }
 
-  // 학원의 주요 과목을 판단 (첫 번째 과목 또는 우선순위)
+  // 학원의 주요 과목을 판단
   String _getPrimarySubject(Map<String, dynamic> academy) {
-    // API에서 subjects 배열로 과목 정보 제공
-    List<dynamic>? subjects = academy['subjects'];
-    if (subjects != null && subjects.isNotEmpty) {
-      String firstSubject = subjects[0].toString();
+    // API가 subjects 배열을 반환하는 경우 (api/v1 endpoint)
+    if (academy['subjects'] != null && academy['subjects'] is List) {
+      final subjects = academy['subjects'] as List;
 
-      // 과목명 매칭 (contains 사용하여 부분 매칭)
-      if (firstSubject.contains('수학')) return '수학';
-      if (firstSubject.contains('영어')) return '영어';
-      if (firstSubject.contains('과학')) return '과학';
-      if (firstSubject.contains('예체능') || firstSubject.contains('음악') ||
-          firstSubject.contains('미술') || firstSubject.contains('체육')) return '예체능';
-      if (firstSubject.contains('컴퓨터') || firstSubject.contains('코딩')) return '컴퓨터';
-      if (firstSubject.contains('외국어') || firstSubject.contains('중국어') ||
-          firstSubject.contains('일본어')) return '외국어';
-      if (firstSubject.contains('논술')) return '논술';
+      // 우선순위에 따라 주요 과목 결정
+      if (subjects.contains('수학')) return '수학';
+      if (subjects.contains('영어')) return '영어';
+      if (subjects.contains('과학')) return '과학';
+      if (subjects.contains('컴퓨터')) return '컴퓨터';
+      if (subjects.contains('예체능')) return '예체능';
+      if (subjects.contains('논술')) return '논술';
+      if (subjects.contains('외국어')) return '외국어';
+      if (subjects.contains('독서실/스터디카페')) return '독서실';
+      if (subjects.contains('기타')) return '기타';
+      if (subjects.contains('종합')) return '종합';
 
-      // 정확한 매칭이 없으면 원본 반환
-      return firstSubject;
+      // subjects 배열이 비어있지 않으면 첫 번째 과목 사용
+      if (subjects.isNotEmpty) {
+        return subjects.first.toString();
+      }
     }
 
-    // subjects 필드가 없으면 기존 방식 시도 (하위 호환성)
-    if (academy['과목_수학'] == true) return '수학';
-    if (academy['과목_영어'] == true) return '영어';
-    if (academy['과목_과학'] == true) return '과학';
-    if (academy['과목_예체능'] == true) return '예체능';
-    if (academy['과목_컴퓨터'] == true) return '컴퓨터';
-    if (academy['과목_외국어'] == true) return '외국어';
-    if (academy['과목_논술'] == true) return '논술';
+    // API가 boolean 필드를 반환하는 경우 (map_api endpoint 용)
+    // 우선순위 순서대로 체크
+    if (academy['과목_수학'] == true) {
+      return '수학';
+    }
+    if (academy['과목_영어'] == true) {
+      return '영어';
+    }
+    if (academy['과목_과학'] == true) {
+      return '과학';
+    }
+    if (academy['과목_예체능'] == true) {
+      return '예체능';
+    }
+    if (academy['과목_컴퓨터'] == true) {
+      return '컴퓨터';
+    }
+    if (academy['과목_외국어'] == true) {
+      return '외국어';
+    }
+    if (academy['과목_논술'] == true) {
+      return '논술';
+    }
 
-    return '기타'; // 과목 정보가 없는 경우
+    // 학원명에서 과목 추론 (백업 방법)
+    String name = academy['상호명'] ?? '';
+    if (name.contains('수학')) {
+      return '수학';
+    }
+    if (name.contains('영어')) {
+      return '영어';
+    }
+    if (name.contains('과학')) {
+      return '과학';
+    }
+    if (name.contains('음악') || name.contains('미술') || name.contains('체육') || name.contains('예능')) {
+      return '예체능';
+    }
+    if (name.contains('컴퓨터') || name.contains('코딩') || name.contains('프로그래밍')) {
+      return '컴퓨터';
+    }
+    if (name.contains('중국어') || name.contains('일본어') || name.contains('외국어')) {
+      return '외국어';
+    }
+    if (name.contains('논술')) {
+      return '논술';
+    }
+
+    return '기타';
   }
 
   // 과목별 색상 반환 (map.html과 동일한 색상)
@@ -1696,17 +1737,19 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           Column(
             children: [
               // 필터 섹션
-              Container(
-            padding: EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 16.0 : 12.0),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(
-                bottom: BorderSide(color: Colors.grey[300]!),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+              Flexible(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey[300]!),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 16.0 : 12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -2063,6 +2106,8 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
                   ),
                 ],
                   ],
+                    ),
+                  ),
                 ),
               ),
               // 학원 목록 또는 지도
