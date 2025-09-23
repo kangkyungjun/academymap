@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:ui_web' as ui_web;
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'academy_detail_page.dart';
 
 class DebugLog {
@@ -82,6 +83,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   bool shuttleFilter = false;
   bool showAdvancedFilters = false;
   bool isAndMode = false; // OR/AND 조합 모드 (false: OR, true: AND)
+  bool showFilterPanel = true; // 필터 패널 표시 여부
   
   // 무한 스크롤 변수들
   bool isLoadingMore = false;
@@ -157,14 +159,19 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         
         // iframe 로드 완료 후 위치 정보 전송
         iframe.onLoad.listen((_) {
-          if (currentPosition != null) {
+          // 상세 페이지에서 돌아온 경우가 아닐 때만 사용자 위치로 이동
+          if (currentPosition != null && !isReturningFromDetail) {
             // 지도가 완전히 초기화될 때까지 더 긴 지연시간 설정
             Future.delayed(Duration(milliseconds: _mapInitDelay), () {
-              _sendLocationToMap();
-              // 확실하게 하기 위해 한 번 더 전송
-              Future.delayed(Duration(milliseconds: 1000), () {
+              if (!isReturningFromDetail) {  // 한 번 더 체크
                 _sendLocationToMap();
-              });
+                // 확실하게 하기 위해 한 번 더 전송
+                Future.delayed(Duration(milliseconds: 1000), () {
+                  if (!isReturningFromDetail) {  // 마지막 체크
+                    _sendLocationToMap();
+                  }
+                });
+              }
             });
           }
         });
@@ -277,6 +284,42 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     }
   }
 
+  // 지도에서 받은 필터 정보를 Flutter 상태에 업데이트
+  void _updateFiltersFromMap(Map filters) {
+    setState(() {
+      // 과목 필터
+      if (filters.containsKey('subjects')) {
+        final subjects = filters['subjects'] as List?;
+        if (subjects != null && subjects.isNotEmpty) {
+          selectedSubjects = subjects.cast<String>().toList();
+        }
+      }
+
+      // 가격 필터
+      if (filters.containsKey('priceMin') || filters.containsKey('priceMax')) {
+        priceRange = RangeValues(
+          (filters['priceMin'] ?? 0).toDouble(),
+          (filters['priceMax'] ?? _defaultMaxPrice).toDouble(),
+        );
+      }
+
+      // 연령 그룹 필터
+      if (filters.containsKey('ageGroups')) {
+        final ageGroups = filters['ageGroups'] as List?;
+        if (ageGroups != null && ageGroups.isNotEmpty) {
+          selectedAgeGroups = ageGroups.cast<String>().toList();
+        }
+      }
+
+      // 셔틀 필터
+      if (filters.containsKey('shuttle')) {
+        shuttleFilter = filters['shuttle'] as bool? ?? false;
+      }
+    });
+    DebugLog.log('📋 필터 업데이트: $filters');
+  }
+
+
   void _setupMessageListener() {
     // iframe에서 오는 메시지 수신
     html.window.addEventListener('message', (event) {
@@ -293,13 +336,17 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           });
         } else if (data['type'] == 'requestMarkersInBounds') {
           DebugLog.log('🗺️ 지도 영역 내 마커 요청');
-          final boundsData = data['data'] as Map;
-          _loadMarkersInBounds(
-            boundsData['sw_lat'],
-            boundsData['sw_lng'], 
-            boundsData['ne_lat'],
-            boundsData['ne_lng'],
-          );
+          // iframe에서 받은 필터 정보를 무시하고 Flutter의 현재 필터 상태를 유지
+          // 필터 정보는 Flutter가 관리하므로 iframe에서 받은 필터는 사용하지 않음
+          final currentFilters = _getCurrentFilters();
+          DebugLog.log('📋 현재 필터 유지: $currentFilters');
+
+          // 바운드 데이터 처리 - data 키가 있는 경우와 없는 경우 모두 처리
+          final swLat = data['swLat'] ?? (data['data']?['sw_lat'] ?? 0.0);
+          final swLng = data['swLng'] ?? (data['data']?['sw_lng'] ?? 0.0);
+          final neLat = data['neLat'] ?? (data['data']?['ne_lat'] ?? 0.0);
+          final neLng = data['neLng'] ?? (data['data']?['ne_lng'] ?? 0.0);
+          _loadMarkersInBounds(swLat, swLng, neLat, neLng);
         } else if (data['type'] == 'currentBoundsResponse') {
           DebugLog.log('🗺️ 현재 지도 영역 응답 받음');
           final boundsData = data['data'] as Map;
@@ -353,7 +400,7 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     return '${gridLat}_${gridLng}';
   }
 
-  /// 초기 캐시에서 지역 데이터 검색
+  /// 초기 캐시에서 지역 데이터 검색 (필터 적용)
   List<dynamic> _getCachedAcademiesInBounds(double swLat, double swLng, double neLat, double neLng) {
     List<dynamic> cachedResults = [];
 
@@ -369,11 +416,14 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       }
     }
 
-    DebugLog.log('📦 캐시에서 찾은 학원: ${cachedResults.length}개 (범위: ${swLat.toStringAsFixed(4)},${swLng.toStringAsFixed(4)} ~ ${neLat.toStringAsFixed(4)},${neLng.toStringAsFixed(4)})');
-    return cachedResults;
+    // 🎯 클라이언트 사이드 필터 적용
+    List<dynamic> filteredResults = _applyClientSideFilters(cachedResults);
+
+    DebugLog.log('📦 캐시에서 찾은 학원: ${cachedResults.length}개 → 필터 후: ${filteredResults.length}개 (범위: ${swLat.toStringAsFixed(4)},${swLng.toStringAsFixed(4)} ~ ${neLat.toStringAsFixed(4)},${neLng.toStringAsFixed(4)})');
+    return filteredResults;
   }
 
-  /// 지역별 캐시에서 데이터 검색
+  /// 지역별 캐시에서 데이터 검색 (필터 적용)
   List<dynamic> _getRegionCachedAcademies(double swLat, double swLng, double neLat, double neLng) {
     List<dynamic> regionResults = [];
     Set<String> checkedRegions = {};
@@ -414,8 +464,11 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       }
     }
 
-    DebugLog.log('🏘️ 지역 캐시에서 찾은 학원: ${regionResults.length}개');
-    return regionResults;
+    // 🎯 클라이언트 사이드 필터 적용
+    List<dynamic> filteredResults = _applyClientSideFilters(regionResults);
+
+    DebugLog.log('🏘️ 지역 캐시에서 찾은 학원: ${regionResults.length}개 → 필터 후: ${filteredResults.length}개');
+    return filteredResults;
   }
 
   /// 캐시에 데이터 저장
@@ -453,6 +506,17 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     _cachedNearbyAcademies = List<dynamic>.from(nearbyAcademies);
     _isInitialCacheLoaded = true;
     DebugLog.log('🚀 초기 캐시 설정 완료: ${_cachedNearbyAcademies.length}개 학원');
+  }
+
+  /// 필터 변경 시 캐시 초기화
+  void _clearFilterRelatedCache() {
+    // 지역 캐시만 초기화 (초기 캐시는 유지)
+    int oldCacheSize = _regionCache.length;
+    _regionCache.clear();
+    _cacheTimestamps.clear();
+    _loadedRegions.clear();
+
+    DebugLog.log('🧹 필터 변경으로 인한 캐시 초기화: ${oldCacheSize}개 지역 캐시 제거');
   }
 
   // 🎯 Zoom Level Management & Memory Optimization
@@ -642,10 +706,25 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
           DebugLog.log('🔄 백그라운드 로드 완료: ${boundsAcademies.length}개 (API: ${allAcademies.length}개)');
 
-          // 새로운 데이터가 캐시된 것보다 많다면 업데이트
-          if (boundsAcademies.length > finalCachedMarkers.length) {
-            DebugLog.log('📈 더 많은 마커 발견, 업데이트: ${boundsAcademies.length}개');
-            _sendMarkersToMap(boundsAcademies.take(_maxMarkersPerRequest).toList());
+          // 필터가 활성화된 경우 또는 새로운 데이터가 캐시된 것보다 많다면 업데이트
+          bool hasActiveFilters = !selectedSubjects.contains('전체') ||
+                                 selectedAgeGroups.isNotEmpty ||
+                                 shuttleFilter ||
+                                 priceRange.start > 0.0 ||
+                                 priceRange.end < _defaultMaxPrice;
+
+          if (hasActiveFilters || boundsAcademies.length > finalCachedMarkers.length) {
+            // 필터가 활성화된 경우 클라이언트 사이드 필터 적용
+            final filteredAcademies = hasActiveFilters
+              ? _applyClientSideFilters(boundsAcademies)
+              : boundsAcademies;
+
+            if (hasActiveFilters) {
+              DebugLog.log('🎯 필터 적용됨, 마커 업데이트: ${filteredAcademies.length}개 (원본: ${boundsAcademies.length}개)');
+            } else {
+              DebugLog.log('📈 더 많은 마커 발견, 업데이트: ${filteredAcademies.length}개');
+            }
+            _sendMarkersToMap(filteredAcademies.take(_maxMarkersPerRequest).toList());
           }
         } else {
           DebugLog.log('❌ API 응답 오류: ${response.statusCode}');
@@ -709,6 +788,101 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
              lng >= bounds['swLng']! &&
              lng <= bounds['neLng']!;
     }).toList();
+  }
+
+  /// 🎯 클라이언트 사이드 필터링 - 서버 로직과 동일하게 구현
+  List<dynamic> _applyClientSideFilters(List<dynamic> academies) {
+    if (academies.isEmpty) return academies;
+
+    List<dynamic> filteredAcademies = academies;
+
+    // 1. 과목 필터 - '전체'가 선택되지 않은 경우에만 적용
+    if (!selectedSubjects.contains('전체') && selectedSubjects.isNotEmpty) {
+      filteredAcademies = filteredAcademies.where((academy) {
+        bool matchesSubject = false;
+
+        for (String subject in selectedSubjects) {
+          // 서버 로직과 동일: 과목_{subject} 필드 확인
+          String fieldName = '과목_$subject';
+          if (academy[fieldName] == true || academy[fieldName] == 'true' || academy[fieldName] == '1') {
+            matchesSubject = true;
+            if (!isAndMode) break; // OR 모드에서는 하나만 매치되면 충분
+          }
+        }
+
+        // AND 모드에서는 모든 과목이 매치되어야 함
+        if (isAndMode && selectedSubjects.isNotEmpty) {
+          bool allMatch = true;
+          for (String subject in selectedSubjects) {
+            String fieldName = '과목_$subject';
+            if (!(academy[fieldName] == true || academy[fieldName] == 'true' || academy[fieldName] == '1')) {
+              allMatch = false;
+              break;
+            }
+          }
+          return allMatch;
+        }
+
+        return matchesSubject;
+      }).toList();
+    }
+
+    // 2. 가격 필터
+    if (priceRange.start > 0 || priceRange.end < _defaultMaxPrice) {
+      filteredAcademies = filteredAcademies.where((academy) {
+        final priceStr = academy['수강료']?.toString() ?? '';
+        if (priceStr.isEmpty) return true; // 가격 정보가 없으면 포함
+
+        try {
+          double price = double.parse(priceStr.replaceAll(RegExp(r'[^0-9.]'), ''));
+          return price >= priceRange.start &&
+                 (priceRange.end >= _defaultMaxPrice || price <= priceRange.end);
+        } catch (e) {
+          return true; // 파싱 실패시 포함
+        }
+      }).toList();
+    }
+
+    // 3. 연령대 필터
+    if (selectedAgeGroups.isNotEmpty) {
+      filteredAcademies = filteredAcademies.where((academy) {
+        bool matchesAge = false;
+
+        for (String ageGroup in selectedAgeGroups) {
+          // 서버 로직과 동일: 대상_{ageGroup} 필드 확인
+          String fieldName = '대상_$ageGroup';
+          if (academy[fieldName] == true || academy[fieldName] == 'true' || academy[fieldName] == '1') {
+            matchesAge = true;
+            break; // 연령대는 OR 조건
+          }
+        }
+
+        return matchesAge;
+      }).toList();
+    }
+
+    // 4. 셔틀버스 필터
+    if (shuttleFilter) {
+      filteredAcademies = filteredAcademies.where((academy) {
+        final shuttle = academy['셔틀버스']?.toString() ?? '';
+        return shuttle.isNotEmpty && shuttle != 'null';
+      }).toList();
+    }
+
+    // 5. 검색어 필터
+    if (searchQuery.isNotEmpty) {
+      String lowerQuery = searchQuery.toLowerCase();
+      filteredAcademies = filteredAcademies.where((academy) {
+        return (academy['상호명']?.toString().toLowerCase().contains(lowerQuery) ?? false) ||
+               (academy['도로명주소']?.toString().toLowerCase().contains(lowerQuery) ?? false) ||
+               (academy['시도명']?.toString().toLowerCase().contains(lowerQuery) ?? false) ||
+               (academy['시군구명']?.toString().toLowerCase().contains(lowerQuery) ?? false) ||
+               (academy['행정동명']?.toString().toLowerCase().contains(lowerQuery) ?? false) ||
+               (academy['법정동명']?.toString().toLowerCase().contains(lowerQuery) ?? false);
+      }).toList();
+    }
+
+    return filteredAcademies;
   }
 
   Map<String, String> getFilterParams() {
@@ -827,19 +1001,45 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
         marker['lat'] != null && marker['lng'] != null
       ).toList();
 
-      // iframe에 postMessage로 마커 데이터 전달
+      // iframe에 postMessage로 마커 데이터와 필터 정보 전달
       final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
       if (iframe?.contentWindow != null) {
+        final currentFilters = _getCurrentFilters();
         iframe!.contentWindow!.postMessage({
           'type': 'updateMarkers',
           'academies': markersData,
+          'filters': currentFilters,
         }, '*');
-        DebugLog.log('✅ 지도 영역 마커 업데이트: ${markersData.length}개');
+        DebugLog.log('✅ 지도 영역 마커 업데이트: ${markersData.length}개, 필터: ${currentFilters['hasActiveFilters']}');
       } else {
         DebugLog.log('❌ iframe을 찾을 수 없습니다');
       }
     } catch (e) {
       DebugLog.log('지도 마커 전송 오류: $e');
+    }
+  }
+
+  // 현재 지도 영역에서 필터를 적용한 마커 요청
+  void _requestMarkersInCurrentBounds() {
+    if (!isMapView) return;
+
+    try {
+      final iframe = html.document.getElementById('naverMapFrame') as html.IFrameElement?;
+      if (iframe != null && iframe.contentWindow != null) {
+        final currentFilters = _getCurrentFilters();
+
+        // iframe에 필터와 함께 마커 요청 메시지 보내기
+        iframe.contentWindow!.postMessage({
+          'type': 'requestMarkersWithCurrentFilters',
+          'filters': currentFilters,
+        }, '*');
+
+        DebugLog.log('🔄 필터 적용 마커 요청: ${currentFilters['hasActiveFilters'] ? "필터 ON" : "전체"}');
+      } else {
+        DebugLog.log('❌ iframe을 찾을 수 없습니다');
+      }
+    } catch (e) {
+      DebugLog.log('필터 마커 요청 오류: $e');
     }
   }
 
@@ -849,6 +1049,20 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
            priceRange.end < _defaultMaxPrice ||
            selectedAgeGroups.isNotEmpty ||
            shuttleFilter;
+  }
+
+  // 현재 필터 상태를 JavaScript 형식으로 변환
+  Map<String, dynamic> _getCurrentFilters() {
+    return {
+      'subjects': selectedSubjects.contains('전체') ? [] : selectedSubjects,
+      'ageGroups': selectedAgeGroups,
+      'priceRange': {
+        'min': priceRange.start,
+        'max': priceRange.end,
+      },
+      'shuttleFilter': shuttleFilter,
+      'hasActiveFilters': _hasActiveFilters(),
+    };
   }
 
   List<Widget> _getActiveFilterChips() {
@@ -928,7 +1142,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
   Future<void> loadAcademies() async {
     if (!mounted) return;
-    
+
+    // 필터 변경 시 캐시 초기화
+    _clearFilterRelatedCache();
+
     setState(() {
       isLoading = true;
       errorMessage = null;
@@ -1393,9 +1610,10 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
           _centerMapOnAcademy(lat, lng);
         }
 
-        // 3초 후에 플래그 해제
-        Future.delayed(Duration(seconds: 3), () {
-          if (mounted) {
+        // 플래그 해제는 _centerMapOnAcademy에서 처리됨
+        // 3초 후에 플래그 해제 (비상용 백업)
+        Future.delayed(Duration(seconds: 5), () {
+          if (mounted && isReturningFromDetail) {
             setState(() {
               isReturningFromDetail = false;
             });
@@ -1421,6 +1639,27 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
 
         iframe!.contentWindow!.postMessage(message, '*');
         DebugLog.log('📍 학원 위치로 지도 중심 이동: $lat, $lng');
+
+        // 지도 이동 후 해당 위치의 마커들을 로드
+        Future.delayed(Duration(milliseconds: 1000), () {
+          // 현재 지도 영역의 마커를 요청
+          final filters = _getCurrentFilters();
+          iframe.contentWindow!.postMessage({
+            'type': 'requestMarkersWithCurrentFilters',
+            'filters': filters,
+          }, '*');
+          DebugLog.log('📍 학원 위치 주변 마커 요청');
+
+          // isReturningFromDetail 플래그 해제하여 이후 지도 이동 시 마커 로딩 가능하도록
+          Future.delayed(Duration(milliseconds: 2000), () {
+            if (mounted) {
+              setState(() {
+                isReturningFromDetail = false;
+              });
+              DebugLog.log('✅ isReturningFromDetail 플래그 해제 완료');
+            }
+          });
+        });
       } else {
         DebugLog.log('❌ iframe을 찾을 수 없습니다');
       }
@@ -1485,14 +1724,16 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
     ).toList();
 
     try {
-      // iframe에 postMessage로 마커 데이터 전달
+      // iframe에 postMessage로 마커 데이터 전달 (필터 정보 포함)
       final iframe = html.document.querySelector('iframe') as html.IFrameElement?;
       if (iframe?.contentWindow != null) {
+        final filters = _getCurrentFilters();
         iframe!.contentWindow!.postMessage({
           'type': 'updateMarkers',
           'academies': markersData,
+          'filters': filters,  // 현재 필터 상태 전달
         }, '*');
-        DebugLog.log('✅ iframe에 ${markersData.length}개 마커 데이터 전송');
+        DebugLog.log('✅ iframe에 ${markersData.length}개 마커 데이터 전송 (필터 포함)');
       } else {
         DebugLog.log('❌ iframe을 찾을 수 없습니다');
       }
@@ -1734,716 +1975,612 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
       ),
       body: Stack(
         children: [
+          // 메인 콘텐츠 (전체 화면 사용)
           Column(
             children: [
-              // 필터 섹션
-              Flexible(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[300]!),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 16.0 : 12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '📚 과목 선택',
-                      style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.width > 600 ? 16 : 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _hasActiveFilters() ? () {
-                        setState(() {
-                          selectedSubjects = ['전체'];
-                          priceRange = const RangeValues(0.0, 2000000.0);
-                          selectedAgeGroups.clear();
-                          shuttleFilter = false;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🔄 필터가 초기화되었습니다'),
-                            duration: Duration(seconds: 2),
+              // 학원 목록 또는 지도 - 전체 화면을 차지
+              Expanded(
+                child: isMapView
+                  ? _buildNaverMapWidget()
+                  : isLoading
+                      ? Center(
+                          child: Container(
+                            padding: EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[50],
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 3,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  '🔍 학원 정보를 불러오는 중...',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '잠시만 기다려주세요',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                                if (_hasActiveFilters()) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange[50],
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.orange[200]!),
+                                    ),
+                                    child: Text(
+                                      '필터가 적용된 결과를 찾는 중',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.orange[700],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        );
-                        Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
-                          loadAcademies();  // 리스트와 맵 모두 업데이트
-                        });
-                      } : null,
-                      icon: Icon(
-                        Icons.refresh, 
-                        size: 18,
-                        color: _hasActiveFilters() ? Colors.blue[700] : Colors.grey[400],
-                      ),
-                      label: Text(
-                        '초기화',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _hasActiveFilters() ? Colors.blue[700] : Colors.grey[400],
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size(0, 0),
+                        )
+                      : academies.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    hasNetworkError ? Icons.wifi_off : Icons.school_outlined,
+                                    size: 64,
+                                    color: hasNetworkError ? Colors.red : Colors.grey,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    hasNetworkError
+                                      ? (errorMessage ?? '연결 오류가 발생했습니다')
+                                      : '조건에 맞는 학원이 없습니다',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: hasNetworkError ? Colors.red : Colors.grey,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  if (hasNetworkError) ...[
+                                    SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: loadAcademies,
+                                      icon: Icon(Icons.refresh),
+                                      label: Text('다시 시도'),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            )
+                        : RefreshIndicator(
+                            onRefresh: loadAcademies,
+                            child: ListView.builder(
+                              controller: scrollController,
+                              itemCount: academies.length + (isLoadingMore ? 1 : (hasMoreData ? 1 : 0)),
+                              itemBuilder: (context, index) {
+                                // 로딩 인디케이터 표시
+                                if (index >= academies.length) {
+                                  if (isLoadingMore) {
+                                    return Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  } else if (hasMoreData) {
+                                    return Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            // 더 보기 기능 구현 필요
+                                          },
+                                          child: Text('더 보기'),
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    return Container();
+                                  }
+                                }
+
+                                final academy = academies[index];
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                    vertical: 4.0,
+                                  ),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0,
+                                      vertical: 8.0,
+                                    ),
+                                    title: InkWell(
+                                      onTap: () {
+                                        _navigateToDetailPage(academy);
+                                      },
+                                      child: Text(
+                                        academy['상호명'] ?? '이름 없음',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          academy['도로명주소'] ?? '주소 없음',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            // 📍 거리 정보 표시 (우선 순위)
+                                            if (academy['distance'] != null && _formatDistance(academy['distance']).isNotEmpty) ...[
+                                              Icon(
+                                                Icons.near_me,
+                                                size: 16,
+                                                color: Colors.blue[600],
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                _formatDistance(academy['distance']),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.blue[700],
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                            ],
+                                            // 기존 위치 정보 (축약)
+                                            Icon(
+                                              Icons.location_on,
+                                              size: 16,
+                                              color: Colors.grey[400],
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                '${_safeSubstring(academy['위도']?.toString(), 7)}, ${_safeSubstring(academy['경도']?.toString(), 8)}',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey[500],
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                      color: Colors.grey[400],
+                                    ),
+                                    onTap: () {
+                                      _navigateToDetailPage(academy);
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+              ),
+            ],
+          ),
+
+          // 플로팅 필터 패널
+          AnimatedPositioned(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            top: showFilterPanel ? 0 : -(showAdvancedFilters ? 400.0 : 250.0),
+            left: 0,
+            right: 0,
+            child: PointerInterceptor(
+              child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 기본 필터 섹션
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey[300]!),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: MediaQuery.of(context).size.width > 600 ? 8.0 : 6.0,
-                  runSpacing: 4.0,
-                  children: subjects.map((subject) {
-                    bool isSelected = selectedSubjects.contains(subject);
-                    return FilterChip(
-                      label: Text(subject),
-                      selected: isSelected,
-                      onSelected: (bool selected) {
-                        setState(() {
-                          if (subject == '전체') {
-                            // '전체' 선택 시 다른 모든 선택 해제
-                            if (selected) {
-                              selectedSubjects = ['전체'];
-                            } else {
-                              selectedSubjects = [];
-                            }
-                          } else {
-                            // 개별 과목 선택/해제
-                            if (selected) {
-                              // '전체' 선택되어 있으면 제거하고 새 과목 추가
-                              selectedSubjects.remove('전체');
-                              if (!selectedSubjects.contains(subject)) {
-                                selectedSubjects.add(subject);
-                              }
-                            } else {
-                              selectedSubjects.remove(subject);
-                              // 아무것도 선택되지 않았으면 '전체' 자동 선택
-                              if (selectedSubjects.isEmpty) {
-                                selectedSubjects.add('전체');
-                              }
-                            }
-                          }
-                        });
-
-                        DebugLog.log('🎯 과목 선택: ${selectedSubjects.join(", ")}'); // 디버깅용
-
-                        // UI 업데이트 후 필터 적용
-                        Future.delayed(Duration(milliseconds: 100), () {
-                          loadAcademies();  // 리스트와 맵 모두 업데이트
-                        });
-                      },
-                      selectedColor: Colors.blue[100],
-                      checkmarkColor: Colors.blue[800],
-                    );
-                  }).toList(),
-                ),
-
-                // OR/AND 조합 모드 토글 (다중 선택 시만 표시)
-                if (!selectedSubjects.contains('전체') && selectedSubjects.length > 1) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '필터 모드: ',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: Colors.grey[100],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                if (isAndMode) {
-                                  setState(() {
-                                    isAndMode = false;
-                                  });
-                                  loadAcademies();  // 리스트와 맵 모두 업데이트
-                                }
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  color: !isAndMode ? Colors.blue : Colors.transparent,
-                                ),
-                                child: Text(
-                                  'OR',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: !isAndMode ? Colors.white : Colors.grey[600],
-                                    fontWeight: !isAndMode ? FontWeight.bold : FontWeight.normal,
-                                  ),
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(MediaQuery.of(context).size.width > 600 ? 16.0 : 12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '📚 과목 선택',
+                                style: TextStyle(
+                                  fontSize: MediaQuery.of(context).size.width > 600 ? 16 : 14,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              TextButton.icon(
+                                onPressed: _hasActiveFilters() ? () {
+                                  setState(() {
+                                    selectedSubjects = ['전체'];
+                                    priceRange = const RangeValues(0.0, 2000000.0);
+                                    selectedAgeGroups.clear();
+                                    shuttleFilter = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('🔄 필터가 초기화되었습니다'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                  Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
+                                    loadAcademies();  // 리스트와 맵 모두 업데이트
+                                  });
+                                } : null,
+                                icon: Icon(
+                                  Icons.refresh,
+                                  size: 18,
+                                  color: _hasActiveFilters() ? Colors.blue[700] : Colors.grey[400],
+                                ),
+                                label: Text(
+                                  '초기화',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _hasActiveFilters() ? Colors.blue[700] : Colors.grey[400],
+                                  ),
+                                ),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  minimumSize: Size(0, 0),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: MediaQuery.of(context).size.width > 600 ? 8.0 : 6.0,
+                            runSpacing: 4.0,
+                            children: subjects.map((subject) {
+                              bool isSelected = selectedSubjects.contains(subject);
+                              return FilterChip(
+                                label: Text(subject),
+                                selected: isSelected,
+                                onSelected: (bool selected) {
+                                  setState(() {
+                                    if (subject == '전체') {
+                                      // '전체' 선택 시 다른 모든 선택 해제
+                                      if (selected) {
+                                        selectedSubjects = ['전체'];
+                                      }
+                                    } else {
+                                      // 개별 과목 선택
+                                      selectedSubjects.remove('전체');
+                                      if (selected) {
+                                        selectedSubjects.add(subject);
+                                      } else {
+                                        selectedSubjects.remove(subject);
+                                        // 아무것도 선택되지 않으면 '전체' 선택
+                                        if (selectedSubjects.isEmpty) {
+                                          selectedSubjects = ['전체'];
+                                        }
+                                      }
+                                    }
+                                  });
+                                  Future.delayed(Duration(milliseconds: 200), () {
+                                    if (isMapView) {
+                                      // 필터 변경 시 캐시 초기화
+                                      _clearFilterRelatedCache();
+                                      // 지도 뷰에서는 loadAcademies를 호출하여 전체 데이터 갱신
+                                      loadAcademies();
+                                    } else {
+                                      loadAcademies();  // 리스트 뷰에서는 기존 방식
+                                    }
+                                  });
+                                },
+                                selectedColor: Colors.blue[100],
+                                checkmarkColor: Colors.blue[800],
+                              );
+                            }).toList(),
+                          ),
+
+                          if (showAdvancedFilters) ...[
+                            const SizedBox(height: 16),
+
+                            // 가격 범위
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '💰 가격대 (월)',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${(priceRange.start / 10000).toInt()}만원 - ${priceRange.end >= _defaultMaxPrice ? '${(_defaultMaxPrice / 10000).toInt()}만원+' : '${(priceRange.end / 10000).toInt()}만원'}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                RangeSlider(
+                                  values: priceRange,
+                                  min: 0,
+                                  max: _defaultMaxPrice.toDouble(),
+                                  divisions: 20,
+                                  labels: RangeLabels(
+                                    '${(priceRange.start / 10000).toInt()}만원',
+                                    priceRange.end >= _defaultMaxPrice ? '${(_defaultMaxPrice / 10000).toInt()}만원+' : '${(priceRange.end / 10000).toInt()}만원',
+                                  ),
+                                  onChanged: (RangeValues values) {
+                                    setState(() {
+                                      priceRange = values;
+                                    });
+                                  },
+                                  onChangeEnd: (RangeValues values) {
+                                    Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
+                                      if (isMapView) {
+                                        // 필터 변경 시 캐시 초기화
+                                        _clearFilterRelatedCache();
+                                        // 지도 뷰에서는 loadAcademies를 호출하여 전체 데이터 갱신
+                                        loadAcademies();
+                                      } else {
+                                        loadAcademies();  // 리스트 뷰에서는 기존 방식
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
-                            GestureDetector(
-                              onTap: () {
-                                if (!isAndMode) {
-                                  setState(() {
-                                    isAndMode = true;
-                                  });
-                                  loadAcademies();  // 리스트와 맵 모두 업데이트
-                                }
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  color: isAndMode ? Colors.blue : Colors.transparent,
-                                ),
-                                child: Text(
-                                  'AND',
+
+                            const SizedBox(height: 16),
+
+                            // 연령
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '👶 연령',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: isAndMode ? Colors.white : Colors.grey[600],
-                                    fontWeight: isAndMode ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8.0,
+                                  children: ageGroups.map((age) {
+                                    return FilterChip(
+                                      label: Text(age),
+                                      selected: selectedAgeGroups.contains(age),
+                                      onSelected: (bool selected) {
+                                        setState(() {
+                                          if (selected) {
+                                            selectedAgeGroups.add(age);
+                                          } else {
+                                            selectedAgeGroups.remove(age);
+                                          }
+                                        });
+                                        Future.delayed(Duration(milliseconds: 200), () {
+                                          if (isMapView) {
+                                            // 필터 변경 시 캐시 초기화
+                                            _clearFilterRelatedCache();
+                                            // 지도 뷰에서는 loadAcademies를 호출하여 전체 데이터 갱신
+                                            loadAcademies();
+                                          } else {
+                                            loadAcademies();  // 리스트 뷰에서는 기존 방식
+                                          }
+                                        });
+                                      },
+                                      selectedColor: Colors.green[100],
+                                      checkmarkColor: Colors.green[800],
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // 셔틀버스
+                            Row(
+                              children: [
+                                const Text(
+                                  '🚌 셔틀버스',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Switch(
+                                  value: shuttleFilter,
+                                  onChanged: (bool value) {
+                                    setState(() {
+                                      shuttleFilter = value;
+                                    });
+                                    Future.delayed(Duration(milliseconds: 200), () {
+                                      if (isMapView) {
+                                        // 필터 변경 시 캐시 초기화
+                                        _clearFilterRelatedCache();
+                                        // 지도 뷰에서는 loadAcademies를 호출하여 전체 데이터 갱신
+                                        loadAcademies();
+                                      } else {
+                                        loadAcademies();  // 리스트 뷰에서는 기존 방식
+                                      }
+                                    });
+                                  },
+                                  activeColor: Colors.green,
+                                ),
+                              ],
                             ),
                           ],
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        isAndMode ? '모든 과목 동시 제공' : '선택 과목 중 하나 이상',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ],
 
-                if (totalCount > 0) ...[
-                  const SizedBox(height: 8),
+                  // 필터 패널 컨트롤 버튼
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '📊 "${selectedSubjects.join(", ")}" 학원 $totalCount개 중 ${academies.length}개 표시${hasMoreData ? ' (스크롤하여 더 보기)' : ''}',
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey[300]!),
                       ),
                     ),
-                  ),
-                ],
-                
-                // 활성 필터 상태 표시
-                if (_hasActiveFilters()) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[200]!),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Icon(Icons.filter_alt, size: 16, color: Colors.orange[700]),
-                            const SizedBox(width: 4),
-                            Text(
-                              '활성 필터',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange[700],
+                        // 고급 필터 토글 버튼
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                showAdvancedFilters = !showAdvancedFilters;
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
+                                    size: 20,
+                                    color: Colors.grey[600],
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    showAdvancedFilters ? '고급 필터 숨기기' : '고급 필터 열기',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: _getActiveFilterChips(),
+
+                        Container(width: 1, height: 30, color: Colors.grey[300]),
+
+                        // 필터 패널 닫기 버튼
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                showFilterPanel = false;
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.keyboard_arrow_up, size: 20, color: Colors.grey[600]),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '필터 숨기기',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ],
-                
-                // 고급 필터 섹션
-                if (showAdvancedFilters) ...[
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  
-                  // 가격 필터
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '💰 수강료',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+              ),
+            ),
+            ),
+          ),
+
+          // 필터 열기 플로팅 버튼 (필터가 숨겨진 경우에만 표시)
+          if (!showFilterPanel)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: PointerInterceptor(
+                child: FloatingActionButton.extended(
+                onPressed: () {
+                  setState(() {
+                    showFilterPanel = true;
+                  });
+                },
+                label: Row(
+                  children: [
+                    Icon(Icons.filter_list, size: 18),
+                    SizedBox(width: 4),
+                    Text('필터'),
+                    if (_hasActiveFilters()) ...[
+                      SizedBox(width: 4),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${priceRange.start.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원 - ${priceRange.end >= _defaultMaxPrice ? '${(_defaultMaxPrice / 10000).toInt()}만원 이상' : '${priceRange.end.toInt().toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}원'}',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
+                        child: Text(
+                          _getActiveFilterCount().toString(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      RangeSlider(
-                        values: priceRange,
-                        min: 0,
-                        max: _defaultMaxPrice.toDouble(),
-                        divisions: 20,
-                        labels: RangeLabels(
-                          '${(priceRange.start / 10000).toInt()}만원',
-                          priceRange.end >= _defaultMaxPrice ? '${(_defaultMaxPrice / 10000).toInt()}만원+' : '${(priceRange.end / 10000).toInt()}만원',
-                        ),
-                        onChanged: (RangeValues values) {
-                          setState(() {
-                            priceRange = values;
-                          });
-                        },
-                        onChangeEnd: (RangeValues values) {
-                          Future.delayed(Duration(milliseconds: _markerUpdateDelay), () {
-                            loadAcademies();  // 리스트와 맵 모두 업데이트
-                          });
-                        },
                       ),
                     ],
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // 연령 필터
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '👶 연령',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8.0,
-                        children: ageGroups.map((age) {
-                          return FilterChip(
-                            label: Text(age),
-                            selected: selectedAgeGroups.contains(age),
-                            onSelected: (bool selected) {
-                              setState(() {
-                                if (selected) {
-                                  selectedAgeGroups.add(age);
-                                } else {
-                                  selectedAgeGroups.remove(age);
-                                }
-                              });
-                              Future.delayed(Duration(milliseconds: 200), () {
-                                loadAcademies();  // 리스트와 맵 모두 업데이트
-                              });
-                            },
-                            selectedColor: Colors.green[100],
-                            checkmarkColor: Colors.green[800],
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // 셔틀버스 필터
-                  Row(
-                    children: [
-                      const Text(
-                        '🚌 셔틀버스',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      Switch(
-                        value: shuttleFilter,
-                        onChanged: (bool value) {
-                          setState(() {
-                            shuttleFilter = value;
-                          });
-                          Future.delayed(Duration(milliseconds: 200), () {
-                            loadAcademies();  // 리스트와 맵 모두 업데이트
-                          });
-                        },
-                        activeColor: Colors.green,
-                      ),
-                    ],
-                  ),
-                ],
                   ],
-                    ),
-                  ),
+                ),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.blue,
+                elevation: 4,
                 ),
               ),
-              // 학원 목록 또는 지도
-              Expanded(
-                child: isMapView
-              ? _buildNaverMapWidget()
-              : isLoading
-                  ? Center(
-                      child: Container(
-                        padding: EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.blue[50],
-                                shape: BoxShape.circle,
-                              ),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              '🔍 학원 정보를 불러오는 중...',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '잠시만 기다려주세요',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                            if (_hasActiveFilters()) ...[
-                              const SizedBox(height: 16),
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange[50],
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.orange[200]!),
-                                ),
-                                child: Text(
-                                  '필터가 적용된 결과를 찾는 중',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.orange[700],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    )
-                  : academies.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                hasNetworkError ? Icons.wifi_off : Icons.school_outlined,
-                                size: 64,
-                                color: hasNetworkError ? Colors.red : Colors.grey,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                hasNetworkError
-                                  ? (errorMessage ?? '연결 오류가 발생했습니다')
-                                  : '조건에 맞는 학원이 없습니다',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: hasNetworkError ? Colors.red : Colors.grey,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              if (hasNetworkError) ...[
-                                SizedBox(height: 16),
-                                ElevatedButton.icon(
-                                  onPressed: loadAcademies,
-                                  icon: Icon(Icons.refresh),
-                                  label: Text('다시 시도'),
-                                ),
-                              ],
-                            ],
-                          ),
-                        )
-                    : RefreshIndicator(
-                        onRefresh: loadAcademies,
-                        child: ListView.builder(
-                          controller: scrollController,
-                          itemCount: academies.length + (isLoadingMore ? 1 : (hasMoreData ? 1 : 0)),
-                          itemBuilder: (context, index) {
-                            // 로딩 인디케이터 표시
-                            if (index == academies.length) {
-                              if (isLoadingMore) {
-                                return Container(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Center(
-                                    child: Container(
-                                      padding: EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[50],
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey[200]!),
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            '📚 더 많은 학원을 찾는 중...',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.grey[700],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '스크롤을 계속해보세요',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[500],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              } else if (hasMoreData) {
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Center(
-                                    child: TextButton(
-                                      onPressed: loadMoreAcademies,
-                                      child: const Text('더 보기'),
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Center(
-                                    child: Text(
-                                      '모든 학원 정보를 표시했습니다 (총 ${academies.length}개)',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                            final academy = academies[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 4.0,
-                              ),
-                              child: ListTile(
-                                leading: Container(
-                                  width: 60,
-                                  height: 60,
-                                  child: Stack(
-                                    children: [
-                                      // 배경 레이어: 학원 사진 또는 회색 배경
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: academy['학원사진'] != null &&
-                                               academy['학원사진'] != '' &&
-                                               academy['학원사진'] != 'null'
-                                          ? Image.network(
-                                              academy['학원사진'],
-                                              fit: BoxFit.cover,
-                                              width: 60,
-                                              height: 60,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                return Container(
-                                                  color: Colors.grey[300],
-                                                  width: 60,
-                                                  height: 60,
-                                                );
-                                              },
-                                              loadingBuilder: (context, child, loadingProgress) {
-                                                if (loadingProgress == null) return child;
-                                                return Container(
-                                                  color: Colors.grey[200],
-                                                  width: 60,
-                                                  height: 60,
-                                                  child: Center(
-                                                    child: CircularProgressIndicator(
-                                                      value: loadingProgress.expectedTotalBytes != null
-                                                          ? loadingProgress.cumulativeBytesLoaded /
-                                                              loadingProgress.expectedTotalBytes!
-                                                          : null,
-                                                      strokeWidth: 2,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            )
-                                          : Container(
-                                              color: Colors.grey[300],
-                                              width: 60,
-                                              height: 60,
-                                            ),
-                                      ),
-                                      // 아이콘 오버레이: 좌측 상단에 작게 표시
-                                      Positioned(
-                                        top: 4,
-                                        left: 4,
-                                        child: Container(
-                                          padding: EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: _getSubjectColor(_getPrimarySubject(academy)),
-                                            borderRadius: BorderRadius.circular(4),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.3),
-                                                blurRadius: 2,
-                                                offset: Offset(0, 1),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            _getSubjectIcon(_getPrimarySubject(academy)),
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                title: InkWell(
-                                  onTap: () {
-                                    _navigateToDetailPage(academy);
-                                  },
-                                  child: Text(
-                                    academy['상호명'] ?? '이름 없음',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      academy['도로명주소'] ?? '주소 없음',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        // 📍 거리 정보 표시 (우선 순위)
-                                        if (academy['distance'] != null && _formatDistance(academy['distance']).isNotEmpty) ...[
-                                          Icon(
-                                            Icons.near_me,
-                                            size: 16,
-                                            color: Colors.blue[600],
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _formatDistance(academy['distance']),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.blue[700],
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                        ],
-                                        // 기존 위치 정보 (축약)
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 16,
-                                          color: Colors.grey[400],
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            '${_safeSubstring(academy['위도']?.toString(), 7)}, ${_safeSubstring(academy['경도']?.toString(), 8)}',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey[500],
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                trailing: Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 16,
-                                  color: Colors.grey[400],
-                                ),
-                                onTap: () {
-                                  _navigateToDetailPage(academy);
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-              ),
-            ],
-          ),
+            ),
+
           // 🎯 반투명 줌 알림 모달
           if (showZoomAlert)
             Container(
@@ -2538,6 +2675,38 @@ class _AcademyMapHomePageState extends State<AcademyMapHomePage> {
   String _safeSubstring(String? str, int maxLength) {
     if (str == null || str.isEmpty) return 'N/A';
     return str.length <= maxLength ? str : str.substring(0, maxLength);
+  }
+
+  // 필터 활성화 카운트 함수
+  int _getActiveFilterCount() {
+    int count = 0;
+
+    // 과목 필터 (전체가 아닌 경우)
+    if (!selectedSubjects.contains('전체')) {
+      count += selectedSubjects.length;
+    }
+
+    // 가격 범위 필터
+    if (priceRange.start > 0 || priceRange.end < _defaultMaxPrice) {
+      count++;
+    }
+
+    // 연령 그룹 필터
+    if (selectedAgeGroups.isNotEmpty) {
+      count++;
+    }
+
+    // 셔틀버스 필터
+    if (shuttleFilter) {
+      count++;
+    }
+
+    // 검색어
+    if (searchController.text.isNotEmpty) {
+      count++;
+    }
+
+    return count;
   }
 
   // 📍 거리 포맷 함수

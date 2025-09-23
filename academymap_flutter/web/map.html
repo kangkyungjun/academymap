@@ -135,6 +135,17 @@
     let currentZoomLevel = 11; // 현재 줌 레벨
     let debounceTimer = null; // 디바운싱 타이머
 
+    // 🎯 필터 상태 관리
+    let currentFilters = {
+      subjects: ['전체'],
+      priceMin: 0,
+      priceMax: 2000000,
+      ageGroups: [],
+      shuttleFilter: false,
+      searchQuery: '',
+      isAndMode: false
+    };
+
     // 과목별 마커 스타일 정의 - 더 선명한 색상으로 개선
     const subjectStyles = {
       '수학': {
@@ -502,12 +513,12 @@
     // 현재 지도 화면 영역의 마커 요청 (개별 마커)
     function requestMarkersForCurrentView() {
       if (!map) return;
-      
+
       const bounds = map.getBounds();
       const sw = bounds.getSW(); // 남서쪽 좌표
       const ne = bounds.getNE(); // 북동쪽 좌표
-      
-      // Flutter에 현재 지도 영역 정보 전송
+
+      // 🎯 Flutter에 현재 지도 영역 정보와 필터 정보 함께 전송
       window.parent.postMessage({
         type: 'requestMarkersInBounds',
         data: {
@@ -516,13 +527,15 @@
           ne_lat: ne.lat(),
           ne_lng: ne.lng(),
           zoom: map.getZoom()
-        }
+        },
+        filters: currentFilters  // 🎯 필터 정보 추가
       }, '*');
-      
+
       debugLog('지도 영역 마커 요청:', {
         sw: {lat: sw.lat(), lng: sw.lng()},
         ne: {lat: ne.lat(), lng: ne.lng()},
-        zoom: map.getZoom()
+        zoom: map.getZoom(),
+        filters: currentFilters
       });
     }
 
@@ -665,6 +678,36 @@
       });
     }
 
+    // 🎯 필터 업데이트 함수
+    function updateFilters(newFilters) {
+      debugLog('필터 업데이트 받음:', newFilters);
+
+      // 필터 상태 업데이트
+      if (newFilters.subjects !== undefined) {
+        currentFilters.subjects = newFilters.subjects;
+      }
+      if (newFilters.priceMin !== undefined) {
+        currentFilters.priceMin = newFilters.priceMin;
+      }
+      if (newFilters.priceMax !== undefined) {
+        currentFilters.priceMax = newFilters.priceMax;
+      }
+      if (newFilters.ageGroups !== undefined) {
+        currentFilters.ageGroups = newFilters.ageGroups;
+      }
+      if (newFilters.shuttleFilter !== undefined) {
+        currentFilters.shuttleFilter = newFilters.shuttleFilter;
+      }
+      if (newFilters.searchQuery !== undefined) {
+        currentFilters.searchQuery = newFilters.searchQuery;
+      }
+      if (newFilters.isAndMode !== undefined) {
+        currentFilters.isAndMode = newFilters.isAndMode;
+      }
+
+      debugLog('필터 업데이트 완료:', currentFilters);
+    }
+
     // Flutter로부터 메시지 수신
     window.addEventListener('message', function(event) {
       debugLog('iframe에서 메시지 수신:', event.data);
@@ -678,6 +721,12 @@
       } else if (event.data.type === 'requestCurrentBounds') {
         debugLog('현재 지도 영역 요청');
         sendCurrentBounds();
+      } else if (event.data.type === 'updateFilters') {
+        // 🎯 필터 업데이트 처리
+        updateFilters(event.data.filters);
+
+        // 필터 변경 후 현재 영역의 마커 다시 요청
+        requestMarkersForCurrentView();
       }
     });
 

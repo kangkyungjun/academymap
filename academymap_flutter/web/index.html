@@ -43,6 +43,7 @@
   <script>
     let map = null;
     let markers = [];
+    let currentFilters = {}; // 현재 필터 상태 저장
 
     // 네이버 지도 초기화
     function initNaverMap() {
@@ -61,10 +62,53 @@
 
       map = new naver.maps.Map('naverMap', mapOptions);
       console.log('네이버 지도가 초기화되었습니다.');
+
+      // 지도 이동/줌 이벤트 리스너 추가 - 필터 상태 포함하여 마커 요청
+      naver.maps.Event.addListener(map, 'dragend', function() {
+        console.log('지도 이동 완료, 새로운 마커 요청');
+        console.log('현재 필터 상태:', currentFilters);
+        requestMarkersWithFilters();
+      });
+
+      naver.maps.Event.addListener(map, 'zoom_changed', function() {
+        console.log('지도 줌 변경, 새로운 마커 요청');
+        console.log('현재 필터 상태:', currentFilters);
+        requestMarkersWithFilters();
+      });
+    }
+
+    // 필터를 포함한 마커 요청 함수
+    function requestMarkersWithFilters() {
+      if (!map) {
+        console.error('지도가 초기화되지 않았습니다.');
+        return;
+      }
+      const bounds = map.getBounds();
+      const message = {
+        type: 'requestMarkersInBounds',
+        swLat: bounds.getSW().lat(),
+        swLng: bounds.getSW().lng(),
+        neLat: bounds.getNE().lat(),
+        neLng: bounds.getNE().lng(),
+        filters: currentFilters  // 현재 필터 상태 포함
+      };
+      console.log('지도 영역 마커 요청:', message);
+      window.parent.postMessage(message, '*');
+    }
+
+    // 필터 업데이트 함수
+    function updateFilters(filters) {
+      currentFilters = filters || {};
+      console.log('필터 업데이트:', currentFilters);
     }
 
     // 마커 업데이트
-    function updateMapMarkers(academyData) {
+    function updateMapMarkers(academyData, filters) {
+      // 필터 상태 저장
+      if (filters) {
+        currentFilters = filters;
+        console.log('필터 상태 업데이트:', currentFilters);
+      }
       if (!map) {
         console.error('지도가 초기화되지 않았습니다.');
         return;
@@ -124,6 +168,42 @@
         map.fitBounds(bounds);
       }
     }
+
+    // Flutter에서 오는 메시지 처리
+    window.addEventListener('message', function(event) {
+      if (event.data) {
+        // 필터와 함께 마커 요청 메시지
+        if (event.data.type === 'requestMarkersWithCurrentFilters') {
+          console.log('필터 적용 마커 요청 받음:', event.data.filters);
+          // 필터 상태 업데이트
+          if (event.data.filters) {
+            currentFilters = event.data.filters;
+            console.log('필터 업데이트됨:', currentFilters);
+          }
+          // 현재 지도 영역에서 필터를 적용한 마커 요청
+          requestMarkersWithFilters();
+        }
+        // 지도 중심 이동 메시지
+        else if (event.data.type === 'setMapCenter') {
+          if (map && event.data.lat && event.data.lng) {
+            const position = new naver.maps.LatLng(event.data.lat, event.data.lng);
+            map.setCenter(position);
+            map.setZoom(15); // 학원 위치로 이동할 때 적절한 줌 레벨로 설정
+            console.log('지도 중심 이동:', event.data.lat, event.data.lng);
+          }
+        }
+        // 마커 업데이트 메시지
+        else if (event.data.type === 'updateMarkers') {
+          console.log('마커 업데이트 시작:', event.data.academies ? event.data.academies.length : 0, '개');
+          // 필터 상태를 먼저 업데이트
+          if (event.data.filters) {
+            currentFilters = event.data.filters;
+            console.log('필터 업데이트됨:', currentFilters);
+          }
+          updateMapMarkers(event.data.academies || [], event.data.filters);
+        }
+      }
+    });
 
     // Flutter의 HtmlElementView를 위한 설정
     window.addEventListener('flutter-initialized', function() {

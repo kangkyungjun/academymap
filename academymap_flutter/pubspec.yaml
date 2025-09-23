@@ -46,6 +46,9 @@ dependencies:
   # 차트 라이브러리
   fl_chart: ^0.68.0
 
+  # HtmlElementView 위에서 클릭 이벤트를 받기 위한 패키지
+  pointer_interceptor: ^0.10.1
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
